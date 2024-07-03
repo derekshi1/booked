@@ -185,6 +185,25 @@ app.post('/api/library/add', async (req, res) => {
   }
 });
 
+// Remove book from user's library
+app.post('/api/library/remove', async (req, res) => {
+  const { username, isbn } = req.body;
+
+  try {
+    let userLibrary = await UserLibrary.findOne({ username });
+    if (userLibrary) {
+      userLibrary.books = userLibrary.books.filter(book => book.isbn !== isbn);
+      await userLibrary.save();
+      res.status(200).json({ success: true, message: 'Book removed from library' });
+    } else {
+      res.status(404).json({ success: false, message: 'No library found for user' });
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
 // Get books from user's library
 app.get('/api/library/:username', async (req, res) => {
   const { username } = req.params;

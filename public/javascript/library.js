@@ -31,12 +31,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (data.success && data.books.length > 0) {
                 data.books.forEach(book => {
                     const bookDiv = document.createElement('div');
-                    bookDiv.classList.add('bg-white', 'rounded', 'shadow-lg', 'p-4');
+                    bookDiv.classList.add('relative', 'p-10', 'rounded-lg', 'shadow-lg', 'cursor-pointer', 'hover:shadow-2xl', 'transition', 'duration-300', 'ease-in-out');
                     bookDiv.innerHTML = `
-                        <img src="${book.thumbnail}" alt="${book.title}" class="w-full h-64 object-cover mb-4">
-                        <h2 class="text-lg font-bold">${book.title}</h2>
-                        <p class="text-gray-700">by ${book.authors}</p>
-                    `;
+                         <a href="../html/book.html?isbn=${book.isbn}" class="block relative overflow-hidden rounded-lg shadow-lg hover:shadow-2xl transition duration-300 ease-in-out group">
+                        <img src="${book.thumbnail}" alt="${book.title}" class="w-full h-72 object-cover">
+                        <div class="absolute bottom-0 left-0 w-full p-4 bg-black bg-opacity-60 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-in-out">
+                            <h2 class="text-lg font-bold">${book.title}</h2>
+                            <p class="text-gray-300">by ${book.authors}</p>
+                        </div>
+                        </a>
+`;
+
                     libraryGrid.appendChild(bookDiv);
                 });
             } else {
@@ -47,8 +52,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             document.getElementById('libraryGrid').innerHTML = '<p>Error loading library.</p>';
         }
     } else {
-        userSection.innerHTML += `
-            <a href="../html/login.html" class="text-white bg-green-900 px-4 py-2 rounded">Login</a>
-        `;
+        if (!document.querySelector('#loginButton')) {
+            const loginButton = document.createElement('a');
+            loginButton.id = 'loginButton';
+            loginButton.href = '../html/login.html';
+            loginButton.className = 'text-white bg-green-900 px-4 py-2 rounded';
+            loginButton.textContent = 'Login';
+            userSection.appendChild(loginButton);
+        }
     }
 });
+    

@@ -2,23 +2,16 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
     <meta http-equiv="content-type" content="text/html; charset=utf-8"/>
-    <title>Booked</title>
+    <title>Book Details</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Indie+Flower&display=swap" rel="stylesheet">
-    <script defer src="../javascript/register.js"></script>
-    <script defer src="../javascript/library.js"></script>
+    <script defer src="../javascript/book.js"></script>
     <style>
         .custom-header {
             background-color: #e9dcaf; /* Extracted color */
         }
         .handwriting-font {
             font-family: 'Indie Flower', cursive;
-        }
-        .shadow-lg {
-            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2); /* More noticeable shadow */
-        }
-        .hover\:shadow-2xl:hover {
-            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25); /* More noticeable shadow on hover */
         }
     </style>
 </head>
@@ -27,7 +20,7 @@
         <div class="container mx-auto flex items-center justify-between">
             <div class="flex items-center">
                 <img src="../logo.jpg" alt="Booked Logo" class="w-50 h-20 mr-4">
-                <a href="../html/index.html" class="ml-4 text-white bg-green-900 px-4 py-2 rounded">Home</a> 
+                <a href="../html/index.html" id="homeButton" class="ml-4 text-white bg-green-900 px-4 py-2 rounded">Home</a>
             </div>
             <div id="userSection" class="flex items-center space-x-4">
                 <!-- User login and library button will be dynamically inserted here -->
@@ -35,9 +28,9 @@
         </div>
     </header>
     <main class="container mx-auto mt-8">
-        <h1 class="text-3xl font-bold mb-6">Your Library</h1>
-        <div id="libraryGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            <!-- Book images will be dynamically inserted here -->
+        <button id="removeFromLibrary" class="text-white bg-red-700 px-4 py-2 rounded">Remove from Library</button>
+        <div id="bookDetails" class="bg-white rounded shadow-lg p-8">
+            <!-- Book details will be dynamically inserted here -->
         </div>
     </main>
 </body>
