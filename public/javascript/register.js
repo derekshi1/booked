@@ -1,3 +1,11 @@
+
+document.addEventListener('DOMContentLoaded', () => {
+    const username = localStorage.getItem('username');
+    if (username) {
+        document.getElementById('userSection').innerHTML = `<span class="text-white">Hello, ${username}</span>`;
+    }
+});
+
 document.getElementById('registerForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const username = document.getElementById('username').value;
@@ -21,9 +29,4 @@ document.getElementById('registerForm').addEventListener('submit', async (e) => 
     }
 });
 
-document.addEventListener('DOMContentLoaded', () => {
-    const username = localStorage.getItem('username');
-    if (username) {
-        document.getElementById('userSection').innerHTML = `<span class="text-white">Hello, ${username}</span>`;
-    }
-});
+
