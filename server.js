@@ -8,7 +8,7 @@ const port = 8080;
 const mongoUri = 'mongodb+srv://derekshi:Rsds0601@library.k27zbxq.mongodb.net/?retryWrites=true&w=majority&appName=library';
 mongoose.connect(mongoUri, { useNewUrlParser: true, useUnifiedTopology: true })
   .then(() => console.log('MongoDB connected successfully'))
-  .catch(err => console.error(err));
+  .catch(err => console.error('MongoDB connection error:', err));
 
 // Mongoose Schema and Model for Users
 const userSchema = new mongoose.Schema({
@@ -64,17 +64,27 @@ app.post('/api/auth/register', async (req, res) => {
 // User Login
 app.post('/api/auth/login', async (req, res) => {
   const { username, password } = req.body;
+  console.log(`Login attempt: username=${username}, password=${password}`);
   try {
     const user = await User.findOne({ username });
-    if (!user) return res.status(400).send('Invalid username or password');
+    if (!user) {
+      console.log(`User not found: username=${username}`);
+      return res.status(400).send('Invalid username or password');
+    }
 
-    if (password !== user.password) return res.status(400).send('Invalid username or password');
+    if (password !== user.password) {
+      console.log(`Invalid password for user: username=${username}`);
+      return res.status(400).send('Invalid username or password');
+    }
 
+    console.log(`User logged in successfully: username=${username}`);
     res.status(200).send('Logged in');
   } catch (err) {
+    console.error('Error during login:', err);
     res.status(500).send('Internal server error');
   }
 });
+
 
 // Create a new book
 app.post('/books', async (req, res) => {

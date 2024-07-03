@@ -5,13 +5,21 @@ function alertNotFound() {
 }
 
 function initialize(isbn) {
-    var viewer = new google.books.DefaultViewer(document.getElementById('viewerCanvas'));
-    viewer.load('ISBN:' + isbn, alertNotFound);
+    console.log('Initializing viewer with ISBN:', isbn);  // Added debugging log
+    var viewerCanvas = document.getElementById('viewerCanvas');
+    
+    if (viewerCanvas) {
+        console.log('viewerCanvas element found.');
+        var viewer = new google.books.DefaultViewer(viewerCanvas);
+        viewer.load('ISBN:' + isbn, alertNotFound);
+    } else {
+        console.error('viewerCanvas element not found.');
+    }
 }
 
 google.books.setOnLoadCallback(function() {
+    console.log('Google Books API loaded successfully.');  // Added debugging log
     // Initialize with a default ISBN
-    initialize('9780062316097'); // Sapiens: A Brief History of Humankind
 });
 
 function loadBook(isbn) {

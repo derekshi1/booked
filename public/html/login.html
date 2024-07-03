@@ -29,21 +29,31 @@
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
 
-            const response = await fetch('/api/auth/login', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ username, password }),
-            });
+            console.log(`Attempting to login with username: ${username}, password: ${password}`);
 
-            const messageEl = document.getElementById('message');
-            if (response.ok) {
-                localStorage.setItem('username', username);
-                window.location.href = '../html/index.html';
-            } else {
-                const error = await response.text();
-                messageEl.textContent = error;
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ username, password }),
+                });
+
+                const messageEl = document.getElementById('message');
+                if (response.ok) {
+                    console.log('Login successful');
+                    localStorage.setItem('username', username);
+                    window.location.href = '../html/index.html';
+                } else {
+                    const error = await response.text();
+                    console.error('Login failed:', error);
+                    messageEl.textContent = error;
+                }
+            } catch (error) {
+                console.error('Error during fetch:', error);
+                const messageEl = document.getElementById('message');
+                messageEl.textContent = 'An error occurred. Please try again later.';
             }
         });
     </script>

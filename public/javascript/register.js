@@ -9,10 +9,11 @@ document.addEventListener('DOMContentLoaded', () => {
         
         document.getElementById('logoutButton').addEventListener('click', () => {
             localStorage.removeItem('username');
-            window.location.href = '../html/login.html';
+            window.location.href = '../html/index.html';
         });
     }
 });
+
 
 document.getElementById('registerForm').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -27,6 +28,7 @@ document.getElementById('registerForm').addEventListener('submit', async (e) => 
         body: JSON.stringify({ username, password }),
     });
 
+   
     const messageEl = document.getElementById('message');
     if (response.ok) {
         alert('Registration successful');
@@ -35,4 +37,5 @@ document.getElementById('registerForm').addEventListener('submit', async (e) => 
         const error = await response.text();
         messageEl.textContent = error;
     }
-});
+    });
+    
