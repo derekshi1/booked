@@ -1,8 +1,16 @@
-
 document.addEventListener('DOMContentLoaded', () => {
     const username = localStorage.getItem('username');
+    const userSection = document.getElementById('userSection');
     if (username) {
-        document.getElementById('userSection').innerHTML = `<span class="text-white">Hello, ${username}</span>`;
+        userSection.innerHTML = `
+            <span class="text-green-900 handwriting-font">${username}</span>
+            <button id="logoutButton" class="ml-4 text-white bg-red-700 px-4 py-2 rounded">Logout</button>
+        `;
+        
+        document.getElementById('logoutButton').addEventListener('click', () => {
+            localStorage.removeItem('username');
+            window.location.href = '../html/login.html';
+        });
     }
 });
 
@@ -28,5 +36,3 @@ document.getElementById('registerForm').addEventListener('submit', async (e) => 
         messageEl.textContent = error;
     }
 });
-
-
