@@ -27,6 +27,20 @@ const bookSchema = new mongoose.Schema({
 });
 const Book = mongoose.model('Book', bookSchema);
 
+const userLibrarySchema = new mongoose.Schema({
+  username: String,
+  books: [{
+    isbn: String,
+    title: String,
+    authors: String,
+    description: String,
+    thumbnail: String
+  }]
+});
+
+const UserLibrary = mongoose.model('UserLibrary', userLibrarySchema);
+
+
 app.use(express.static('public'));
 app.use(express.json());
 
@@ -134,6 +148,51 @@ app.delete('/books/:id', async (req, res) => {
     res.status(500).json({ message: 'Internal server error' });
   }
 });
+
+// Add book to user's library
+app.post('/api/library/add', async (req, res) => {
+  const { username, isbn, title, authors, description, thumbnail } = req.body;
+
+  try {
+    let userLibrary = await UserLibrary.findOne({ username });
+    if (!userLibrary) {
+      userLibrary = new UserLibrary({ username, books: [] });
+    }
+
+    // Check if the book is already in the library
+    const existingBook = userLibrary.books.find(book => book.isbn === isbn);
+    if (existingBook) {
+      return res.status(400).json({ success: false, message: 'Book already in library' });
+    }
+
+    userLibrary.books.push({ isbn, title, authors, description, thumbnail });
+    await userLibrary.save();
+
+    res.status(200).json({ success: true, message: 'Book added to library' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
+// Get books from user's library
+app.get('/api/library/:username', async (req, res) => {
+  const { username } = req.params;
+
+  try {
+    const userLibrary = await UserLibrary.findOne({ username });
+    if (userLibrary) {
+      res.status(200).json({ success: true, books: userLibrary.books });
+    } else {
+      res.status(404).json({ success: false, message: 'No library found for user' });
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
+
 
 app.listen(port, () => {
   console.log(`Server listening at http://localhost:${port}`);

@@ -5,6 +5,7 @@
     <title>Booked</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Indie+Flower&display=swap" rel="stylesheet">
+    <script src="https://www.google.com/books/jsapi.js"></script>
     <script defer src="../javascript/index.js"></script>
     <script defer src="../javascript/register.js"></script>
     <style>
@@ -25,6 +26,7 @@
             <div id="userSection">
                 <a href="../html/login.html" class="text-white bg-green-900 px-4 py-2 rounded">Login</a>
             </div>
+            
         </div>
     </header>
     <main class="container mx-auto mt-8">
@@ -35,7 +37,7 @@
         </form>
         <div id="results" class="space-y-4"></div>
     </main>
-    <!-- Modal structure yaya-->
+    <!-- Modal structure -->
     <div id="myModal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
         <div class="modal-content bg-white p-6 rounded shadow-lg relative w-11/12 md:w-3/4 lg:w-1/2">
             <span class="close absolute top-4 right-4 text-2xl cursor-pointer" onclick="closeModal()">&times;</span>

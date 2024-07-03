@@ -48,7 +48,10 @@ function searchBookByTitle() {
                                 <h2 class="text-xl font-bold mb-2">${book.title}</h2>
                                 <p class="text-gray-700 mb-2">by ${book.authors ? book.authors.join(', ') : 'Unknown'}</p>
                                 <p class="text-gray-600 mb-4">${book.description ? book.description : 'No description available'}</p>
-                                <button onclick="loadBook('${isbn}')" class="bg-green-700 text-white px-4 py-2 rounded">Preview</button>
+                                <div class="flex space-x-2">
+                                    <button onclick="loadBook('${isbn}')" class="bg-green-700 text-white px-4 py-2 rounded">Preview</button>
+                                    <button onclick="addToLibrary('${isbn}')" class="bg-blue-500 text-white px-4 py-2 rounded">Add to Library</button>
+                                </div>
                             </div>
                         `;
                         resultsDiv.appendChild(bookItem);
@@ -72,6 +75,53 @@ function getISBN(identifiers) {
         }
     }
     return null;
+}
+
+
+function addToLibrary(isbn) {
+    const username = localStorage.getItem('username');
+    if (!username) {
+        alert('You need to be logged in to add books to your library.');
+        return;
+    }
+
+    fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}`)
+        .then(response => response.json())
+        .then(data => {
+            const book = data.items[0].volumeInfo;
+            const bookData = {
+                username,
+                isbn,
+                title: book.title,
+                authors: book.authors ? book.authors.join(', ') : 'Unknown',
+                description: book.description ? book.description : 'No description available',
+                thumbnail: book.imageLinks ? book.imageLinks.thumbnail : 'https://via.placeholder.com/128x192?text=No+Image'
+            };
+
+            fetch('/api/library/add', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(bookData),
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Book added to your library!');
+                } else {
+                    alert('Failed to add book to library: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error adding book to library:', error);
+                alert('Error adding book to library.');
+            });
+        })
+        .catch(error => {
+            console.error('Error fetching book data:', error);
+            alert('Error fetching book data.');
+        });
 }
 
 // Modal handling
