@@ -8,6 +8,7 @@
     <script src="https://www.google.com/books/jsapi.js"></script>
     <script defer src="../javascript/index.js"></script>
     <script defer src="../javascript/register.js"></script>
+    <script defer src="../javascript/searchbar.js"></script>
     <style>
         body {
             background-color: #2d342d; /* New background color for the body */
@@ -55,6 +56,35 @@
         .cursor-pointer {
             cursor: pointer;
         }
+        .search-container {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+        .search-icon, .close-icon {
+            cursor: pointer;
+        }
+        .search-input {
+            display: none;
+            width: 0;
+            transition: width 0.3s ease-in-out;
+            padding: 0.5rem;
+            border: 1px solid #ccc;
+            border-radius: 0.375rem;
+            padding-right: 30px; /* Add padding to make space for the X button */
+        }
+        .search-input.expanded {
+            display: block;
+            width: 200px;
+        }
+        .close-icon {
+            display: none;
+            position: absolute;
+            right: 10px;
+        }
+        .close-icon.visible {
+            display: block;
+        }
     </style>
 </head>
 <body>
@@ -65,16 +95,15 @@
                 <a href="../html/index.html" class="ml-4 bg-green-900 text-white px-4 py-2 rounded">Home</a>
             </div>
             <div id="userSection" class="flex items-center space-x-4">
-                <!-- User login and library button will be dynamically inserted here -->
+                <div class="search-container">
+                    <img src="https://cdn-icons-png.flaticon.com/512/54/54481.png" alt="Search" class="search-icon w-6 h-6" onclick="expandSearch()">
+                    <input type="text" id="titleInput" placeholder="Search for books" class="search-input" onblur="collapseSearch()" onkeydown="handleSearch(event)">
+                    <img src="https://cdn-icons-png.flaticon.com/512/1828/1828778.png" alt="Close" class="close-icon w-6 h-6" onclick="collapseSearch()">
+                </div>
             </div>
         </div>
     </header>
     <main class="container mx-auto mt-8">
-        <form onsubmit="event.preventDefault(); searchBookByTitle();" class="mb-8">
-            <label for="titleInput" class="block text-lg font-medium mb-2">Enter Book Title:</label>
-            <input type="text" id="titleInput" placeholder="e.g., East of Eden" class="border border-gray-300 p-2 rounded w-full mb-4"/>
-            <input type="submit" value="Search Book" class="bg-white-700 text-2d342d px-4 py-2 rounded cursor-pointer"/>
-        </form>
         <div id="results" class="space-y-4"></div>
     </main>
     <!-- Modal structure -->

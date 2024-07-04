@@ -1,38 +1,28 @@
-google.books.load();
-
-function alertNotFound() {
-    alert("Could not embed the book!");
+// Search bar functionality
+function expandSearch() {
+    const searchInput = document.getElementById('titleInput');
+    const closeIcon = document.querySelector('.close-icon');
+    searchInput.classList.add('expanded');
+    closeIcon.classList.add('visible');
+    searchInput.focus();
 }
 
-function initialize(isbn) {
-    console.log('Initializing viewer with ISBN:', isbn);  // Added debugging log
-    var viewerCanvas = document.getElementById('viewerCanvas');
-    
-    if (viewerCanvas) {
-        console.log('viewerCanvas element found.');
-        var viewer = new google.books.DefaultViewer(viewerCanvas);
-        viewer.load('ISBN:' + isbn, alertNotFound);
-    } else {
-        console.error('viewerCanvas element not found.');
+function collapseSearch() {
+    const searchInput = document.getElementById('titleInput');
+    const closeIcon = document.querySelector('.close-icon');
+    searchInput.classList.remove('expanded');
+    closeIcon.classList.remove('visible');
+    searchInput.value = '';  // Clear the input field
+}
+
+function handleSearch(event) {
+    if (event.key === 'Enter') {
+        searchBookByTitle();
+        event.preventDefault();
     }
 }
 
-google.books.setOnLoadCallback(function() {
-    console.log('Google Books API loaded successfully.');  // Added debugging log
-    // Initialize with a default ISBN
-});
-
-function loadBook(isbn) {
-    if (isbn) {
-        console.log('Loading book with ISBN:', isbn);
-        initialize(isbn);
-        document.getElementById('myModal').classList.remove('hidden');
-        document.getElementById('myModal').classList.add('flex');
-    } else {
-        alert('ISBN not found.');
-    }
-}
-
+// Search functionality
 function searchBookByTitle() {
     var title = document.getElementById('titleInput').value;
     var apiUrl = `https://www.googleapis.com/books/v1/volumes?q=intitle:${title}`;
@@ -43,7 +33,7 @@ function searchBookByTitle() {
             var resultsDiv = document.getElementById('results');
             resultsDiv.innerHTML = '';  // Clear previous results
             if (data.totalItems > 0) {
-                data.items.forEach((item, index) => {
+                data.items.forEach((item) => {
                     var book = item.volumeInfo;
                     if (book.previewLink) {  // Ensure the book has a preview
                         var isbn = getISBN(book.industryIdentifiers);
@@ -85,7 +75,52 @@ function getISBN(identifiers) {
     return null;
 }
 
+// Modal handling
+function loadBook(isbn) {
+    if (isbn) {
+        initialize(isbn);
+        document.getElementById('myModal').classList.remove('hidden');
+        document.getElementById('myModal').classList.add('flex');
+    } else {
+        alert('ISBN not found.');
+    }
+}
 
+function closeModal() {
+    document.getElementById('myModal').classList.add('hidden');
+    document.getElementById('myModal').classList.remove('flex');
+}
+
+window.onclick = function(event) {
+    var modal = document.getElementById('myModal');
+    if (event.target == modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+}
+
+// Initialize Google Books API
+google.books.load();
+
+function alertNotFound() {
+    alert("Could not embed the book!");
+}
+
+function initialize(isbn) {
+    var viewerCanvas = document.getElementById('viewerCanvas');
+    
+    if (viewerCanvas) {
+        var viewer = new google.books.DefaultViewer(viewerCanvas);
+        viewer.load('ISBN:' + isbn, alertNotFound);
+    }
+}
+
+google.books.setOnLoadCallback(function() {
+    // Initialize with a default ISBN
+    console.log('Google Books API loaded successfully.');
+});
+
+// Add to Library
 function addToLibrary(isbn) {
     const username = localStorage.getItem('username');
     if (!username) {
@@ -130,18 +165,4 @@ function addToLibrary(isbn) {
             console.error('Error fetching book data:', error);
             alert('Error fetching book data.');
         });
-}
-
-// Modal handling
-function closeModal() {
-    document.getElementById('myModal').classList.add('hidden');
-    document.getElementById('myModal').classList.remove('flex');
-}
-
-window.onclick = function(event) {
-    var modal = document.getElementById('myModal');
-    if (event.target == modal) {
-        modal.classList.add('hidden');
-        modal.classList.remove('flex');
-    }
 }
