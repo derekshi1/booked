@@ -8,6 +8,10 @@
     <script defer src="../javascript/register.js"></script>
     <script defer src="../javascript/library.js"></script>
     <style>
+        body {
+            background-color: #2d342d; /* New background color for the body */
+            color: #333;
+        }
         .custom-header {
             background-color: #e9dcaf; /* Extracted color */
         }
@@ -22,7 +26,7 @@
         }
     </style>
 </head>
-<body class="bg-gray-100 text-gray-800">
+<body >
     <header class="custom-header text-green-900 py-4">
         <div class="container mx-auto flex items-center justify-between">
             <div class="flex items-center">
@@ -35,7 +39,7 @@
         </div>
     </header>
     <main class="container mx-auto mt-8">
-        <h1 class="text-3xl font-bold mb-6">Your Library</h1>
+        <h1 class="text-3xl font-bold mb-6 text-white">Your Library</h1>
         <div id="libraryGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             <!-- Book images will be dynamically inserted here -->
         </div>

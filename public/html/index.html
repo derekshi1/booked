@@ -9,6 +9,10 @@
     <script defer src="../javascript/index.js"></script>
     <script defer src="../javascript/register.js"></script>
     <style>
+        body {
+            background-color: #2d342d; /* New background color for the body */
+            color: #333;
+        }
         .custom-header {
             background-color: #e9dcaf; /* Extracted color */
         }
@@ -53,12 +57,12 @@
         }
     </style>
 </head>
-<body class="bg-gray-100 text-gray-800">
+<body>
     <header class="custom-header text-green-900 py-4">
         <div class="container mx-auto flex items-center justify-between">
             <div class="flex items-center">
                 <img src="../logo.jpg" alt="Booked Logo" class="w-50 h-20 mr-4">
-                <a href="../html/index.html" class="ml-4 text-white bg-green-900 px-4 py-2 rounded">Home</a>
+                <a href="../html/index.html" class="ml-4 bg-green-900 text-white px-4 py-2 rounded">Home</a>
             </div>
             <div id="userSection" class="flex items-center space-x-4">
                 <!-- User login and library button will be dynamically inserted here -->
@@ -68,8 +72,8 @@
     <main class="container mx-auto mt-8">
         <form onsubmit="event.preventDefault(); searchBookByTitle();" class="mb-8">
             <label for="titleInput" class="block text-lg font-medium mb-2">Enter Book Title:</label>
-            <input type="text" id="titleInput" placeholder="e.g., Sapiens" class="border border-gray-300 p-2 rounded w-full mb-4"/>
-            <input type="submit" value="Search Book" class="bg-green-700 text-white px-4 py-2 rounded cursor-pointer"/>
+            <input type="text" id="titleInput" placeholder="e.g., East of Eden" class="border border-gray-300 p-2 rounded w-full mb-4"/>
+            <input type="submit" value="Search Book" class="bg-white-700 text-2d342d px-4 py-2 rounded cursor-pointer"/>
         </form>
         <div id="results" class="space-y-4"></div>
     </main>

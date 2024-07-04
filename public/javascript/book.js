@@ -5,29 +5,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const username = localStorage.getItem('username');
     const userSection = document.getElementById('userSection');
 
-// Function to remove book from library
-async function removeFromLibrary(username, isbn) {
-    try {
-        const response = await fetch('/api/library/remove', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ username, isbn }),
-        });
 
-        if (response.ok) {
-            alert('Book removed from your library.');
-            window.location.href = '../html/library.html';
-        } else {
-            const error = await response.json();
-            alert('Failed to remove book: ' + error.message);
-        }
-    } catch (error) {
-        console.error('Error removing book from library:', error);
-        alert('Error removing book from library.');
-    }
-}
 
 
     // Ensure the home button is always present

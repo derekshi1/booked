@@ -13,9 +13,13 @@
         .handwriting-font {
             font-family: 'Indie Flower', cursive;
         }
+        body {
+            background-color: #2d342d; /* New background color for the body */
+            color: #333;
+        }
     </style>
 </head>
-<body class="bg-gray-100 text-gray-800">
+<body>
     <header class="custom-header text-green-900 py-4">
         <div class="container mx-auto flex items-center justify-between">
             <div class="flex items-center">
@@ -28,7 +32,6 @@
         </div>
     </header>
     <main class="container mx-auto mt-8">
-        <button id="removeFromLibrary" class="text-white bg-red-700 px-4 py-2 rounded">Remove from Library</button>
         <div id="bookDetails" class="bg-white rounded shadow-lg p-8">
             <!-- Book details will be dynamically inserted here -->
         </div>

@@ -2,7 +2,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const username = localStorage.getItem('username');
     const userSection = document.getElementById('userSection');
     
-
+   
     if (username) {
         if (!document.querySelector('#libraryButton')) {
             const libraryButton = document.createElement('a');
@@ -23,6 +23,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
             userSection.appendChild(usernameSpan);
         }
+        clearBookCards();
+
         // Fetch user library and display books
         try {
             const response = await fetch(`/api/library/${username}`);
@@ -31,8 +33,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (data.success && data.books.length > 0) {
                 data.books.forEach(book => {
                     const bookDiv = document.createElement('div');
-                    bookDiv.classList.add('relative', 'p-10', 'rounded-lg', 'shadow-lg', 'cursor-pointer', 'hover:shadow-2xl', 'transition', 'duration-300', 'ease-in-out');
+                    bookDiv.classList.add( 'relative', 'p-10', 'rounded-lg', 'shadow-lg', 'cursor-pointer', 'hover:shadow-2xl', 'transition', 'duration-300', 'ease-in-out');
                     bookDiv.innerHTML = `
+                    <div class="relative group">
                          <a href="../html/book.html?isbn=${book.isbn}" class="block relative overflow-hidden rounded-lg shadow-lg hover:shadow-2xl transition duration-300 ease-in-out group">
                         <img src="${book.thumbnail}" alt="${book.title}" class="w-full h-72 object-cover">
                         <div class="absolute bottom-0 left-0 w-full p-4 bg-black bg-opacity-60 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-in-out">
@@ -40,6 +43,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                             <p class="text-gray-300">by ${book.authors}</p>
                         </div>
                         </a>
+                        <button onclick="removeFromLibrary('${username}', '${book.isbn}')" class="absolute top-0 left-0 mt-2 ml-2 text-xs bg-red-700 text-white px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-in-out">Remove</button>
+                    </div>
 `;
 
                     libraryGrid.appendChild(bookDiv);
@@ -62,4 +67,33 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 });
+
+function clearBookCards() {
+    const libraryGrid = document.getElementById('libraryGrid');
+    libraryGrid.innerHTML = ''; // Clear all book cards
+}
+
     
+    // Function to remove book from library
+    async function removeFromLibrary(username, isbn) {
+        try {
+            const response = await fetch('/api/library/remove', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ username, isbn }),
+            });
+    
+            if (response.ok) {
+                alert('Book removed from your library.');
+                window.location.href = '../html/library.html';
+            } else {
+                const error = await response.json();
+                alert('Failed to remove book: ' + error.message);
+            }
+        } catch (error) {
+            console.error('Error removing book from library:', error);
+            alert('Error removing book from library.');
+        }
+    }
