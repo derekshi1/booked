@@ -1,5 +1,6 @@
 const express = require('express');
 const mongoose = require('mongoose');
+const { spawn } = require('child_process');
 
 const app = express();
 const port = 8080;
@@ -23,7 +24,9 @@ const bookSchema = new mongoose.Schema({
   author: String,
   description: String,
   isbn: String,
-  imageUrl: String
+  imageUrl: String,
+  categories: [String],
+  pageCount: Number
 });
 const Book = mongoose.model('Book', bookSchema);
 
@@ -34,7 +37,9 @@ const userLibrarySchema = new mongoose.Schema({
     title: String,
     authors: String,
     description: String,
-    thumbnail: String
+    thumbnail: String,
+    categories: [String],
+    pageCount: Number
   }]
 });
 
@@ -88,9 +93,9 @@ app.post('/api/auth/login', async (req, res) => {
 
 // Create a new book
 app.post('/books', async (req, res) => {
-  const { title, author, description, isbn, imageUrl } = req.body;
+  const { title, author, description, isbn, imageUrl, categories, pageCount} = req.body;
   try {
-    const book = new Book({ title, author, description, isbn, imageUrl });
+    const book = new Book({ title, author, description, isbn, imageUrl, categories, pageCount });
     await book.save();
     res.status(201).json(book);
   } catch (error) {
@@ -129,9 +134,9 @@ app.get('/books/:id', async (req, res) => {
 // Update a book by ID
 app.put('/books/:id', async (req, res) => {
   const { id } = req.params;
-  const { title, author, description, isbn, imageUrl } = req.body;
+  const { title, author, description, isbn, imageUrl, categories, pageCount} = req.body;
   try {
-    const book = await Book.findByIdAndUpdate(id, { title, author, description, isbn, imageUrl }, { new: true });
+    const book = await Book.findByIdAndUpdate(id, { title, author, description, isbn, imageUrl, categories, pageCount }, { new: true });
     if (book) {
       res.status(200).json(book);
     } else {
@@ -161,8 +166,7 @@ app.delete('/books/:id', async (req, res) => {
 
 // Add book to user's library
 app.post('/api/library/add', async (req, res) => {
-  const { username, isbn, title, authors, description, thumbnail } = req.body;
-
+  const { username, isbn, title, authors, description, thumbnail, categories, pageCount} = req.body;
   try {
     let userLibrary = await UserLibrary.findOne({ username });
     if (!userLibrary) {
@@ -175,7 +179,7 @@ app.post('/api/library/add', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Book already in library' });
     }
 
-    userLibrary.books.push({ isbn, title, authors, description, thumbnail });
+    userLibrary.books.push({ isbn, title, authors, description, thumbnail, categories, pageCount});
     await userLibrary.save();
 
     res.status(200).json({ success: true, message: 'Book added to library' });
@@ -224,7 +228,46 @@ app.get('/api/library/:username', async (req, res) => {
   }
 });
 
+app.get('/api/recommendations/:username', async (req, res) => {
+  const { username } = req.params;
+  try {
+    const userLibrary = await UserLibrary.findOne({ username });
+    if (!userLibrary) {
+      console.error(`No library found for user: ${username}`);
+      return res.status(404).json({ success: false, message: 'No library found for user' });
+    }
 
+    const library = userLibrary.books;
+    const pythonProcess = spawn('python3', ['public/functions/recommendations.py', JSON.stringify(library)]);
+
+    let recommendations = '';
+    pythonProcess.stdout.on('data', (data) => {
+      recommendations += data.toString();
+    });
+
+    pythonProcess.stderr.on('data', (data) => {
+      console.error(`stderr: ${data}`);
+    });
+
+    pythonProcess.on('close', (code) => {
+      if (code !== 0) {
+        console.error(`Python process exited with code ${code}`);
+        return res.status(500).json({ success: false, message: 'Error generating recommendations' });
+      }
+      try {
+        const recommendationsJSON = JSON.parse(recommendations);
+        res.status(200).json({ success: true, recommendations: recommendationsJSON });
+      } catch (error) {
+        console.error('Error parsing recommendations:', error);
+        res.status(500).json({ success: false, message: 'Error parsing recommendations' });
+      }
+    });
+
+  } catch (error) {
+    console.error('Error during recommendations generation:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
 
 app.listen(port, () => {
   console.log(`Server listening at http://localhost:${port}`);

@@ -61,10 +61,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <div>
                         <h1 class="text-4xl font-bold mb-4">${book.title}</h1>
                         <h2 class="text-2xl mb-4">by ${book.authors ? book.authors.join(', ') : 'Unknown'}</h2>
+                        <p class="text-xl mb-4"><strong>Categories:</strong> ${book.categories ? book.categories.join(', ') : 'None'}</p>
                         <p class="text-xl mb-4"><strong>Published:</strong> ${book.publishedDate}</p>
                         <p class="text-xl mb-4"><strong>Pages:</strong> ${book.pageCount}</p>
                         <p class="text-xl mb-4"><strong>Publisher:</strong> ${book.publisher}</p>
-                        <p class="text-xl mb-4"><strong>Categories:</strong> ${book.categories ? book.categories.join(', ') : 'None'}</p>
                         <p class="text-xl mb-4"><strong>Average Rating:</strong> ${book.averageRating ? book.averageRating : 'N/A'} (${book.ratingsCount ? book.ratingsCount : 0} ratings)</p>
                         <p class="text-xl mb-4">${book.description ? book.description : 'No description available'}</p>
                     </div>
@@ -74,10 +74,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             console.error('Error fetching book details:', error);
             bookDetails.innerHTML = '<p>Error loading book details.</p>';
         }
-       // Add event listener to the remove button
-       document.getElementById('removeFromLibrary').addEventListener('click', () => {
-        removeFromLibrary(username, isbn);
-    });
+       ;
 
 } else {
     userSection.innerHTML = `

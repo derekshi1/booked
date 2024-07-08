@@ -17,9 +17,11 @@ function fetchBooks(query) {
             if (data.totalItems > 0) {
                 data.items.forEach((item) => {
                     var book = item.volumeInfo;
+                    console.log(book);
                     if (book.previewLink) {  // Ensure the book has a preview
                         var isbn = getISBN(book.industryIdentifiers);
                         var thumbnail = book.imageLinks ? book.imageLinks.thumbnail : 'https://via.placeholder.com/128x192?text=No+Image';
+                        var categories = book.categories ? book.categories.join(', ') : 'Unknown';  // Get categories
                         var bookItem = document.createElement('div');
                         bookItem.classList.add('bg-white', 'rounded', 'shadow', 'p-4', 'flex', 'items-start');
                         bookItem.innerHTML = `
@@ -27,6 +29,7 @@ function fetchBooks(query) {
                             <div>
                                 <h2 class="text-xl font-bold mb-2">${book.title}</h2>
                                 <p class="text-gray-700 mb-2">by ${book.authors ? book.authors.join(', ') : 'Unknown'}</p>
+                                <p class="text-gray-700 mb-2"><strong>Categories:</strong> ${categories}</p>
                                 <p class="text-gray-600 mb-4">${book.description ? book.description : 'No description available'}</p>
                                 <div class="flex space-x-2">
                                     <button onclick="loadBook('${isbn}')" class="bg-green-700 text-white px-4 py-2 rounded">Preview</button>
@@ -93,6 +96,8 @@ function addToLibrary(isbn) {
                isbn,
                title: book.title,
                authors: book.authors ? book.authors.join(', ') : 'Unknown',
+               categories: book.categories ? book.categories : [],  // Ensure categories are sent as an array
+               pageCount: book.pageCount, 
                description: book.description ? book.description : 'No description available',
                thumbnail: book.imageLinks ? book.imageLinks.thumbnail : 'https://via.placeholder.com/128x192?text=No+Image'
            };
