@@ -100,7 +100,10 @@ def find_books_by_genres(genres, max_results=200):
                             'categories': volume_info.get('categories', []),
                             'publishedDate': volume_info.get('publishedDate', ''),
                             'description': volume_info.get('description', ''),
-                            'pageCount': volume_info.get('pageCount', 0)
+                            'pageCount': volume_info.get('pageCount', 0),
+                            'thumbnail': volume_info.get('imageLinks', {}).get('thumbnail', 'https://via.placeholder.com/150'),
+                            'isbn' : [identifier['identifier'] for identifier in volume_info.get('industryIdentifiers', [])]
+
                         })
                     start_indices[genre] += 20
                 else:
@@ -171,7 +174,6 @@ def find_best_matches(library, total_recommendations=10):
     
     # Log recommendations
     print(f"Generated Recommendations: {json.dumps(recommendations)}", file=sys.stderr)
-    
     return recommendations[:total_recommendations]
 
 if __name__ == "__main__":

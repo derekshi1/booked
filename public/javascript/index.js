@@ -20,7 +20,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             recommendationElement.classList.add('p-4', 'bg-gray-100', 'rounded', 'shadow');
             recommendationElement.innerHTML = `
              <div class="relative group">
-                         <a href="../html/book.html?isbn=${recommendation.isbn}" class="block relative overflow-hidden rounded-lg shadow-lg hover:shadow-2xl transition duration-300 ease-in-out group">
+                         <a href="../html/book.html?isbn=${recommendation.isbn[0]}" class="block relative overflow-hidden rounded-lg shadow-lg hover:shadow-2xl transition duration-300 ease-in-out group">
                         <img src="${recommendation.thumbnail}" alt="${recommendation.title}" class="w-full h-72 object-cover">
                         <div class="absolute bottom-0 left-0 w-full p-4 bg-black bg-opacity-60 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-in-out">
                             <h2 class="text-lg font-bold">${recommendation.title}</h2>
