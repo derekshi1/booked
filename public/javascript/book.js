@@ -57,7 +57,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             bookDetails.innerHTML = `
                 <div class="flex flex-col md:flex-row">
-                    <img src="${book.imageLinks ? book.imageLinks.thumbnail : 'https://via.placeholder.com/128x192?text=No+Image'}" alt="${book.title}" class="w-64 h-96 object-cover mr-8 mb-8 md:mb-0">
+                    <div class="mr-8 mb-8 md:mb-0">
+                        <img src="${book.imageLinks ? book.imageLinks.thumbnail : 'https://via.placeholder.com/128x192?text=No+Image'}" alt="${book.title}" class="w-64 h-96 object-cover mr-8 mb-8 md:mb-0">
+                        <button id="addToLibraryButton" class="mt-4 px-4 py-2 bg-blue-500 text-white rounded w-64">Add to Library</button>
+                    </div>
                     <div>
                         <h1 class="text-4xl font-bold mb-4">${book.title}</h1>
                         <h2 class="text-2xl mb-4">by ${book.authors ? book.authors.join(', ') : 'Unknown'}</h2>
@@ -70,6 +73,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                     </div>
                 </div>
             `;
+            const addToLibraryButton = document.getElementById('addToLibraryButton');
+            addToLibraryButton.addEventListener('click', () => {
+                addToLibrary(isbn);
+            });
         } catch (error) {
             console.error('Error fetching book details:', error);
             bookDetails.innerHTML = '<p>Error loading book details.</p>';
@@ -83,3 +90,53 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('bookDetails').innerHTML = '<p>Please log in to see book details and manage your library.</p>';
 }
 });
+
+
+function addToLibrary(isbn) {
+    const username = localStorage.getItem('username');
+    if (!username) {
+        alert('You need to be logged in to add books to your library.');
+        return;
+    }
+ 
+    fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}`)
+        .then(response => response.json())
+        .then(data => {
+            const book = data.items[0].volumeInfo;
+            const bookData = {
+                username,
+                isbn,
+                title: book.title,
+                authors: book.authors ? book.authors.join(', ') : 'Unknown',
+                categories: book.categories ? book.categories : [],  // Ensure categories are sent as an array
+                pageCount: book.pageCount, 
+                description: book.description ? book.description : 'No description available',
+                thumbnail: book.imageLinks ? book.imageLinks.thumbnail : 'https://via.placeholder.com/128x192?text=No+Image'
+            };
+ 
+            fetch('/api/library/add', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(bookData),
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Book added to your library!');
+                } else {
+                    alert('Failed to add book to library: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error adding book to library:', error);
+                alert('Error adding book to library.');
+            });
+        })
+        .catch(error => {
+            console.error('Error fetching book data:', error);
+            alert('Error fetching book data.');
+        });
+ }
+ 

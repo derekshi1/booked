@@ -66,7 +66,7 @@ def find_books_by_genres(genres, max_results=200):
     books = []
     genre_list = list(genres)
     random.shuffle(genre_list)
-    start_indices = {genre: 0 for genre in genre_list}
+    start_indices = {genre: random.randint(0, 100) for genre in genre_list}
     
     # Log the genres being queried
     print(f"Genres being queried: {genre_list}", file=sys.stderr)
@@ -77,7 +77,7 @@ def find_books_by_genres(genres, max_results=200):
                 break
             params = {
                 'q': f'subject:{genre}',
-                'maxResults': 20,
+                'maxResults': random.randint(10, 30),
                 'startIndex': start_indices[genre]
             }
             response = requests.get(GOOGLE_BOOKS_API_URL, params=params)
@@ -102,10 +102,11 @@ def find_books_by_genres(genres, max_results=200):
                             'description': volume_info.get('description', ''),
                             'pageCount': volume_info.get('pageCount', 0),
                             'thumbnail': volume_info.get('imageLinks', {}).get('thumbnail', 'https://via.placeholder.com/150'),
-                            'isbn' : [identifier['identifier'] for identifier in volume_info.get('industryIdentifiers', [])]
-
+                            'isbn' : [identifier['identifier'] for identifier in volume_info.get('industryIdentifiers', [])],
+                            'score' : 0,
+                            'related_to' : ''
                         })
-                    start_indices[genre] += 20
+                    start_indices[genre] += random.randint(20, 40)
                 else:
                     genre_list.remove(genre)
             else:
@@ -161,7 +162,18 @@ def find_best_matches(library, total_recommendations=16):
             description_similarity = calculate_description_similarity(user_book.get('description', ''), match.get('description', ''))
             final_score = score * 0.4 + description_similarity * 0.6
             final_score = (final_score / 100) * 200
-            
+
+            try:
+                if isinstance(match, tuple) and isinstance(match[0], dict):
+                    match['score'] = final_score
+                    match['related_to'] = user_book['title']
+                else:
+                    print(f"Unexpected structure in match: {match}", file=sys.stderr)
+            except KeyError as e:
+                print(f"Error adding score and related_to: {e}", file=sys.stderr)
+                print(f"Match: {json.dumps(match[0])}", file=sys.stderr)
+                continue
+
             # Log the refined compatibility score
             print(f"Refined Compatibility for {user_book['title']} and {match['title']}: {final_score}", file=sys.stderr)
             
@@ -180,10 +192,13 @@ def find_best_matches(library, total_recommendations=16):
     
     recommendations = [rec for recs in book_recommendations.values() for rec in recs]
     
-    # Log recommendations
-    print(f"Generated Recommendations: {json.dumps(recommendations)}", file=sys.stderr)
-    return recommendations[:total_recommendations]
-
+    try:
+        recommendations = recommendations[:total_recommendations]
+    except Exception as e:
+        print(f"Error slicing recommendations: {e}", file=sys.stderr)
+        print(f"Recommendations: {json.dumps(recommendations)}", file=sys.stderr)
+    
+    return recommendations
 
 if __name__ == "__main__":
     try:
