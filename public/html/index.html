@@ -101,6 +101,16 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+        .recommendations-container {
+            display: flex;
+            overflow-x: auto;
+            gap: 1rem;
+            padding: 1rem 0;
+        }
+        .recommendation-card {
+            min-width: 200px;
+            flex: 0 0 auto;
+        }
     </style>
 </head>
 <body>
@@ -121,7 +131,7 @@
             <button id="generateRecommendationsButton" class="mb-4 p-2 bg-green-900 text-white rounded">Generate Recommendations</button>
             <div id="loadingSpinner" class="loader ml-4"></div>
         </div>
-        <div id="recommendationsGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+        <div id="recommendationsContainer" class="recommendations-container">
             <!-- Recommendations will be dynamically inserted here -->
         </div>
     </main>
