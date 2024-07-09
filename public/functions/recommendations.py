@@ -112,9 +112,10 @@ def find_books_by_genres(genres, max_results=200):
                 genre_list.remove(genre)
     return books[:max_results]
 
-def find_best_matches(library, total_recommendations=10):
+def find_best_matches(library, total_recommendations=16):
     recommendations_per_book = total_recommendations // len(library)
-    
+    extra_recommendations = total_recommendations // len(library)
+
     # Log the user library and categories being used
     print(f"User Library: {json.dumps(library)}", file=sys.stderr)
     all_genres = set()
@@ -166,15 +167,23 @@ def find_best_matches(library, total_recommendations=10):
             
             refined_compatibilities.append((match, final_score))
         refined_compatibilities.sort(key=lambda x: x[1], reverse=True)
-        for match in refined_compatibilities[:recommendations_per_book]:
-            recommended_titles.add(match[0]['title'])
-            book_recommendations[user_book['title']].append(match[0])
+        count_added = 0
+        for match in refined_compatibilities:
+            if match[0]['title'] not in recommended_titles:
+                recommended_titles.add(match[0]['title'])
+                book_recommendations[user_book['title']].append(match[0])
+                count_added += 1
+                if count_added >= recommendations_per_book + (1 if extra_recommendations > 0 else 0):
+                    break
+        if extra_recommendations > 0:
+            extra_recommendations -= 1
     
     recommendations = [rec for recs in book_recommendations.values() for rec in recs]
     
     # Log recommendations
     print(f"Generated Recommendations: {json.dumps(recommendations)}", file=sys.stderr)
     return recommendations[:total_recommendations]
+
 
 if __name__ == "__main__":
     try:

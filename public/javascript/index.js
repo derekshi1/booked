@@ -24,7 +24,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <img src="${recommendation.thumbnail}" alt="${recommendation.title}" class="w-full h-72 object-cover">
                         <div class="absolute bottom-0 left-0 w-full p-4 bg-black bg-opacity-60 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-in-out">
                             <h2 class="text-lg font-bold">${recommendation.title}</h2>
-                            <p class="text-gray-300">by ${recommendation.authors}</p>
+                            <p class="text-gray-300">by ${recommendation.authors}</p>        
                         </div>
                         </a>
                     </div>
