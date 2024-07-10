@@ -212,13 +212,16 @@ app.post('/api/library/remove', async (req, res) => {
 
 
 // Get books from user's library
+// Get books from user's library
 app.get('/api/library/:username', async (req, res) => {
   const { username } = req.params;
 
   try {
     const userLibrary = await UserLibrary.findOne({ username });
     if (userLibrary) {
-      res.status(200).json({ success: true, books: userLibrary.books });
+      const totalBooks = userLibrary.books.length;
+      const totalPages = userLibrary.books.reduce((sum, book) => sum + book.pageCount, 0);
+      res.status(200).json({ success: true, books: userLibrary.books, totalBooks, totalPages });
     } else {
       res.status(404).json({ success: false, message: 'No library found for user' });
     }
@@ -227,6 +230,7 @@ app.get('/api/library/:username', async (req, res) => {
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });
+
 
 app.get('/api/recommendations/:username', async (req, res) => {
   const { username } = req.params;

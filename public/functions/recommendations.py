@@ -165,8 +165,8 @@ def find_best_matches(library, total_recommendations=20):
 
             try:
                 if isinstance(match, tuple) and isinstance(match[0], dict):
-                    match['score'] = final_score
-                    match['related_to'] = user_book['title']
+                    match[0]['score'] = final_score
+                    match[0]['related_to'] = user_book['title']
                 else:
                     print(f"Unexpected structure in match: {match}", file=sys.stderr)
             except KeyError as e:
