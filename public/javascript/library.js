@@ -74,7 +74,7 @@ function clearBookCards() {
 }
 
     
-    // Function to remove book from library
+// Function to remove book from library
     async function removeFromLibrary(username, isbn) {
         try {
             const response = await fetch('/api/library/remove', {

@@ -73,13 +73,15 @@ body {
 /* Suggestions box styles */
 .suggestions {
     position: absolute;
+    top: 100%; 
+    left:0;
     background-color: white;
     border: 1px solid #ccc;
     border-radius: 0.375rem;
     width: 100%;
     max-height: 200px;
     overflow-y: auto;
-    z-index: 10;
+    z-index: 1000;
 }
 
 .suggestion-item {
@@ -91,6 +93,13 @@ body {
     background-color: #f1f1f1;
 }
 
+.group:hover .group-hover\\:opacity-100 {
+    opacity: 1;
+}
+
+.group-hover\\:opacity-100 {
+    opacity: 0;
+}
 /* Other component styles */
 .shadow-lg {
     box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2); /* More noticeable shadow */
