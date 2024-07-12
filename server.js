@@ -40,6 +40,15 @@ const userLibrarySchema = new mongoose.Schema({
     thumbnail: String,
     categories: [String],
     pageCount: Number
+  }],
+  top5: [{
+    isbn: String,
+    title: String,
+    authors: String,
+    description: String,
+    thumbnail: String,
+    categories: [String],
+    pageCount: Number
   }]
 });
 
@@ -272,6 +281,76 @@ app.get('/api/recommendations/:username', async (req, res) => {
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });
+
+// Add book to user's top 5
+app.post('/api/library/top5/add', async (req, res) => {
+  const { username, isbn, title, authors, description, thumbnail, categories, pageCount } = req.body;
+  try {
+    let userLibrary = await UserLibrary.findOne({ username });
+    if (!userLibrary) {
+      return res.status(404).json({ success: false, message: 'No library found for user' });
+    }
+
+    // Check if the book is already in the top 5
+    const existingBook = userLibrary.top5.find(book => book.isbn === isbn);
+    if (existingBook) {
+      return res.status(400).json({ success: false, message: 'Book already in top 5' });
+    }
+
+    // Check if the top 5 list is full
+    if (userLibrary.top5.length >= 5) {
+      return res.status(400).json({ success: false, message: 'Top 5 list is full' });
+    }
+
+    userLibrary.top5.push({ isbn, title, authors, description, thumbnail, categories, pageCount });
+    await userLibrary.save();
+
+    res.status(200).json({ success: true, message: 'Book added to top 5' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
+// Get user's top 5 books
+app.get('/api/library/top5/:username', async (req, res) => {
+  const { username } = req.params;
+  try {
+    const userLibrary = await UserLibrary.findOne({ username });
+    if (userLibrary) {
+      res.status(200).json({ success: true, top5: userLibrary.top5 });
+    } else {
+      res.status(404).json({ success: false, message: 'No library found for user' });
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
+app.post('/api/library/top5/remove', async (req, res) => {
+  const { username, isbn } = req.body;
+  try {
+      let userLibrary = await UserLibrary.findOne({ username });
+      if (!userLibrary) {
+          return res.status(404).json({ success: false, message: 'No library found for user' });
+      }
+
+      const bookIndex = userLibrary.top5.findIndex(book => book.isbn === isbn);
+      if (bookIndex === -1) {
+          return res.status(404).json({ success: false, message: 'Book not found in top 5' });
+      }
+
+      userLibrary.top5.splice(bookIndex, 1);
+      await userLibrary.save();
+
+      res.status(200).json({ success: true, message: 'Book removed from top 5' });
+  } catch (error) {
+      console.error(error);
+      res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
 
 app.listen(port, () => {
   console.log(`Server listening at http://localhost:${port}`);

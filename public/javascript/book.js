@@ -60,6 +60,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <div class="mr-8 mb-8 md:mb-0">
                         <img src="${book.imageLinks ? book.imageLinks.thumbnail : 'https://via.placeholder.com/128x192?text=No+Image'}" alt="${book.title}" class="w-64 h-96 object-cover mr-8 mb-8 md:mb-0">
                         <button id="addToLibraryButton" class="mt-4 px-4 py-2 bg-blue-500 text-white rounded w-64">Add to Library</button>
+                        <button id="addToTop5Button" class="mt-4 px-4 py-2 bg-green-900 text-white rounded w-64">Add to Top 5</button>
+
                     </div>
                     <div>
                         <h1 class="text-4xl font-bold mb-4">${book.title}</h1>
@@ -74,9 +76,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                 </div>
             `;
             const addToLibraryButton = document.getElementById('addToLibraryButton');
+            const addToTop5Button = document.getElementById('addToTop5Button');
             addToLibraryButton.addEventListener('click', () => {
                 addToLibrary(isbn);
             });
+            addToTop5Button.addEventListener('click', () => {
+                addToTop5(isbn);
+            });
+
         } catch (error) {
             console.error('Error fetching book details:', error);
             bookDetails.innerHTML = '<p>Error loading book details.</p>';
@@ -91,6 +98,53 @@ document.addEventListener('DOMContentLoaded', async () => {
 }
 });
 
+function addToTop5(isbn) {
+    const username = localStorage.getItem('username');
+    if (!username) {
+        alert('You need to be logged in to add books to your top 5.');
+        return;
+    }
+
+    fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}`)
+        .then(response => response.json())
+        .then(data => {
+            const book = data.items[0].volumeInfo;
+            const bookData = {
+                username,
+                isbn,
+                title: book.title,
+                authors: book.authors ? book.authors.join(', ') : 'Unknown',
+                categories: book.categories ? book.categories : [],
+                pageCount: book.pageCount,
+                description: book.description ? book.description : 'No description available',
+                thumbnail: book.imageLinks ? book.imageLinks.thumbnail : 'https://via.placeholder.com/128x192?text=No+Image'
+            };
+
+            fetch('/api/library/top5/add', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(bookData),
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Book added to your top 5!');
+                } else {
+                    alert('Failed to add book to top 5: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error adding book to top 5:', error);
+                alert('Error adding book to top 5.');
+            });
+        })
+        .catch(error => {
+            console.error('Error fetching book data:', error);
+            alert('Error fetching book data.');
+        });
+}
 
 function addToLibrary(isbn) {
     const username = localStorage.getItem('username');

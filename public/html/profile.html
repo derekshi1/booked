@@ -10,8 +10,6 @@
     <script defer src="../javascript/header.js"></script>
     <script defer src="../javascript/profile.js"></script>
     <link href="../css/styles.css" rel="stylesheet"> 
-
-
 </head>
 <body>
     <header class="custom-header text-green-900 py-4">
@@ -26,14 +24,16 @@
     </header>
     <main class="container mx-auto mt-8">
         <div class="profile-container">
-            <div class="profile-pic">
-                <img src="../profile.png" alt="Profile Picture">
+            <div class="flex items-center">
+                <div class="profile-pic">
+                    <img src="../profile.png" alt="Profile Picture">
+                </div>
+                <div class="username-container ml-4">
+                    <h1 id="usernameDisplay" class="handwriting-font text-white">dshi1</h1>
+                    <button id="logoutButton" class="text-white bg-red-700 px-4 py-2 rounded mt-2">Logout</button>
+                </div>
             </div>
-            <div class="username-container">
-                <h1 id="usernameDisplay" class="handwriting-font text-white">dshi1</h1>
-                <button id="logoutButton" class="text-white bg-red-700 px-4 py-2 rounded">Logout</button>
-            </div>
-            <div class="stats-container flex">
+            <div class="stats-container">
                 <div class="stats-item">
                     <p id="bookCount" class="stats-value text-white font-bold">0</p>
                     <span class="stats-label" style="color: #D3D3D3;">Books</span>
@@ -42,6 +42,12 @@
                     <p id="pageCount" class="stats-value text-white font-bold">0</p>
                     <span class="stats-label" style="color: #D3D3D3;">Pages</span>
                 </div>
+            </div>
+        </div>
+        <div class="top5-container mt-8">
+            <h2 class="text-2xl font-bold text-white mb-4">Top 5...</h2>
+            <div id="top5Grid" class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-8">
+                <!-- Top 5 book cards will be dynamically inserted here -->
             </div>
         </div>
     </main>
