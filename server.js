@@ -39,7 +39,9 @@ const userLibrarySchema = new mongoose.Schema({
     description: String,
     thumbnail: String,
     categories: [String],
-    pageCount: Number
+    pageCount: Number,
+    review: String,
+    rating: Number
   }],
   top5: [{
     isbn: String,
@@ -48,7 +50,9 @@ const userLibrarySchema = new mongoose.Schema({
     description: String,
     thumbnail: String,
     categories: [String],
-    pageCount: Number
+    pageCount: Number,
+    review: String,
+    rating: Number
   }]
 });
 
@@ -223,7 +227,7 @@ app.post('/api/library/remove', async (req, res) => {
 // Get books from user's library
 // Get books from user's library
 app.get('/api/library/:username', async (req, res) => {
-  const { username } = req.params;
+  const { username} = req.params;
 
   try {
     const userLibrary = await UserLibrary.findOne({ username });
@@ -348,6 +352,54 @@ app.post('/api/library/top5/remove', async (req, res) => {
   } catch (error) {
       console.error(error);
       res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
+// Save review for a book in user's library
+app.post('/api/library/review', async (req, res) => {
+  const { username, isbn, review, rating } = req.body;
+
+  try {
+    const userLibrary = await UserLibrary.findOne({ username });
+    if (!userLibrary) {
+      return res.status(404).json({ success: false, message: 'No library found for user' });
+    }
+
+    const book = userLibrary.books.find(book => book.isbn === isbn);
+    if (!book) {
+      return res.status(404).json({ success: false, message: 'Book not found in library' });
+    }
+
+    book.review = review;
+    book.rating = rating;
+
+    await userLibrary.save();
+    res.status(200).json({ success: true, message: 'Review saved successfully' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
+// Fetch a specific book's review and rating from user's library
+app.get('/api/library/review/:username/:isbn', async (req, res) => {
+  const { username, isbn } = req.params;
+
+  try {
+    const userLibrary = await UserLibrary.findOne({ username });
+    if (!userLibrary) {
+      return res.status(404).json({ success: false, message: 'No library found for user' });
+    }
+
+    const book = userLibrary.books.find(book => book.isbn === isbn);
+    if (!book) {
+      return res.status(404).json({ success: false, message: 'Book not found in library' });
+    }
+
+    res.status(200).json({ success: true, review: book.review, rating: book.rating });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });
 

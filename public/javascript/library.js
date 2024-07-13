@@ -1,27 +1,13 @@
 document.addEventListener('DOMContentLoaded', async () => {
     const username = localStorage.getItem('username');
     const userSection = document.getElementById('userSection');
-    
-    if (username) {
-        if (!document.querySelector('#libraryButton')) {
-            const libraryButton = document.createElement('a');
-            libraryButton.id = 'libraryButton';
-            libraryButton.href = '../html/library.html';
-            libraryButton.className = 'ml-4 text-white bg-green-900 px-4 py-2 rounded';
-            libraryButton.textContent = 'Library';
-            userSection.appendChild(libraryButton);
-        }
+    const modal = document.getElementById('reviewModal');
+    const closeModal = document.getElementById('closeModal');
+    const ratingInput = document.getElementById('rating');
+    const ratingValue = document.getElementById('ratingValue');
 
-        if (!document.querySelector('#usernameSpan')) {
-            const usernameSpan = document.createElement('span');
-            usernameSpan.id = 'usernameSpan';
-            usernameSpan.className = 'ml-4 text-green-900 handwriting-font cursor-pointer';
-            usernameSpan.textContent = username;
-            usernameSpan.addEventListener('click', () => {
-                window.location.href = '../html/profile.html';
-            });
-            userSection.appendChild(usernameSpan);
-        }
+    if (username) {
+        
         clearBookCards();
 
         // Fetch user library and display books
@@ -44,6 +30,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                                 </div>
                             </a>
                             <button onclick="removeFromLibrary('${username}', '${book.isbn}')" class="absolute top-0 left-0 mt-2 ml-2 text-xs bg-red-700 text-white px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-in-out">Remove</button>
+                            <button class="comment-button absolute top-0 right-0 mt-2 mr-2 text-xs bg-blue-500 text-white px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-in-out"onclick="showReviewPopup('${book.isbn}', '${book.title}')"></button>
                         </div>
                     `;
                     libraryGrid.appendChild(bookDiv);
@@ -55,6 +42,39 @@ document.addEventListener('DOMContentLoaded', async () => {
             console.error('Error fetching user library:', error);
             document.getElementById('libraryGrid').innerHTML = '<p>Error loading library.</p>';
         }
+
+        document.getElementById('saveReview').addEventListener('click', async () => {
+            const reviewText = document.getElementById('reviewText').value;
+            const rating = ratingInput.value;
+            const bookIsbn = modal.dataset.isbn;
+            const username = localStorage.getItem('username');
+            console.log('Username:', username);
+            console.log('ISBN:', bookIsbn);
+
+
+            try {
+                const response = await fetch('/api/library/review', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ username, isbn: bookIsbn, review: reviewText, rating }),
+                });
+
+                if (response.ok) {
+                    alert('Review saved successfully.');
+                    window.location.href = '../html/library.html';
+                } else {
+                    const error = await response.json();
+                    alert('Failed to save review: ' + error.message);
+                }
+            } catch (error) {
+                console.error('Error saving review:', error);
+                alert('Error saving review.');
+            }
+
+            modal.style.display = 'none';
+        });
     } else {
         if (!document.querySelector('#loginButton')) {
             const loginButton = document.createElement('a');
@@ -65,7 +85,52 @@ document.addEventListener('DOMContentLoaded', async () => {
             userSection.appendChild(loginButton);
         }
     }
+    
+    closeModal.addEventListener('click', () => {
+        modal.style.display = 'none';
+    });
+
+    window.addEventListener('click', (event) => {
+        if (event.target === modal) {
+            modal.style.display = 'none';
+        }
+    });
+
+    ratingInput.addEventListener('input', (event) => {
+        ratingValue.textContent = event.target.value;
+    });
 });
+
+// Function to show the review popup
+async function showReviewPopup(bookIsbn, bookTitle) {
+    const modal = document.getElementById('reviewModal');
+    const username = localStorage.getItem('username');
+    modal.dataset.isbn = bookIsbn; // Set the bookIsbn in the modal's dataset
+    modal.querySelector('h2').textContent = `Review for ${bookTitle}`;
+
+    try {
+        const response = await fetch(`/api/library/review/${username}/${bookIsbn}`);
+        const data = await response.json();
+
+        if (data.success) {
+            document.getElementById('reviewText').value = data.review || '';
+            document.getElementById('rating').value = data.rating || 0;
+            document.getElementById('ratingValue').textContent = data.rating || 0;
+        } else {
+            document.getElementById('reviewText').value = '';
+            document.getElementById('rating').value = 0;
+            document.getElementById('ratingValue').textContent = 0;
+        }
+    } catch (error) {
+        console.error('Error fetching book review:', error);
+        document.getElementById('reviewText').value = '';
+        document.getElementById('rating').value = 0;
+        document.getElementById('ratingValue').textContent = 0;
+    }
+
+    modal.style.display = 'block';
+}
+
 
 function clearBookCards() {
     const libraryGrid = document.getElementById('libraryGrid');

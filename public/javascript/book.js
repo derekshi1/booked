@@ -5,9 +5,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const username = localStorage.getItem('username');
     const userSection = document.getElementById('userSection');
 
-
-
-
     // Ensure the home button is always present
     if (!document.querySelector('#homeButton')) {
         const homeButton = document.createElement('a');
@@ -47,55 +44,49 @@ document.addEventListener('DOMContentLoaded', async () => {
             loginButton.textContent = 'Login';
             userSection.appendChild(loginButton);
         }
+        bookDetails.innerHTML = '<p>Please log in to see book details and manage your library.</p>';
+        return;
     }
 
     if (isbn) {
         try {
             const response = await fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}`);
             const data = await response.json();
-            const book = data.items[0].volumeInfo;
+            if (data.totalItems > 0) {
+                const book = data.items[0].volumeInfo;
 
-            bookDetails.innerHTML = `
-                <div class="flex flex-col md:flex-row">
-                    <div class="mr-8 mb-8 md:mb-0">
-                        <img src="${book.imageLinks ? book.imageLinks.thumbnail : 'https://via.placeholder.com/128x192?text=No+Image'}" alt="${book.title}" class="w-64 h-96 object-cover mr-8 mb-8 md:mb-0">
-                        <button id="addToLibraryButton" class="mt-4 px-4 py-2 bg-blue-500 text-white rounded w-64">Add to Library</button>
-                        <button id="addToTop5Button" class="mt-4 px-4 py-2 bg-green-900 text-white rounded w-64">Add to Top 5</button>
-
+                bookDetails.innerHTML = `
+                    <div class="flex flex-col md:flex-row">
+                        <div class="mr-8 mb-8 md:mb-0">
+                            <img src="${book.imageLinks ? book.imageLinks.thumbnail : 'https://via.placeholder.com/128x192?text=No+Image'}" alt="${book.title}" class="w-64 h-96 object-cover mr-8 mb-8 md:mb-0">
+                            <button id="addToLibraryButton" class="mt-4 px-4 py-2 bg-blue-500 text-white rounded w-64">Add to Library</button>
+                            <button id="addToTop5Button" class="mt-4 px-4 py-2 bg-green-900 text-white rounded w-64">Add to Top 5</button>
+                        </div>
+                        <div>
+                            <h1 class="text-4xl font-bold mb-4">${book.title}</h1>
+                            <h2 class="text-2xl mb-4">by ${book.authors ? book.authors.join(', ') : 'Unknown'}</h2>
+                            <p class="text-xl mb-4"><strong>Categories:</strong> ${book.categories ? book.categories.join(', ') : 'None'}</p>
+                            <p class="text-xl mb-4"><strong>Published:</strong> ${book.publishedDate}</p>
+                            <p class="text-xl mb-4"><strong>Pages:</strong> ${book.pageCount}</p>
+                            <p class="text-xl mb-4"><strong>Publisher:</strong> ${book.publisher}</p>
+                            <p class="text-xl mb-4"><strong>Average Rating:</strong> ${book.averageRating ? book.averageRating : 'N/A'} (${book.ratingsCount ? book.ratingsCount : 0} ratings)</p>
+                            <p class="text-xl mb-4">${book.description ? book.description : 'No description available'}</p>
+                        </div>
                     </div>
-                    <div>
-                        <h1 class="text-4xl font-bold mb-4">${book.title}</h1>
-                        <h2 class="text-2xl mb-4">by ${book.authors ? book.authors.join(', ') : 'Unknown'}</h2>
-                        <p class="text-xl mb-4"><strong>Categories:</strong> ${book.categories ? book.categories.join(', ') : 'None'}</p>
-                        <p class="text-xl mb-4"><strong>Published:</strong> ${book.publishedDate}</p>
-                        <p class="text-xl mb-4"><strong>Pages:</strong> ${book.pageCount}</p>
-                        <p class="text-xl mb-4"><strong>Publisher:</strong> ${book.publisher}</p>
-                        <p class="text-xl mb-4"><strong>Average Rating:</strong> ${book.averageRating ? book.averageRating : 'N/A'} (${book.ratingsCount ? book.ratingsCount : 0} ratings)</p>
-                        <p class="text-xl mb-4">${book.description ? book.description : 'No description available'}</p>
-                    </div>
-                </div>
-            `;
-            const addToLibraryButton = document.getElementById('addToLibraryButton');
-            const addToTop5Button = document.getElementById('addToTop5Button');
-            addToLibraryButton.addEventListener('click', () => {
-                addToLibrary(isbn);
-            });
-            addToTop5Button.addEventListener('click', () => {
-                addToTop5(isbn);
-            });
+                `;
 
+                document.getElementById('addToLibraryButton').addEventListener('click', () => addToLibrary(isbn));
+                document.getElementById('addToTop5Button').addEventListener('click', () => addToTop5(isbn));
+            } else {
+                bookDetails.innerHTML = '<p>Book not found.</p>';
+            }
         } catch (error) {
             console.error('Error fetching book details:', error);
             bookDetails.innerHTML = '<p>Error loading book details.</p>';
         }
-       ;
-
-} else {
-    userSection.innerHTML = `
-        <a href="../html/login.html" class="text-white bg-green-900 px-4 py-2 rounded">Login</a>
-    `;
-    document.getElementById('bookDetails').innerHTML = '<p>Please log in to see book details and manage your library.</p>';
-}
+    } else {
+        bookDetails.innerHTML = '<p>ISBN not provided.</p>';
+    }
 });
 
 function addToTop5(isbn) {
@@ -152,7 +143,7 @@ function addToLibrary(isbn) {
         alert('You need to be logged in to add books to your library.');
         return;
     }
- 
+
     fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}`)
         .then(response => response.json())
         .then(data => {
@@ -162,12 +153,12 @@ function addToLibrary(isbn) {
                 isbn,
                 title: book.title,
                 authors: book.authors ? book.authors.join(', ') : 'Unknown',
-                categories: book.categories ? book.categories : [],  // Ensure categories are sent as an array
-                pageCount: book.pageCount, 
+                categories: book.categories ? book.categories : [],
+                pageCount: book.pageCount,
                 description: book.description ? book.description : 'No description available',
                 thumbnail: book.imageLinks ? book.imageLinks.thumbnail : 'https://via.placeholder.com/128x192?text=No+Image'
             };
- 
+
             fetch('/api/library/add', {
                 method: 'POST',
                 headers: {
@@ -192,5 +183,4 @@ function addToLibrary(isbn) {
             console.error('Error fetching book data:', error);
             alert('Error fetching book data.');
         });
- }
- 
+}

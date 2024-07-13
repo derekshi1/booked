@@ -20,6 +20,25 @@ body {
     background-color: #20501c; /* button color */
 }
 
+.comment-button {
+    display: none;
+    position: absolute;
+    top: -15px;
+    right: -15px;
+    width: 35px; /* Adjust the size as needed */
+    height: 35px;
+    background: url('../ratings.png') no-repeat center center;
+    background-size: contain;
+    border: none;
+    cursor: pointer;
+    outline: none;
+    opacity: 0; /* Start with opacity 0 */
+    transition: opacity 0.3s ease-in-out;
+}
+.group:hover .comment-button {
+    display: block;
+    opacity: 1;
+}
 /* Button styles */
 .button {
     background-color: #114e11; /* Dark green background */
@@ -303,4 +322,89 @@ body {
 .arrow:hover {
     transform: scale(1.2) translateY(-50%); /* Scale the arrow but keep it vertically centered */
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* Modal styles */
+.modal {
+    display: none; /* Hidden by default */
+    position: fixed; /* Stay in place */
+    z-index: 1; /* Sit on top */
+    left: 0;
+    top: 0;
+    width: 100%; /* Full width */
+    height: 100%; /* Full height */
+    overflow: auto; /* Enable scroll if needed */
+    background-color: rgb(0,0,0); /* Fallback color */
+    background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
+}
+
+.modal-content {
+    background-color: #fefefe;
+    margin: 15% auto; /* 15% from the top and centered */
+    padding: 20px;
+    border: 1px solid #888;
+    width: 80%; /* Could be more or less, depending on screen size */
+    max-width: 500px; /* Maximum width */
+    border-radius: 10px;
+}
+
+.close-button {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+}
+
+.close-button:hover,
+.close-button:focus {
+    color: black;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+textarea {
+    width: 100%;
+    height: 100px;
+    margin-bottom: 20px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    padding: 10px;
+    font-family: 'Times New Roman', serif;
+    font-size: 16px;
+}
+
+.rating-container {
+    display: flex;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.rating-container label {
+    margin-right: 10px;
+    font-family: 'Times New Roman', serif;
+    font-size: 16px;
+}
+
+.rating-container input[type="range"] {
+    flex: 1;
+    margin-right: 10px;
+}
+
+.rating-container span {
+    width: 40px;
+    text-align: center;
+}
+
+#saveReview {
+    background-color: #114e11;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+#saveReview:hover {
+    background-color: #065b0b;
 }

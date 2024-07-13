@@ -7,7 +7,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Indie+Flower&display=swap" rel="stylesheet">
     <script defer src="../javascript/register.js"></script>
     <script defer src="../javascript/library.js"></script>
-    <script defer src="../javascript/searchbar.js"></script>
     <script defer src="../javascript/header.js"></script>
     <link href="../css/styles.css" rel="stylesheet"> 
 
@@ -31,5 +30,20 @@
             <!-- Book images will be dynamically inserted here -->
         </div>
     </main>
+    <div id="reviewModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" id="closeModal">&times;</span>
+            <h2>Review</h2>
+            <textarea id="reviewText" placeholder="Add a review..."></textarea>
+            <div class="rating-container">
+                <label for="rating">Rating:</label>
+                <input type="range" id="rating" name="rating" min="0" max="100">
+                <span id="ratingValue">50</span>
+            </div>
+            <button id="saveReview">Save</button>
+        </div>
+    </div>
+
 </body>
+
 </html>

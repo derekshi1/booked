@@ -64,29 +64,26 @@ async function fetchSuggestions(query) {
 function displaySuggestions(suggestions) {
     const suggestionsBox = document.getElementById('suggestionsBox');
     if (suggestionsBox) {
+        console.log('Displaying suggestions:', suggestions); // Debug log
         suggestionsBox.innerHTML = '';
         if (suggestions.length > 0) {
             suggestionsBox.style.display = 'block'; // Show the suggestions box
             suggestions.forEach(suggestion => {
                 const suggestionItem = document.createElement('div');
-                suggestionItem.classList.add('suggestion-item', 'flex', 'items-center');
+                suggestionItem.classList.add('suggestion-item', 'flex', 'items-center', 'cursor-pointer', 'hover:bg-gray-200', 'p-2');
                 suggestionItem.innerHTML = `
-                    <div class="relative group w-full">
+                    <div class="flex items-center">
                         <a href="../html/book.html?isbn=${suggestion.isbn}" class="block relative overflow-hidden rounded-lg shadow-lg hover:shadow-2xl transition duration-300 ease-in-out group">
-                            <img src="${suggestion.thumbnail}" alt="${suggestion.title}" class="w-8 h-12 mr-2">
+                            <img src="${suggestion.thumbnail}" alt="${suggestion.title}" class="w-8 h-12 mr-2 rounded">
                             <span>${suggestion.title} by ${suggestion.authors}</span>
                         </a>
                     </div>
                 `;
-                suggestionItem.querySelector('a').addEventListener('click', (event) => {
-                    event.stopPropagation(); // Prevent parent click event
-                    clearSuggestions(); // Hide the suggestions box when a book is clicked
-                });
                 suggestionsBox.appendChild(suggestionItem);
             });
 
             const showAllLink = document.createElement('div');
-            showAllLink.classList.add('suggestion-item', 'flex', 'items-center', 'justify-center');
+            showAllLink.classList.add('suggestion-item', 'flex', 'items-center', 'justify-center', 'cursor-pointer', 'hover:bg-gray-200', 'p-2');
             showAllLink.innerHTML = `<span>Show all results for "${document.getElementById('titleInput').value}"</span>`;
             showAllLink.addEventListener('click', () => {
                 searchBookByTitle();
@@ -97,7 +94,7 @@ function displaySuggestions(suggestions) {
             clearSuggestions();
         }
     } else {
-        console.error("Suggestions box element not found");
+        console.error('Suggestions box not found');
     }
 }
 
