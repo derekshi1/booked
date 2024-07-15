@@ -403,6 +403,33 @@ app.get('/api/library/review/:username/:isbn', async (req, res) => {
   }
 });
 
+// PUT route to update a review for a book in user's library
+app.put('/api/library/review', async (req, res) => {
+  const { username, isbn, review, rating } = req.body;
+
+  try {
+    const userLibrary = await UserLibrary.findOne({ username });
+    if (!userLibrary) {
+      return res.status(404).json({ success: false, message: 'No library found for user' });
+    }
+
+    const book = userLibrary.books.find(book => book.isbn === isbn);
+    if (!book) {
+      return res.status(404).json({ success: false, message: 'Book not found in library' });
+    }
+
+    book.review = review;
+    book.rating = rating;
+
+    await userLibrary.save();
+    res.status(200).json({ success: true, message: 'Review updated successfully' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
+
 
 app.listen(port, () => {
   console.log(`Server listening at http://localhost:${port}`);

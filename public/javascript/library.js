@@ -5,6 +5,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     const closeModal = document.getElementById('closeModal');
     const ratingInput = document.getElementById('rating');
     const ratingValue = document.getElementById('ratingValue');
+    const saveReviewButton = document.getElementById('saveReview');
+    let currentRating = 0;
+
 
     if (username) {
         
@@ -21,7 +24,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const bookDiv = document.createElement('div');
                     bookDiv.classList.add('library-card', 'relative', 'p-6', 'rounded-lg', 'shadow-lg', 'cursor-pointer', 'hover:shadow-2xl', 'transition', 'duration-300', 'ease-in-out');
                     bookDiv.innerHTML = `
-                        <div class="relative group">
+                        <div class="relative group library-card" style="border: 4px solid ${getGradientColor(book.rating)};">
                             <a href="../html/book.html?isbn=${book.isbn}" class="block relative overflow-hidden rounded-lg shadow-lg hover:shadow-2xl transition duration-300 ease-in-out group">
                                 <img src="${book.thumbnail}" alt="${book.title}" class="w-full h-64 object-cover rounded-t-lg">
                                 <div class="absolute bottom-0 left-0 w-full p-4 bg-black bg-opacity-60 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-in-out">
@@ -30,10 +33,17 @@ document.addEventListener('DOMContentLoaded', async () => {
                                 </div>
                             </a>
                             <button onclick="removeFromLibrary('${username}', '${book.isbn}')" class="absolute top-0 left-0 mt-2 ml-2 text-xs bg-red-700 text-white px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-in-out">Remove</button>
-                            <button class="comment-button absolute top-0 right-0 mt-2 mr-2 text-xs bg-blue-500 text-white px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-in-out"onclick="showReviewPopup('${book.isbn}', '${book.title}')"></button>
+                            <button class="comment-button ease-in-out-transition absolute top-0 right-0 mt-2 mr-2 text-xs bg-blue-500 text-white px-2 py-1 rounded" data-isbn="${book.isbn}" data-title="${book.title}"></button>
                         </div>
                     `;
                     libraryGrid.appendChild(bookDiv);
+                });
+                // Attach event listeners to comment buttons
+                const commentButtons = document.querySelectorAll('.comment-button');
+                commentButtons.forEach(button => {
+                    button.addEventListener('click', () => {
+                        showReviewPopup(button.getAttribute('data-isbn'), button.getAttribute('data-title'));
+                    });
                 });
             } else {
                 libraryGrid.innerHTML = '<p>No books in your library.</p>';
@@ -43,13 +53,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             document.getElementById('libraryGrid').innerHTML = '<p>Error loading library.</p>';
         }
 
-        document.getElementById('saveReview').addEventListener('click', async () => {
+        saveReviewButton.addEventListener('click', async () => {
             const reviewText = document.getElementById('reviewText').value;
             const rating = ratingInput.value;
             const bookIsbn = modal.dataset.isbn;
             const username = localStorage.getItem('username');
-            console.log('Username:', username);
-            console.log('ISBN:', bookIsbn);
 
 
             try {
@@ -74,7 +82,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
 
             modal.style.display = 'none';
-        });
+        } );
     } else {
         if (!document.querySelector('#loginButton')) {
             const loginButton = document.createElement('a');
@@ -98,6 +106,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     ratingInput.addEventListener('input', (event) => {
         ratingValue.textContent = event.target.value;
+        currentRating = event.target.value;
+        const gradientColor = getGradientColor(currentRating);
+        updateSliderBackground(ratingInput, currentRating);
     });
 });
 
@@ -114,22 +125,82 @@ async function showReviewPopup(bookIsbn, bookTitle) {
 
         if (data.success) {
             document.getElementById('reviewText').value = data.review || '';
-            document.getElementById('rating').value = data.rating || 0;
-            document.getElementById('ratingValue').textContent = data.rating || 0;
+            document.getElementById('rating').value = data.rating || 50;
+            document.getElementById('ratingValue').textContent = data.rating || 50;
+            updateSliderBackground(document.getElementById('rating'), data.rating || null);
         } else {
             document.getElementById('reviewText').value = '';
-            document.getElementById('rating').value = 0;
-            document.getElementById('ratingValue').textContent = 0;
+            document.getElementById('rating').value = 50;
+            document.getElementById('ratingValue').textContent = 50;
+            updateSliderBackground(document.getElementById('rating'), null);
         }
     } catch (error) {
         console.error('Error fetching book review:', error);
         document.getElementById('reviewText').value = '';
         document.getElementById('rating').value = 0;
         document.getElementById('ratingValue').textContent = 0;
+        updateSliderBackground(document.getElementById('rating'), 0);
     }
 
     modal.style.display = 'block';
 }
+/*
+function getGradientColor(value) {
+    const hue = (value / 100) * 120; // 0 is red, 120 is green
+    return `hsl(${hue}, 60%, 80%)`;
+}
+//if i don't like the bright colors above, switch to the below
+*/
+function getGradientColor(value) {
+    // Define the dark pastel colors for green and red with more aesthetic adjustment
+    const darkPastelGreen = [32, 154, 32]; // RGB for dark pastel green
+    const darkPastelYellow = [255, 193, 37];
+    const darkPastelRed = [102, 0, 0]; // RGB for dark pastel red
+
+    let r, g, b;
+    
+    if (value <= 50) {
+        // Interpolate between red and yellow
+        const factor = value / 50;
+        r = darkPastelRed[0] + ((darkPastelYellow[0] - darkPastelRed[0]) * factor);
+        g = darkPastelRed[1] + ((darkPastelYellow[1] - darkPastelRed[1]) * factor);
+        b = darkPastelRed[2] + ((darkPastelYellow[2] - darkPastelRed[2]) * factor);
+    } else {
+        // Interpolate between yellow and green
+        const factor = (value - 50) / 50;
+        r = darkPastelYellow[0] + ((darkPastelGreen[0] - darkPastelYellow[0]) * factor);
+        g = darkPastelYellow[1] + ((darkPastelGreen[1] - darkPastelYellow[1]) * factor);
+        b = darkPastelYellow[2] + ((darkPastelGreen[2] - darkPastelYellow[2]) * factor);
+    }
+
+    return `rgb(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)})`;
+}
+
+
+function updateSliderBackground(slider, value) {
+    if (value === null) {
+        slider.style.background = '#444444'; // Set to dark grey if the value is null (no rating)
+    } else {
+        const gradientColor = getGradientColor(value);
+        slider.style.background = `linear-gradient(90deg, ${gradientColor} ${value}%, #ffffff ${value}%)`;
+    }
+
+    // Update the slider thumb color
+    const style = document.createElement('style');
+    style.innerHTML = `
+        input[type=range] {
+            border: 2px solid #000000; /* Black border around the slider */
+        }
+        input[type=range]::-webkit-slider-thumb {
+            background: ${value === null ? '#444444' : getGradientColor(value)};
+        }
+        input[type=range]::-moz-range-thumb {
+            background: ${value === null ? '#444444' : getGradientColor(value)};
+        }
+    `;
+    document.head.appendChild(style);
+}
+
 
 
 function clearBookCards() {
