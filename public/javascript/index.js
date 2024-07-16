@@ -4,7 +4,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const scrollRightButton = document.getElementById('scrollRight');
     const recommendationsContainer = document.getElementById('recommendationsContainer');
     const loadingSpinner = document.getElementById('loadingSpinner'); // Ensure this element exists
-
+    
     // Function to render recommendations
     const renderRecommendations = (recommendations) => {
         recommendationsContainer.innerHTML = '';
@@ -23,9 +23,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
             `;
             recommendationsContainer.appendChild(recommendationElement);
-        });
-        scrollLeftButton.classList.add('visible');
-        scrollRightButton.classList.add('visible');
+        });    
     };
 
     const savedRecommendations = localStorage.getItem('recommendations');
@@ -35,7 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
             renderRecommendations(parsedRecommendations);
         }
     }
-    
+
     generateButton.addEventListener('click', async () => {
         const username = localStorage.getItem('username');
         if (username) {
@@ -66,6 +64,25 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log('No username found in localStorage.');
         }
     });
+    const showArrow = (arrowButton) => {
+        arrowButton.classList.add('visible');
+    };
+
+    const hideArrow = (arrowButton) => {
+        arrowButton.classList.remove('visible');
+    };
+
+    scrollLeftButton.addEventListener('mouseenter', () => showArrow(scrollLeftButton));
+    scrollLeftButton.addEventListener('mouseleave', () => hideArrow(scrollLeftButton));
+
+    scrollRightButton.addEventListener('mouseenter', () => showArrow(scrollRightButton));
+    scrollRightButton.addEventListener('mouseleave', () => hideArrow(scrollRightButton));
+
+    document.querySelector('.arrow-hover-region.left').addEventListener('mouseenter', () => showArrow(scrollLeftButton));
+    document.querySelector('.arrow-hover-region.left').addEventListener('mouseleave', () => hideArrow(scrollLeftButton));
+
+    document.querySelector('.arrow-hover-region.right').addEventListener('mouseenter', () => showArrow(scrollRightButton));
+    document.querySelector('.arrow-hover-region.right').addEventListener('mouseleave', () => hideArrow(scrollRightButton));
 
     scrollLeftButton.addEventListener('click', () => {
         recommendationsContainer.scrollBy({

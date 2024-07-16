@@ -236,17 +236,24 @@ body {
     100% { transform: rotate(360deg); }
 }
 
+.recommendations-wrapper {
+    width: 100vw; /* Full viewport width */
+    position: relative;
+    overflow: hidden;
+}
 /* Recommendation container styles */
 .recommendations-container {
     display: flex;
     overflow-x: auto;
-    gap: 1rem;
+    gap: 0rem;
     padding: 1rem 0;
+    width: 100%; /* Make the container stretch the full width */
+    box-sizing: border-box;
 }
 
 .recommendation-card {
-    min-width: 100px; /* Reduced width */
-    flex: 0 0 auto;
+    flex: 1 0 auto; /* Allow the cards to grow and shrink but maintain their width */
+    min-width: 150px; /* Minimum width for each card */
     padding: 0.5rem; /* Add padding to maintain some spacing inside the card */
     background-color: #2D2D2D; /* Background color for better visibility */
     border-radius: 8px; /* Rounded corners */
@@ -303,7 +310,7 @@ body {
     border: none;
     font-size: 2rem;
     cursor: pointer;
-    z-index: 10;
+    z-index: 15;
     border-radius: 50%;
     width: 40px;
     height: 40px;
@@ -314,14 +321,39 @@ body {
     transition: opacity 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease;
 }
 
+
+/* Hover regions */
+.arrow-hover-region {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 80px;
+    z-index: 10;
+}
+
+.arrow-hover-region.left {
+    left: 0;
+}
+
+.arrow-hover-region.right {
+    right: 0;
+}
+
 .arrow-left {
-    left: -40px;
+    left: 10px; /* Adjust for proper positioning */
 }
 
 .arrow-right {
-    right: -40px;
+    right: 15px; /* Adjust for proper positioning */
 }
 
+.arrow-hover-region.left:hover ~ .arrow-left,
+.arrow-hover-region.right:hover ~ .arrow-right,
+.arrow:hover {
+    opacity: 1;
+}
+
+/* Additional styling to handle the hover effect for visibility */
 .arrow.visible {
     opacity: 1;
 }
