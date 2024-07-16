@@ -3,6 +3,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const scrollLeftButton = document.getElementById('scrollLeft');
     const scrollRightButton = document.getElementById('scrollRight');
     const recommendationsContainer = document.getElementById('recommendationsContainer');
+    const loadingSpinner = document.getElementById('loadingSpinner'); // Ensure this element exists
 
     // Function to render recommendations
     const renderRecommendations = (recommendations) => {
@@ -27,12 +28,14 @@ document.addEventListener('DOMContentLoaded', () => {
         scrollRightButton.classList.add('visible');
     };
 
-    // Check if there are recommendations in localStorage
     const savedRecommendations = localStorage.getItem('recommendations');
     if (savedRecommendations) {
-        renderRecommendations(JSON.parse(savedRecommendations));
+        const parsedRecommendations = JSON.parse(savedRecommendations);
+        if (parsedRecommendations && parsedRecommendations.length > 0) {
+            renderRecommendations(parsedRecommendations);
+        }
     }
-
+    
     generateButton.addEventListener('click', async () => {
         const username = localStorage.getItem('username');
         if (username) {

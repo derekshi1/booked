@@ -273,6 +273,7 @@ app.get('/api/recommendations/:username', async (req, res) => {
       }
       try {
         const recommendationsJSON = JSON.parse(recommendations);
+        console.log('Parsed recommendations JSON:', JSON.stringify(recommendationsJSON, null, 2));
         res.status(200).json({ success: true, recommendations: recommendationsJSON });
       } catch (error) {
         console.error('Error parsing recommendations:', error);
@@ -285,7 +286,6 @@ app.get('/api/recommendations/:username', async (req, res) => {
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });
-
 // Add book to user's top 5
 app.post('/api/library/top5/add', async (req, res) => {
   const { username, isbn, title, authors, description, thumbnail, categories, pageCount } = req.body;
