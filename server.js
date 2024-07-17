@@ -53,6 +53,17 @@ const userLibrarySchema = new mongoose.Schema({
     pageCount: Number,
     review: String,
     rating: Number
+  }],
+  readList: [{
+    isbn: String,
+    title: String,
+    authors: String,
+    description: String,
+    thumbnail: String,
+    categories: [String],
+    pageCount: Number,
+    review: String,
+    rating: Number
   }]
 });
 
@@ -224,7 +235,6 @@ app.post('/api/library/remove', async (req, res) => {
 });
 
 
-// Get books from user's library
 // Get books from user's library
 app.get('/api/library/:username', async (req, res) => {
   const { username} = req.params;
@@ -429,7 +439,65 @@ app.put('/api/library/review', async (req, res) => {
   }
 });
 
+//add book to reading list
+app.post('/api/library/readList/add', async (req, res) => {
+  const { username, isbn, title, authors, description, thumbnail, categories, pageCount} = req.body;
+  try {
+    let userLibrary = await UserLibrary.findOne({ username });
+    if (!userLibrary) {
+      userLibrary = new UserLibrary({ username, books: [], top5: [], readList: [] });
+    }
 
+    // Check if the book is already in the reading list
+    const existingBook = userLibrary.readList.find(book => book.isbn === isbn);
+    if (existingBook) {
+      return res.status(400).json({ success: false, message: 'Book already in reading list' });
+    }
+
+    userLibrary.readList.push({ isbn, title, authors, description, thumbnail, categories, pageCount});
+    await userLibrary.save();
+
+    res.status(200).json({ success: true, message: 'Book added to reading list' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+// Remove book from user's reading list
+app.post('/api/library/readList/remove', async (req, res) => {
+  const { username, isbn } = req.body;
+
+  try {
+      let userLibrary = await UserLibrary.findOne({ username });
+      if (!userLibrary) {
+          return res.status(404).json({ success: false, message: 'No reading list found for user' });
+      }
+
+      userLibrary.readList = userLibrary.readList.filter(book => book.isbn !== isbn);
+      await userLibrary.save();
+
+      res.status(200).json({ success: true, message: 'Book removed from reading list' });
+  } catch (error) {
+      console.error(error);
+      res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+//get books in reading list
+app.get('/api/library/readList/:username', async (req, res) => {
+  const { username} = req.params;
+
+  try {
+    const userLibrary = await UserLibrary.findOne({ username });
+    if (userLibrary) {
+      res.status(200).json({ success: true, readList: userLibrary.readList});
+    } else {
+      userLibrary = new UserLibrary({ username, books: [], top5: [], readList: [] });
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
 
 app.listen(port, () => {
   console.log(`Server listening at http://localhost:${port}`);

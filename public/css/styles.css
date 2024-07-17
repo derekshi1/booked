@@ -364,10 +364,10 @@ body {
 }
 
 /* Modal styles */
-.modal {
+.reviewmodal {
     display: none; /* Hidden by default */
     position: fixed; /* Stay in place */
-    z-index: 1; /* Sit on top */
+    z-index: 10; /* Sit on top */
     left: 0;
     top: 0;
     width: 100%; /* Full width */
@@ -494,4 +494,8 @@ input[type=range]::-moz-range-thumb {
     border-radius: 50%;
     cursor: pointer;
     margin: -2; /* Ensure thumb goes to the end */
+}
+
+.hover\:bg-gray-200:hover {
+    background-color: #E5E7EB; /* Adjust the color as needed */
 }

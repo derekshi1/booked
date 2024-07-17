@@ -52,6 +52,44 @@ document.addEventListener('DOMContentLoaded', async () => {
             console.error('Error fetching user library:', error);
             document.getElementById('libraryGrid').innerHTML = '<p>Error loading library.</p>';
         }
+        try {
+            const response = await fetch(`/api/library/readList/${username}`);
+            const data = await response.json();
+            const readingListGrid = document.getElementById('readingListGrid');
+            readingListGrid.className = 'library-container'; // Apply library-container class
+            if (data.success && data.readList.length > 0) {
+                data.readList.forEach(book => {
+                    const bookDiv = document.createElement('div');
+                    bookDiv.classList.add('library-card', 'relative', 'p-6', 'rounded-lg', 'shadow-lg', 'cursor-pointer', 'hover:shadow-2xl', 'transition', 'duration-300', 'ease-in-out');
+                    bookDiv.innerHTML = `
+                        <div class="relative group library-card" style="border: 4px solid ${getGradientColor(book.rating)};">
+                            <a href="../html/book.html?isbn=${book.isbn}" class="block relative overflow-hidden rounded-lg shadow-lg hover:shadow-2xl transition duration-300 ease-in-out group">
+                                <img src="${book.thumbnail}" alt="${book.title}" class="w-full h-64 object-cover rounded-t-lg">
+                                <div class="absolute bottom-0 left-0 w-full p-4 bg-black bg-opacity-60 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-in-out">
+                                    <h2 class="text-lg font-bold">${book.title}</h2>
+                                    <p class="text-gray-300">by ${book.authors}</p>
+                                </div>
+                            </a>
+                            <button onclick="removeFromReadingList('${username}', '${book.isbn}')" class="absolute top-0 left-0 mt-2 ml-2 text-xs bg-red-700 text-white px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-in-out">Remove</button>
+                        </div>
+                    `;
+                    readingListGrid.appendChild(bookDiv);
+                });
+                // Attach event listeners to comment buttons
+                const commentButtons = document.querySelectorAll('.comment-button');
+                commentButtons.forEach(button => {
+                    button.addEventListener('click', () => {
+                        showReviewPopup(button.getAttribute('data-isbn'), button.getAttribute('data-title'));
+                    });
+                });
+            } else {
+                readingListGrid.innerHTML = '<p>No books in your reading list.</p>';
+            }
+        } catch (error) {
+            console.error('Error fetching user reading list:', error);
+            document.getElementById('readingListGrid').innerHTML = '<p>Error loading reading list.</p>';
+        }
+        
 
         saveReviewButton.addEventListener('click', async () => {
             const reviewText = document.getElementById('reviewText').value;
@@ -229,5 +267,27 @@ async function removeFromLibrary(username, isbn) {
     } catch (error) {
         console.error('Error removing book from library:', error);
         alert('Error removing book from library.');
+    }
+}
+async function removeFromReadingList(username, isbn) {
+    try {
+        const response = await fetch('/api/library/readList/remove', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ username, isbn }),
+        });
+
+        if (response.ok) {
+            alert('Book removed from your reading list.');
+            window.location.href = '../html/library.html';
+        } else {
+            const error = await response.json();
+            alert('Failed to remove book: ' + error.message);
+        }
+    } catch (error) {
+        console.error('Error removing book from reading list:', error);
+        alert('Error removing book from reading list.');
     }
 }

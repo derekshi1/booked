@@ -4,6 +4,26 @@ document.addEventListener('DOMContentLoaded', () => {
     if (query) {
         fetchBooks(query);
     }
+   // MutationObserver to watch for changes and add id and name attributes
+   const observer = new MutationObserver((mutations) => {
+    mutations.forEach((mutation) => {
+        mutation.addedNodes.forEach((node) => {
+            if (node.nodeType === 1 && node.matches('input.swv-input')) {
+                if (!node.id) {
+                    node.id = 'swv-input';
+                }
+                if (!node.name) {
+                    node.name = 'swv-input';
+                }
+            }
+        });
+    });
+});
+
+observer.observe(document.body, {
+    childList: true,
+    subtree: true
+});
 });
 
 function fetchBooks(query) {
@@ -17,25 +37,24 @@ function fetchBooks(query) {
             if (data.totalItems > 0) {
                 data.items.forEach((item) => {
                     var book = item.volumeInfo;
-                    console.log(book);
                     if (book.previewLink) {  // Ensure the book has a preview
                         var isbn = getISBN(book.industryIdentifiers);
                         var thumbnail = book.imageLinks ? book.imageLinks.thumbnail : 'https://via.placeholder.com/128x192?text=No+Image';
                         var categories = book.categories ? book.categories.join(', ') : 'Unknown';  // Get categories
                         var bookItem = document.createElement('div');
-                        bookItem.classList.add('bg-white', 'rounded', 'shadow', 'p-4', 'flex', 'items-start');
+                        bookItem.classList.add('bg-white', 'rounded', 'shadow', 'p-4', 'flex', 'items-start', 'cursor-pointer');
                         bookItem.innerHTML = `
-                            <img src="${thumbnail}" alt="${book.title}" class="w-32 h-48 mr-4">
-                            <div>
-                                <h2 class="text-xl font-bold mb-2">${book.title}</h2>
-                                <p class="text-gray-700 mb-2">by ${book.authors ? book.authors.join(', ') : 'Unknown'}</p>
-                                <p class="text-gray-700 mb-2"><strong>Categories:</strong> ${categories}</p>
-                                <p class="text-gray-600 mb-4">${book.description ? book.description : 'No description available'}</p>
-                                <div class="flex space-x-2">
-                                    <button onclick="loadBook('${isbn}')" class="bg-green-700 text-white px-4 py-2 rounded">Preview</button>
-                                    <button onclick="addToLibrary('${isbn}')" class="bg-blue-500 text-white px-4 py-2 rounded">Add to Library</button>
+                            <a href="../html/book.html?isbn=${isbn}" class="block w-full">
+                                <div class="bg-white rounded shadow p-4 flex items-start hover:bg-gray-200 transition duration-300">
+                                    <img src="${thumbnail}" alt="${book.title}" class="w-32 h-48 mr-4">
+                                    <div>
+                                        <h2 class="text-xl font-bold mb-2">${book.title}</h2>
+                                        <p class="text-gray-700 mb-2">by ${book.authors ? book.authors.join(', ') : 'Unknown'}</p>
+                                        <p class="text-gray-700 mb-2"><strong>Categories:</strong> ${categories}</p>
+                                        <p class="text-gray-600 mb-4">${book.description ? book.description : 'No description available'}</p>
+                                    </div>
                                 </div>
-                            </div>
+                            </a>
                         `;
                         resultsDiv.appendChild(bookItem);
                     }
@@ -103,51 +122,3 @@ google.books.setOnLoadCallback(function() {
    console.log('Google Books API loaded successfully.');
 });
 
-// Add to Library
-function addToLibrary(isbn) {
-   const username = localStorage.getItem('username');
-   if (!username) {
-       alert('You need to be logged in to add books to your library.');
-       return;
-   }
-
-   fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}`)
-       .then(response => response.json())
-       .then(data => {
-           const book = data.items[0].volumeInfo;
-           const bookData = {
-               username,
-               isbn,
-               title: book.title,
-               authors: book.authors ? book.authors.join(', ') : 'Unknown',
-               categories: book.categories ? book.categories : [],  // Ensure categories are sent as an array
-               pageCount: book.pageCount, 
-               description: book.description ? book.description : 'No description available',
-               thumbnail: book.imageLinks ? book.imageLinks.thumbnail : 'https://via.placeholder.com/128x192?text=No+Image'
-           };
-
-           fetch('/api/library/add', {
-               method: 'POST',
-               headers: {
-                   'Content-Type': 'application/json',
-               },
-               body: JSON.stringify(bookData),
-           })
-           .then(response => response.json())
-           .then(data => {
-               if (data.success) {
-                   alert('Book added to your library!');
-               } else {
-                   alert('Failed to add book to library: ' + data.message);
-               }
-           })
-           .catch(error => {
-               console.error('Error adding book to library:', error);
-               alert('Error adding book to library.');
-           });
-       })
-       .catch(error => {
-           console.error('Error fetching book data:', error);
-           alert('Error fetching book data.');
-       });
-}
