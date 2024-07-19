@@ -80,43 +80,7 @@ function getISBN(identifiers) {
 }
 
 
-// Modal handling
-function loadBook(isbn) {
-    if (isbn) {
-        initialize(isbn);
-        document.getElementById('myModal').classList.remove('hidden');
-        document.getElementById('myModal').classList.add('flex');
-    } else {
-        alert('ISBN not found.');
-    }
-}
 
-function closeModal() {
-    document.getElementById('myModal').classList.add('hidden');
-    document.getElementById('myModal').classList.remove('flex');
-}
-
-window.onclick = function(event) {
-    const modal = document.getElementById('myModal');
-    if (event.target == modal) {
-        modal.classList.add('hidden');
-        modal.classList.remove('flex');
-    }
-}
-// Initialize Google Books API
-google.books.load();
- 
-function alertNotFound() {
-   alert("Could not embed the book!");
-}
-
-function initialize(isbn) {
-   var viewerCanvas = document.getElementById('viewerCanvas');
-   if (viewerCanvas) {
-       var viewer = new google.books.DefaultViewer(viewerCanvas);
-       viewer.load('ISBN:' + isbn, alertNotFound);
-   }
-}
 
 google.books.setOnLoadCallback(function() {
    console.log('Google Books API loaded successfully.');

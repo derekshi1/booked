@@ -61,7 +61,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                             <img src="${book.imageLinks ? book.imageLinks.thumbnail : 'https://via.placeholder.com/128x192?text=No+Image'}" alt="${book.title}" class="w-64 h-96 object-cover mr-8 mb-8 md:mb-0">
                             <button id="addToLibraryButton" class="mt-4 px-4 py-2 bg-blue-500 text-white rounded w-64">Add to Library</button>
                             <button id="addToTop5Button" class="mt-4 px-4 py-2 bg-green-900 text-white rounded w-64">Add to Top 5</button>
-                            <button id="addToReadingListButton" class="mt-4 px-4 py-2 bg-blue-500 text-white rounded w-64">Add to Reading List</button>
+                            <button id="addToReadingListButton" class="mt-4 px-4 py-2 bg-blue-300 text-white rounded w-64">Add to Reading List</button>
+                            <button onclick="loadBook('${isbn}')" class="mt-4 px-4 py-2 bg-green-400 text-white rounded w-64">Preview</button>
+
                         </div>
                         <div>
                             <h1 class="text-4xl font-bold mb-4">${book.title}</h1>
@@ -91,6 +93,43 @@ document.addEventListener('DOMContentLoaded', async () => {
         bookDetails.innerHTML = '<p>ISBN not provided.</p>';
     }
 });
+// Modal handling
+function loadBook(isbn) {
+    if (isbn) {
+        initialize(isbn);
+        document.getElementById('myModal').classList.remove('hidden');
+        document.getElementById('myModal').classList.add('flex');
+    } else {
+        alert('ISBN not found.');
+    }
+}
+
+function closeModal() {
+    document.getElementById('myModal').classList.add('hidden');
+    document.getElementById('myModal').classList.remove('flex');
+}
+
+window.onclick = function(event) {
+    const modal = document.getElementById('myModal');
+    if (event.target == modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+}
+// Initialize Google Books API
+google.books.load();
+ 
+function alertNotFound() {
+   alert("Could not embed the book!");
+}
+
+function initialize(isbn) {
+   var viewerCanvas = document.getElementById('viewerCanvas');
+   if (viewerCanvas) {
+       var viewer = new google.books.DefaultViewer(viewerCanvas);
+       viewer.load('ISBN:' + isbn, alertNotFound);
+   }
+}
 
 function addToTop5(isbn) {
     const username = localStorage.getItem('username');
