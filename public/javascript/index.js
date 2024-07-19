@@ -4,7 +4,40 @@ document.addEventListener('DOMContentLoaded', () => {
     const scrollRightButton = document.getElementById('scrollRight');
     const recommendationsContainer = document.getElementById('recommendationsContainer');
     const loadingSpinner = document.getElementById('loadingSpinner'); // Ensure this element exists
-    
+    const sparkleContainer = document.getElementById('sparkleContainer');
+
+
+    // Function to create sparkles
+    const createSparkles = () => {
+        sparkleContainer.innerHTML = '';
+        for (let i = 0; i < 10; i++) {
+            const sparkle = document.createElement('div');
+            const size = Math.random() * 10 + 10; // Random size between 10px and 20px
+            const animationDuration = Math.random() * 1 + 0.5; // Random duration between 0.5s and 1.5s
+
+            sparkle.className = 'sparkle';
+            sparkle.style.width = `${size}px`;
+            sparkle.style.height = `${size}px`;
+            sparkle.style.top = `${Math.random() * 100}%`; // Random vertical position
+            sparkle.style.left = `${Math.random() * 100}%`; // Random horizontal position
+            sparkle.style.animationDuration = `${animationDuration}s`;
+
+            sparkleContainer.appendChild(sparkle);
+        }
+    };
+
+    // Function to show sparkles
+    const showSparkles = () => {
+        sparkleContainer.style.display = 'flex';
+        createSparkles();
+    };
+
+    // Function to hide sparkles
+    const hideSparkles = () => {
+        sparkleContainer.style.display = 'none';
+        sparkleContainer.innerHTML = '';
+    };
+
     // Function to render recommendations
     const renderRecommendations = (recommendations) => {
         recommendationsContainer.innerHTML = '';
@@ -25,6 +58,26 @@ document.addEventListener('DOMContentLoaded', () => {
             recommendationsContainer.appendChild(recommendationElement);
         });    
     };
+    const renderPlaceholderRecommendations = () => {
+        recommendationsContainer.innerHTML = '';
+        for (let i = 0; i < 10; i++) {
+            const placeholderElement = document.createElement('div');
+            placeholderElement.classList.add('recommendation-card', 'p-4', 'bg-gray-100', 'rounded', 'shadow');
+            placeholderElement.innerHTML = `
+               <div class="relative group">
+                    <div class="block relative overflow-hidden rounded-lg shadow-lg hover:shadow-2xl transition duration-300 ease-in-out group">
+                        <div class="flex justify-center items-center h-72 w-40 mx-auto">
+                            <span class="text-gray-500 text-xl">Empty Book</span>
+                        </div>
+                        <div class="absolute bottom-0 left-0 w-full p-4 bg-black bg-opacity-60 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-in-out">
+                            <h2 class="text-lg font-bold">Book Title</h2>
+                        </div>
+                    </div>
+                </div>
+            `;
+            recommendationsContainer.appendChild(placeholderElement);
+        }
+    };
 
     const savedRecommendations = localStorage.getItem('recommendations');
     if (savedRecommendations) {
@@ -32,6 +85,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (parsedRecommendations && parsedRecommendations.length > 0) {
             renderRecommendations(parsedRecommendations);
         }
+        else {
+            renderPlaceholderRecommendations();
+        }
+    } else {
+        renderPlaceholderRecommendations();
     }
 
     generateButton.addEventListener('click', async () => {
@@ -40,30 +98,35 @@ document.addEventListener('DOMContentLoaded', () => {
             scrollLeftButton.classList.remove('visible');
             scrollRightButton.classList.remove('visible');
             try {
-                loadingSpinner.style.display = 'block';
+                //loadingSpinner.style.display = 'block';
+                showSparkles();
                 const response = await fetch(`/api/recommendations/${username}`);
                 const data = await response.json();
-
+    
                 // Log the entire response for debugging
                 console.log('Recommendations response:', data);
-
-                if (data.success) {
+    
+                if (data.success && data.recommendations.length > 0) {
                     // Save recommendations to localStorage
                     localStorage.setItem('recommendations', JSON.stringify(data.recommendations));
                     // Render recommendations
                     renderRecommendations(data.recommendations);
                 } else {
-                    console.error('Failed to fetch recommendations:', data.message);
+                    console.error('No recommendations found or failed to fetch recommendations:', data.message);
+                    renderPlaceholderRecommendations();
                 }
             } catch (error) {
                 console.error('Error fetching recommendations:', error);
+                renderPlaceholderRecommendations();
             } finally {
-                loadingSpinner.style.display = 'none';
+                //loadingSpinner.style.display = 'none';
+                hideSparkles();
             }
         } else {
             console.log('No username found in localStorage.');
         }
     });
+    
     const showArrow = (arrowButton) => {
         arrowButton.classList.add('visible');
     };

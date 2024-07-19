@@ -5,48 +5,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const username = localStorage.getItem('username');
     const userSection = document.getElementById('userSection');
 
-    // Ensure the home button is always present
-    if (!document.querySelector('#homeButton')) {
-        const homeButton = document.createElement('a');
-        homeButton.id = 'homeButton';
-        homeButton.href = '../html/index.html';
-        homeButton.className = 'ml-4 text-white bg-green-900 px-4 py-2 rounded';
-        homeButton.textContent = 'Home';
-        userSection.appendChild(homeButton);
-    }
-
-    if (username) {
-        if (!document.querySelector('#libraryButton')) {
-            const libraryButton = document.createElement('a');
-            libraryButton.id = 'libraryButton';
-            libraryButton.href = '../html/library.html';
-            libraryButton.className = 'ml-4 text-white bg-green-900 px-4 py-2 rounded';
-            libraryButton.textContent = 'Library';
-            userSection.appendChild(libraryButton);
-        }
-
-        if (!document.querySelector('#usernameSpan')) {
-            const usernameSpan = document.createElement('span');
-            usernameSpan.id = 'usernameSpan';
-            usernameSpan.className = 'ml-4 text-green-900 handwriting-font cursor-pointer';
-            usernameSpan.textContent = username;
-            usernameSpan.addEventListener('click', () => {
-                window.location.href = '../html/profile.html';
-            });
-            userSection.appendChild(usernameSpan);
-        }
-    } else {
-        if (!document.querySelector('#loginButton')) {
-            const loginButton = document.createElement('a');
-            loginButton.id = 'loginButton';
-            loginButton.href = '../html/login.html';
-            loginButton.className = 'text-white bg-green-900 px-4 py-2 rounded';
-            loginButton.textContent = 'Login';
-            userSection.appendChild(loginButton);
-        }
-        bookDetails.innerHTML = '<p>Please log in to see book details and manage your library.</p>';
-        return;
-    }
+    
 
     if (isbn) {
         try {
@@ -61,8 +20,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                             <img src="${book.imageLinks ? book.imageLinks.thumbnail : 'https://via.placeholder.com/128x192?text=No+Image'}" alt="${book.title}" class="w-64 h-96 object-cover mr-8 mb-8 md:mb-0">
                             <button id="addToLibraryButton" class="mt-4 px-4 py-2 bg-blue-500 text-white rounded w-64">Add to Library</button>
                             <button id="addToTop5Button" class="mt-4 px-4 py-2 bg-green-900 text-white rounded w-64">Add to Top 5</button>
-                            <button id="addToReadingListButton" class="mt-4 px-4 py-2 bg-blue-300 text-white rounded w-64">Add to Reading List</button>
-                            <button onclick="loadBook('${isbn}')" class="mt-4 px-4 py-2 bg-green-400 text-white rounded w-64">Preview</button>
+                            <button id="addToReadingListButton" class="mt-4 px-4 py-2 bg-blue-400 text-white rounded w-64">Add to Reading List</button>
+                            <button onclick="loadBook('${isbn}')" class="mt-4 px-4 py-2 bg-green-500 text-white rounded w-64">Preview</button>
 
                         </div>
                         <div>

@@ -22,9 +22,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             const top5Response = await fetch(`/api/library/top5/${username}`);
             const top5Data = await top5Response.json();
             const top5Grid = document.getElementById('top5Grid');
+            let filledSlots = 0;
+
             if (top5Data.success) {
                 const books = top5Data.top5;
-                const filledSlots = books.length;
+                filledSlots = books.length;
 
                 // Add existing books to top 5 grid
                 books.forEach(book => {
@@ -51,16 +53,28 @@ document.addEventListener('DOMContentLoaded', async () => {
                     emptyDiv.classList.add('relative', 'p-6', 'rounded-lg', 'shadow-lg', 'bg-gray-800', 'flex', 'items-center', 'justify-center');
                     emptyDiv.innerHTML = `
                         <div class="relative group w-full h-64 flex items-center justify-center">
-                            <span class="text-white text-2xl">Empty Slot</span>
+                            <span class="text-white text-2xl">Empty Book</span>
                         </div>
                     `;
                     top5Grid.appendChild(emptyDiv);
                 }
             } else {
                 console.error('Failed to fetch top 5 books:', top5Data.message);
+                // Add empty placeholders in case of an error
+                const top5Grid = document.getElementById('top5Grid');
+                for (let i = 0; i < 5; i++) {
+                    const emptyDiv = document.createElement('div');
+                    emptyDiv.classList.add('relative', 'p-6', 'rounded-lg', 'shadow-lg', 'bg-gray-800', 'flex', 'items-center', 'justify-center');
+                    emptyDiv.innerHTML = `
+                        <div class="relative group w-full h-64 flex items-center justify-center">
+                            <span class="text-white text-2xl">Empty Book</span>
+                        </div>
+                    `;
+                    top5Grid.appendChild(emptyDiv);
+                }
             }
         } catch (error) {
-            console.error('Error fetching top 5 books:', error);
+            console.error('Error fetching top 5 books:', error);            
         }
     } else {
         window.location.href = '../html/login.html';

@@ -46,7 +46,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     });
                 });
             } else {
-                libraryGrid.innerHTML = '<p>No books in your library.</p>';
+                addPlaceholderCards(libraryGrid, "Empty Book");
             }
         } catch (error) {
             console.error('Error fetching user library:', error);
@@ -83,7 +83,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     });
                 });
             } else {
-                readingListGrid.innerHTML = '<p>No books in your reading list.</p>';
+                addPlaceholderCards(readingListGrid, "Empty Book");
             }
         } catch (error) {
             console.error('Error fetching user reading list:', error);
@@ -149,6 +149,22 @@ document.addEventListener('DOMContentLoaded', async () => {
         updateSliderBackground(ratingInput, currentRating);
     });
 });
+
+function addPlaceholderCards(container, message) {
+
+        const placeholderDiv = document.createElement('div');
+        placeholderDiv.classList.add('relative', 'p-6', 'rounded-lg', 'shadow-lg', 'bg-gray-800', 'flex', 'items-center', 'justify-center');
+        placeholderDiv.innerHTML = `
+            <div class="relative group w-full h-64 flex items-center justify-center">
+                <span class="text-white text-xl">${message}</span>
+                <span style="position: absolute; right: -100px; top: 85%; transform: translateY(-50%); font-size: 8rem; color: white;">...</span>
+
+            </div>
+        `;
+        container.appendChild(placeholderDiv);
+        
+
+}
 
 // Function to show the review popup
 async function showReviewPopup(bookIsbn, bookTitle) {
