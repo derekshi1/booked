@@ -26,7 +26,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     bookDiv.innerHTML = `
                         <div class="relative group library-card" style="border: 4px solid ${getGradientColor(book.rating)};">
                             <a href="../html/book.html?isbn=${book.isbn}" class="block relative overflow-hidden rounded-lg shadow-lg hover:shadow-2xl transition duration-300 ease-in-out group">
-                                <img src="${book.thumbnail}" alt="${book.title}" class="w-full h-64 object-cover rounded-t-lg">
+                                <img src="${book.thumbnail}" alt="${book.title}" class="w-full h-full object-cover rounded-t-lg">
                                 <div class="absolute bottom-0 left-0 w-full p-4 bg-black bg-opacity-60 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-in-out">
                                     <h2 class="text-lg font-bold">${book.title}</h2>
                                     <p class="text-gray-300">by ${book.authors}</p>
@@ -122,6 +122,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             modal.style.display = 'none';
         } );
     } else {
+        addPlaceholderCards(libraryGrid, "Empty Book");
+        addPlaceholderCards(readingListGrid, "Empty Book");
+
         if (!document.querySelector('#loginButton')) {
             const loginButton = document.createElement('a');
             loginButton.id = 'loginButton';
@@ -154,9 +157,11 @@ function addPlaceholderCards(container, message) {
 
         const placeholderDiv = document.createElement('div');
         placeholderDiv.classList.add('relative', 'p-6', 'rounded-lg', 'shadow-lg', 'bg-gray-800', 'flex', 'items-center', 'justify-center');
+        placeholderDiv.style.width = '200px';  // Adjust the width as needed
+        placeholderDiv.style.height = '300px';
         placeholderDiv.innerHTML = `
             <div class="relative group w-full h-64 flex items-center justify-center">
-                <span class="text-white text-xl">${message}</span>
+                <span class="text-white text-xl flex items-center justify-center w-full h-full">${message.replace(/\n/g, '<br>')}</span>
                 <span style="position: absolute; right: -100px; top: 85%; transform: translateY(-50%); font-size: 8rem; color: white;">...</span>
 
             </div>
@@ -212,7 +217,12 @@ function getGradientColor(value) {
     const darkPastelRed = [102, 0, 0]; // RGB for dark pastel red
 
     let r, g, b;
-    
+    /* add in case i want default border to be white if no rating
+    if (value === undefined || value === null) {
+        // Default to white if there is no rating
+        return `rgb(255, 255, 255)`;
+    }
+    */
     if (value <= 50) {
         // Interpolate between red and yellow
         const factor = value / 50;

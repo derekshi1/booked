@@ -253,7 +253,8 @@ body {
 
 .recommendation-card {
     flex: 1 0 auto; /* Allow the cards to grow and shrink but maintain their width */
-    min-width: 150px; /* Minimum width for each card */
+    width: 200px; /* Minimum width for each card */
+    height: 275px;
     padding: 0.5rem; /* Add padding to maintain some spacing inside the card */
     background-color: #2D2D2D; /* Background color for better visibility */
     border-radius: 8px; /* Rounded corners */
@@ -266,10 +267,8 @@ body {
     flex-direction: column; /* Align items in a column */
 }
 .recommendation-card img {
-    width: auto;
-    height: auto;
-    max-width: 100%; /* Ensure image doesn't overflow */
-    max-height: 100%; /* Ensure image doesn't overflow */
+    width:180px; /* Make sure the image covers the entire card */
+    height:255px;
     border-radius: 4px; /* Rounded corners for images */
 }
 
@@ -285,9 +284,9 @@ body {
 
 .library-container {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(185px, 1fr));
     overflow-x: auto;
-    gap: 1rem;
+    gap: 0.5rem;
     padding: 1rem 0;
 }
 
@@ -298,6 +297,12 @@ body {
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2); /* Subtle shadow for depth */
     color: #FFFFFF; /* Text color for better contrast */
     text-align: center; /* Center text */
+}
+.library-card img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 4px;
 }
 
 /* Arrow button styles */
@@ -506,8 +511,8 @@ input[type=range]::-moz-range-thumb {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 30px;
-    height: 30px;
+    width: 25px;
+    height: 25px;
     margin-top: -18px; /* Adjust this value to move the sparkle up or down */
 }
 
@@ -517,7 +522,8 @@ input[type=range]::-moz-range-thumb {
     height: 28px;
     background: radial-gradient(circle, white 0%, white 40%, transparent 40%);
     border-radius: 50%;
-    animation: sparkle-animation 1s infinite;
+    border:  1px solid transparent;
+    animation: sparkle-animation 1s infinite, change-color 1s infinite;
 }
 
 .sparkle::before,
@@ -527,15 +533,21 @@ input[type=range]::-moz-range-thumb {
     width: 100%;
     height: 100%;
     background: radial-gradient(circle, white 0%, white 40%, transparent 40%);
-    border-radius: 70%;
+    border-radius: 50%;
+    border: 1px solid transparent;
+    animation: change-color 1.5s infinite;
 }
 
 .sparkle::before {
     transform: rotate(30deg);
+    top: 0;
+    left: 0;
 }
 
 .sparkle::after {
     transform: rotate(-45deg);
+    top: 0;
+    left: 0;
 }
 
 @keyframes sparkle-animation {
@@ -545,4 +557,35 @@ input[type=range]::-moz-range-thumb {
     50% {
         transform: scale(1.5);
     }
+}
+@keyframes change-color {
+    0% {
+        border-color: #e47575; /* Red */
+    }
+    25% {
+        border-color: #7dd37d; /* Green */
+    }
+    50% {
+        border-color: #6d6deb; /* Blue */
+    }
+    75% {
+        border-color: #eeee80; /* Yellow */
+    }
+    100% {
+        border-color: #f19ef1; /* Magenta */
+    }
+}.nyt-card {
+    flex: 1 0 auto; /* Allow the cards to grow and shrink but maintain their width */
+    width:  180px;
+    height: 255px;
+    padding: 0.5rem; /* Add padding to maintain some spacing inside the card */
+    background-color: #2D2D2D; /* Background color for better visibility */
+    border-radius: 8px; /* Rounded corners */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2); /* Subtle shadow for depth */
+    color: #FFFFFF; /* Text color for better contrast */
+    text-align: center; /* Center text */
+    display: flex; /* Use Flexbox */
+    align-items: center; /* Center vertically */
+    justify-content: center; /* Center horizontally */
+    flex-direction: column; /* Align items in a column */
 }

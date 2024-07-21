@@ -30,6 +30,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const closeIcon = document.querySelector('.close-icon');
     if (searchInput) {
         searchInput.addEventListener('input', handleInput);
+        searchInput.addEventListener('blur', collapseSearch);
+        searchInput.addEventListener('keydown', handleSearch);
     } else {
         console.error("Search input element not found");
     }
@@ -38,17 +40,17 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
         console.error("Close icon element not found");
     }
-});
 
-async function handleInput(event) {
-    const query = event.target.value;
-    if (query.length > 2) {
-        const suggestions = await fetchSuggestions(query);
-        displaySuggestions(suggestions);
-    } else {
-        clearSuggestions();
+
+    async function handleInput(event) {
+        const query = event.target.value;
+        if (query.length > 2) {
+            const suggestions = await fetchSuggestions(query);
+            displaySuggestions(suggestions);
+        } else {
+            clearSuggestions();
+        }
     }
-}
 
 async function fetchSuggestions(query) {
     const response = await fetch(`https://www.googleapis.com/books/v1/volumes?q=intitle:${query}`);
@@ -77,6 +79,7 @@ function displaySuggestions(suggestions) {
                             <img src="${suggestion.thumbnail}" alt="${suggestion.title}" class="w-8 h-12 mr-2 rounded">
                             <span>${suggestion.title} by ${suggestion.authors}</span>
                         </a>
+
                     </div>
                 `;
                 suggestionsBox.appendChild(suggestionItem);
@@ -86,6 +89,9 @@ function displaySuggestions(suggestions) {
             showAllLink.classList.add('suggestion-item', 'flex', 'items-center', 'justify-center', 'cursor-pointer', 'hover:bg-gray-200', 'p-2');
             showAllLink.innerHTML = `<span>Show all results for "${document.getElementById('titleInput').value}"</span>`;
             showAllLink.addEventListener('click', () => {
+                e.stopPropagation();
+                e.preventDefault();
+                console.log('Show all results clicked'); // Debug log
                 searchBookByTitle();
                 clearSuggestions(); // Hide the suggestions box when 'Show all results' is clicked
             });
@@ -97,17 +103,7 @@ function displaySuggestions(suggestions) {
         console.error('Suggestions box not found');
     }
 }
-
-function clearSuggestions() {
-    const suggestionsBox = document.getElementById('suggestionsBox');
-    if (suggestionsBox) {
-        suggestionsBox.innerHTML = '';
-        suggestionsBox.style.display = 'none'; // Hide the suggestions box
-    } else {
-        console.error("Suggestions box element not found");
-    }
-}
-
+});
 function expandSearch() {
     const searchInput = document.getElementById('titleInput');
     const closeIcon = document.querySelector('.close-icon');
@@ -115,29 +111,10 @@ function expandSearch() {
     closeIcon.classList.add('visible');
     searchInput.focus();
 }
-
-function collapseSearch() {
-    const searchInput = document.getElementById('titleInput');
-    const closeIcon = document.querySelector('.close-icon');
-    searchInput.classList.remove('expanded');
-    closeIcon.classList.remove('visible');
-    searchInput.value = '';  // Clear the input field
-    clearSuggestions(); // Hide the suggestions box
+function closeModal() {
+    document.getElementById('myModal').classList.add('hidden');
+    document.getElementById('myModal').classList.remove('flex');
 }
-
-function handleSearch(event) {
-    if (event.key === 'Enter') {
-        searchBookByTitle();
-        event.preventDefault();
-    }
-}
-
-function searchBookByTitle() {
-    const title = document.getElementById('titleInput').value;
-    window.location.href = `searched.html?query=${title}`;
-}
-
-// Modal handling
 function loadBook(isbn) {
     if (isbn) {
         initialize(isbn);
@@ -147,10 +124,23 @@ function loadBook(isbn) {
         alert('ISBN not found.');
     }
 }
-
-function closeModal() {
-    document.getElementById('myModal').classList.add('hidden');
-    document.getElementById('myModal').classList.remove('flex');
+function handleSearch(event) {
+    if (event.key === 'Enter') {
+        searchBookByTitle();
+        event.preventDefault();
+    }
+}
+function collapseSearch() {
+    const searchInput = document.getElementById('titleInput');
+    const closeIcon = document.querySelector('.close-icon');
+    searchInput.classList.remove('expanded');
+    closeIcon.classList.remove('visible');
+    searchInput.value = '';  // Clear the input field
+    clearSuggestions(); // Hide the suggestions box
+}
+function searchBookByTitle() {
+    const title = document.getElementById('titleInput').value;
+    window.location.href = `searched.html?query=${title}`;
 }
 
 window.onclick = function(event) {
@@ -158,5 +148,15 @@ window.onclick = function(event) {
     if (event.target == modal) {
         modal.classList.add('hidden');
         modal.classList.remove('flex');
+    }
+}
+
+function clearSuggestions() {
+    const suggestionsBox = document.getElementById('suggestionsBox');
+    if (suggestionsBox) {
+        suggestionsBox.innerHTML = '';
+        suggestionsBox.style.display = 'none'; // Hide the suggestions box
+    } else {
+        console.error("Suggestions box element not found");
     }
 }

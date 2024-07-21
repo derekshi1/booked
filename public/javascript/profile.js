@@ -32,6 +32,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 books.forEach(book => {
                     const bookDiv = document.createElement('div');
                     bookDiv.classList.add('relative', 'p-6', 'rounded-lg', 'shadow-lg', 'cursor-pointer', 'hover:shadow-2xl', 'transition', 'duration-300', 'ease-in-out', 'bg-gray-800');
+                    bookDiv.style.width = '200px';  // Set the desired width for the book card
+                    bookDiv.style.height = '300px';
                     bookDiv.innerHTML = `
                         <div class="relative group">
                             <a href="../html/book.html?isbn=${book.isbn}" class="block relative overflow-hidden rounded-lg shadow-lg hover:shadow-2xl transition duration-300 ease-in-out group">
