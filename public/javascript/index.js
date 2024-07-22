@@ -83,9 +83,9 @@ document.addEventListener('DOMContentLoaded', () => {
             recommendationsContainer.appendChild(placeholderElement);
         }
     };
-
     if (username) {
-        const savedRecommendations = localStorage.getItem(`recommendations_${username}`);
+        const savedRecommendationsKey = `recommendations_${username}`;
+        const savedRecommendations = localStorage.getItem(savedRecommendationsKey);
         if (savedRecommendations) {
             const parsedRecommendations = JSON.parse(savedRecommendations);
             if (parsedRecommendations && parsedRecommendations.length > 0) {
@@ -115,7 +115,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
                 if (data.success && data.recommendations.length > 0) {
                     // Save recommendations to localStorage
-                    localStorage.setItem('recommendations', JSON.stringify(data.recommendations));
+                    localStorage.setItem(savedRecommendationsKey, JSON.stringify(data.recommendations));
                     // Render recommendations
                     renderRecommendations(data.recommendations);
                 } else {

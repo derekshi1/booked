@@ -35,9 +35,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                     bookDiv.style.width = '200px';  // Set the desired width for the book card
                     bookDiv.style.height = '300px';
                     bookDiv.innerHTML = `
-                        <div class="relative group">
-                            <a href="../html/book.html?isbn=${book.isbn}" class="block relative overflow-hidden rounded-lg shadow-lg hover:shadow-2xl transition duration-300 ease-in-out group">
-                                <img src="${book.thumbnail}" alt="${book.title}" class="w-full h-64 object-cover rounded-t-lg">
+                        <div class="relative group h-full">
+                            <a href="../html/book.html?isbn=${book.isbn}" class="block relative overflow-hidden rounded-lg shadow-lg hover:shadow-2xl transition duration-300 ease-in-out group h-full">
+                                <img src="${book.thumbnail}" alt="${book.title}" class="w-full h-full object-cover rounded-t-lg">
                                 <div class="absolute bottom-0 left-0 w-full p-4 bg-black bg-opacity-60 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-in-out">
                                     <h2 class="text-lg font-bold">${book.title}</h2>
                                     <p class="text-gray-300">by ${book.authors}</p>
@@ -52,6 +52,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 // Add empty placeholders for remaining slots
                 for (let i = filledSlots; i < 5; i++) {
                     const emptyDiv = document.createElement('div');
+                    emptyDiv.style.width = '200px';
+                    emptyDiv.style.height = '300px';
                     emptyDiv.classList.add('relative', 'p-6', 'rounded-lg', 'shadow-lg', 'bg-gray-800', 'flex', 'items-center', 'justify-center');
                     emptyDiv.innerHTML = `
                         <div class="relative group w-full h-64 flex items-center justify-center">
@@ -66,6 +68,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const top5Grid = document.getElementById('top5Grid');
                 for (let i = 0; i < 5; i++) {
                     const emptyDiv = document.createElement('div');
+                    emptyDiv.style.width = '200px';
+                    emptyDiv.style.height = '300px';
                     emptyDiv.classList.add('relative', 'p-6', 'rounded-lg', 'shadow-lg', 'bg-gray-800', 'flex', 'items-center', 'justify-center');
                     emptyDiv.innerHTML = `
                         <div class="relative group w-full h-64 flex items-center justify-center">
