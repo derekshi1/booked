@@ -122,3 +122,6 @@ Thumbs.db
 # SvelteKit build
 .svelte-kit/
 build/
+# Dependency lockfiles
+package-lock.json
+node_modules/**/package-lock.json
