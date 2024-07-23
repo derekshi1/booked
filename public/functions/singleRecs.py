@@ -113,7 +113,7 @@ def find_books_by_genres(genres, max_results=500):
                 genre_list.remove(genre)
     return books[:max_results]
 
-def find_best_matches(book, total_recommendations=10):
+def find_best_matches(book, total_recommendations=7):
     recommendations_per_book = total_recommendations
     extra_recommendations = 0
 

@@ -16,6 +16,7 @@
     "express": "^4.19.2",
     "jsonwebtoken": "^9.0.2",
     "mongoos": "^0.0.1-security",
-    "mongoose": "^8.4.4"
+    "mongoose": "^8.4.4",
+    "node-fetch": "^3.3.2"
   }
 }
