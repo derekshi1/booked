@@ -306,6 +306,43 @@ app.get('/api/recommendations/:username', async (req, res) => {
   }
 });
 
+
+app.get('/api/book-recommendations', async (req, res) => {
+  const isbn = req.query.isbn; // Get the isbn from the query string
+  if (!isbn) {
+    return res.status(400).json({ success: false, message: 'ISBN is required' });
+  }
+
+  try {
+    const pythonProcess = spawn('python3', ['public/functions/singleRecs.py', isbn]);
+
+    let recommendations = '';
+    pythonProcess.stdout.on('data', (data) => {
+      recommendations += data.toString();
+    });
+
+    pythonProcess.stderr.on('data', (data) => {
+      console.error(`stderr: ${data}`);
+    });
+
+    pythonProcess.on('close', (code) => {
+      if (code !== 0) {
+        console.error(`Python process exited with code ${code}`);
+        return res.status(500).json({ success: false, message: 'Error generating recommendations' });
+      }
+      try {
+        const recommendationsJSON = JSON.parse(recommendations);
+        res.status(200).json({ success: true, recommendations: recommendationsJSON });
+      } catch (error) {
+        console.error('Error parsing recommendations:', error);
+        res.status(500).json({ success: false, message: 'Error parsing recommendations' });
+      }
+    });
+  } catch (error) {
+    console.error('Error during recommendations generation:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
 // Add book to user's top 5
 app.post('/api/library/top5/add', async (req, res) => {
   const { username, isbn, title, authors, description, thumbnail, categories, pageCount } = req.body;

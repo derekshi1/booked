@@ -5,10 +5,48 @@ document.addEventListener('DOMContentLoaded', async () => {
     const username = localStorage.getItem('username');
     const userSection = document.getElementById('userSection');
 
+    const createSparkles = () => {
+        const sparkleContainer = document.getElementById('sparkleContainer');
+        sparkleContainer.innerHTML = '';
+
+        for (let i = 0; i < 9; i++) {
+            const sparkle = document.createElement('div');
+            const size = Math.random() * 10 + 8; // Random size between 10px and 20px
+            const animationDuration = Math.random() * 1 + 0.5; // Random duration between 0.5s and 1.5s
+    
+            sparkle.className = 'sparkle';
+            sparkle.style.width = `${size}px`;
+            sparkle.style.height = `${size}px`;
+            sparkle.style.top = `${Math.random() * 100}%`; // Random vertical position
+            sparkle.style.left = `${Math.random() * 100}%`; // Random horizontal position
+            sparkle.style.animationDuration = `${animationDuration}s`;
+    
+            sparkleContainer.appendChild(sparkle);
+        }
+    };
+    
+    // Function to show sparkles
+    const showSparkles = () => {
+        const sparkleContainer = document.getElementById('sparkleContainer');
+        if (sparkleContainer) {
+            sparkleContainer.style.display = 'flex';
+            createSparkles();
+        }
+    };
+
+    const hideSparkles = () => {
+        const sparkleContainer = document.getElementById('sparkleContainer');
+        if (sparkleContainer) {
+            sparkleContainer.style.display = 'none';
+            sparkleContainer.innerHTML = '';
+        }
+    };
+    
     
 
     if (isbn) {
         try {
+            showSparkles();
             const response = await fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}`);
             const data = await response.json();
             if (data.totalItems > 0) {
@@ -35,23 +73,62 @@ document.addEventListener('DOMContentLoaded', async () => {
                             <p class="text-xl mb-4">${book.description ? book.description : 'No description available'}</p>
                         </div>
                     </div>
+                    <div id="recommendations" class="mt-8">
+                        <div class="flex items-center mb-4">
+                            <h2 class="text-3xl font-bold">Similar Books</h2>
+                            <div id="sparkleContainer" class="ml-4 sparkle-container"></div>
+                        </div>
+                        <div id="recommendationsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"></div>
+                    </div>
                 `;
+
 
                 document.getElementById('addToLibraryButton').addEventListener('click', () => addToLibrary(isbn));
                 document.getElementById('addToTop5Button').addEventListener('click', () => addToTop5(isbn));
                 document.getElementById('addToReadingListButton').addEventListener('click', () => addToReadingList(isbn));
-
+                fetchRecommendations(isbn);
             } else {
                 bookDetails.innerHTML = '<p>Book not found.</p>';
             }
         } catch (error) {
-            console.error('Error fetching book details:', error);
-            bookDetails.innerHTML = '<p>Error loading book details.</p>';
+            hideSparkles();
+
         }
+        finally{
+            hideSparkles();        }
     } else {
         bookDetails.innerHTML = '<p>ISBN not provided.</p>';
     }
 });
+
+async function fetchRecommendations(isbn) {
+    try {
+        const response = await fetch(`/api/book-recommendations?isbn=${encodeURIComponent(isbn)}`);
+        const data = await response.json();
+
+        if (data.success) {
+            const recommendationsContainer = document.getElementById('recommendationsContainer');
+            recommendationsContainer.innerHTML = ''; // Clear previous recommendations if any
+            data.recommendations.forEach(book => {
+                const bookElement = document.createElement('div');
+                bookElement.classList.add('bg-white', 'rounded', 'shadow-lg', 'p-4');
+                bookElement.innerHTML = `
+                    <img src="${book.thumbnail}" alt="${book.title}" class="w-full h-64 object-cover mb-4">
+                    <h3 class="text-2xl font-bold mb-2">${book.title}</h3>
+                    <p class="text-xl mb-2">by ${book.authors.join(', ')}</p>
+                    <p class="text-md mb-4"><strong>Categories:</strong> ${book.categories.join(', ')}</p>
+                    <p class="text-md mb-4">${book.description ? book.description.substring(0, 100) + '...' : 'No description available'}</p>
+                `;
+                recommendationsContainer.appendChild(bookElement);
+            });
+        } else {
+            console.error('Error fetching recommendations:', data.message);
+        }
+    } catch (error) {
+        console.error('Error fetching recommendations:', error);
+    }
+}
+
 // Modal handling
 function loadBook(isbn) {
     if (isbn) {
@@ -234,3 +311,4 @@ function addToLibrary(isbn) {
             alert('Error fetching book data.');
         });
 }
+

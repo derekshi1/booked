@@ -121,6 +121,9 @@ def find_books_by_genres(genres, max_results=500):
 
 
 def find_best_matches(library, total_recommendations=25):
+   if len(library) == 1:
+        total_recommendations = 10
+        
    recommendations_per_book = total_recommendations // len(library)
    extra_recommendations = total_recommendations % len(library)
 
