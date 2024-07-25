@@ -1,6 +1,31 @@
 document.addEventListener('DOMContentLoaded', () => {
     const username = localStorage.getItem('username');
+    const logoAndHomeContainer = document.getElementById('logoAndHome');
     const userSection = document.getElementById('userSection');
+
+    // Create logo and home link elements
+    const logo = document.createElement('img');
+    logo.src = '../logo.jpg';
+    logo.alt = 'Booked Logo';
+    logo.classList.add('w-50', 'h-20', 'mr-4');
+
+    const homeLink = document.createElement('a');
+    homeLink.href = '../html/index.html';
+    homeLink.classList.add('ml-4', 'bg-green-900', 'text-white', 'px-4', 'py-2', 'rounded', 'mr-8'); // Added 'mr-8' for spacing
+    homeLink.textContent = 'Home';
+
+    // Create lists link element
+    const listsLink = document.createElement('a');
+    listsLink.href = '../html/lists.html';
+    listsLink.classList.add('ml-4', 'bg-green-900', 'text-white', 'px-4', 'py-2', 'rounded');
+    listsLink.textContent = 'Lists';
+
+    // Append logo and home link to the container
+    logoAndHomeContainer.appendChild(logo);
+    logoAndHomeContainer.appendChild(homeLink);
+    logoAndHomeContainer.appendChild(listsLink);
+
+
 
     userSection.innerHTML = `
         <div class="search-container relative">
