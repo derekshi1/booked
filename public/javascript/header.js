@@ -78,7 +78,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
 async function fetchSuggestions(query) {
-    const response = await fetch(`https://www.googleapis.com/books/v1/volumes?q=intitle:${query}`);
+    const apiKey = 'AIzaSyCFDaqjpgA8K_NqqCw93xorS3zumc_52u8'
+    const response = await fetch(`https://www.googleapis.com/books/v1/volumes?q=intitle:${query}&key=${apiKey}`);
     const data = await response.json();
     return data.items.map(item => ({
         title: item.volumeInfo.title,

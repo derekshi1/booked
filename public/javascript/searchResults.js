@@ -27,7 +27,9 @@ observer.observe(document.body, {
 });
 
 function fetchBooks(query) {
-    var apiUrl = `https://www.googleapis.com/books/v1/volumes?q=intitle:${query}`;
+    apiKey = 'AIzaSyCFDaqjpgA8K_NqqCw93xorS3zumc_52u8'
+
+    var apiUrl = `https://www.googleapis.com/books/v1/volumes?q=intitle:${query}&key=${apiKey}`;
 
     fetch(apiUrl)
         .then(response => response.json())

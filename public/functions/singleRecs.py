@@ -3,18 +3,21 @@ import json
 import requests
 from sentence_transformers import SentenceTransformer, util
 import random
+import time
 
 
 # Define the Google Books API URL
 GOOGLE_BOOKS_API_URL = "https://www.googleapis.com/books/v1/volumes"
-
+API_KEY = 'AIzaSyCFDaqjpgA8K_NqqCw93xorS3zumc_52u8'
 # Load the pre-trained sentence transformer model
 model = SentenceTransformer('paraphrase-MiniLM-L6-v2')
 
 def get_book_info(isbn):
     params = {
         'q': f'isbn:{isbn}',
-        'maxResults': 1
+        'maxResults': 1,
+        'key': API_KEY
+
     }
     response = requests.get(GOOGLE_BOOKS_API_URL, params=params)
     if response.status_code == 200:
@@ -78,7 +81,8 @@ def find_books_by_genres(genres, max_results=500):
             params = {
                 'q': f'subject:{genre}',
                 'maxResults': random.randint(10, 30),
-                'startIndex': start_indices[genre]
+                'startIndex': start_indices[genre],
+                'key': API_KEY  # Ensure the API key is included in the request
             }
             response = requests.get(GOOGLE_BOOKS_API_URL, params=params)
             
@@ -102,17 +106,47 @@ def find_books_by_genres(genres, max_results=500):
                             'description': volume_info.get('description', ''),
                             'pageCount': volume_info.get('pageCount', 0),
                             'thumbnail': volume_info.get('imageLinks', {}).get('thumbnail', 'https://via.placeholder.com/150'),
-                            'isbn' : [identifier['identifier'] for identifier in volume_info.get('industryIdentifiers', [])],
-                            'score' : 0,
-                            'related_to' : ''
+                            'isbn': [identifier['identifier'] for identifier in volume_info.get('industryIdentifiers', [])],
+                            'score': 0,
+                            'related_to': ''
                         })
                     start_indices[genre] += random.randint(20, 40)
+                else:
+                    genre_list.remove(genre)
+            elif response.status_code == 429:
+                # Implementing exponential backoff
+                backoff_time = 1  # Start with 1 second
+                while response.status_code == 429:
+                    print(f"Rate limit hit for genre: {genre}, backing off for {backoff_time} seconds", file=sys.stderr)
+                    time.sleep(backoff_time)
+                    backoff_time *= 2  # Exponentially increase the backoff time
+                    response = requests.get(GOOGLE_BOOKS_API_URL, params=params)
+                    print(f"Retrying genre: {genre}, Response status: {response.status_code}, URL: {response.url}", file=sys.stderr)
+                if response.status_code == 200:
+                    data = response.json()
+                    if 'items' in data:
+                        for item in data['items']:
+                            volume_info = item.get('volumeInfo')
+                            books.append({
+                                'title': volume_info.get('title'),
+                                'authors': volume_info.get('authors', []),
+                                'categories': volume_info.get('categories', []),
+                                'publishedDate': volume_info.get('publishedDate', ''),
+                                'description': volume_info.get('description', ''),
+                                'pageCount': volume_info.get('pageCount', 0),
+                                'thumbnail': volume_info.get('imageLinks', {}).get('thumbnail', 'https://via.placeholder.com/150'),
+                                'isbn': [identifier['identifier'] for identifier in volume_info.get('industryIdentifiers', [])],
+                                'score': 0,
+                                'related_to': ''
+                            })
+                        start_indices[genre] += random.randint(20, 40)
+                    else:
+                        genre_list.remove(genre)
                 else:
                     genre_list.remove(genre)
             else:
                 genre_list.remove(genre)
     return books[:max_results]
-
 def find_best_matches(book, total_recommendations=7):
     recommendations_per_book = total_recommendations
     extra_recommendations = 0

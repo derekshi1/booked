@@ -8,6 +8,7 @@ from sentence_transformers import SentenceTransformer, util
 
 # Define the Google Books API URL
 GOOGLE_BOOKS_API_URL = "https://www.googleapis.com/books/v1/volumes"
+API_KEY = 'AIzaSyCFDaqjpgA8K_NqqCw93xorS3zumc_52u8'
 
 
 # Load the pre-trained sentence transformer model
@@ -17,7 +18,9 @@ model = SentenceTransformer('paraphrase-MiniLM-L6-v2')
 def get_book_info(query):
    params = {
        'q': query,
-       'maxResults': 1
+       'maxResults': 1,
+        'key': API_KEY
+
    }
    response = requests.get(GOOGLE_BOOKS_API_URL, params=params)
    if response.status_code == 200:
@@ -68,56 +71,90 @@ def calculate_initial_compatibility(book1, book2):
    return compatibility_score * 100
 
 
+import time
+
 def find_books_by_genres(genres, max_results=500):
-   books = []
-   genre_list = list(genres)
-   random.shuffle(genre_list)
-   start_indices = {genre: random.randint(0, 100) for genre in genre_list}
-  
-   # Log the genres being queried
-   print(f"Genres being queried: {genre_list}", file=sys.stderr)
-  
-   while len(books) < max_results and genre_list:
-       for genre in genre_list:
-           if len(books) >= max_results:
-               break
-           params = {
-               'q': f'subject:{genre}',
-               'maxResults': random.randint(10, 30),
-               'startIndex': start_indices[genre]
-           }
-           response = requests.get(GOOGLE_BOOKS_API_URL, params=params)
-          
-           # Log the API response status and URL
-           print(f"Querying genre: {genre}, Response status: {response.status_code}, URL: {response.url}", file=sys.stderr)
-          
-           if response.status_code == 200:
-               data = response.json()
-              
-               # Log the number of items found
-               print(f"Items found for genre {genre}: {len(data.get('items', []))}", file=sys.stderr)
-              
-               if 'items' in data:
-                   for item in data['items']:
-                       volume_info = item.get('volumeInfo')
-                       books.append({
-                           'title': volume_info.get('title'),
-                           'authors': volume_info.get('authors', []),
-                           'categories': volume_info.get('categories', []),
-                           'publishedDate': volume_info.get('publishedDate', ''),
-                           'description': volume_info.get('description', ''),
-                           'pageCount': volume_info.get('pageCount', 0),
-                           'thumbnail': volume_info.get('imageLinks', {}).get('thumbnail', 'https://via.placeholder.com/150'),
-                           'isbn' : [identifier['identifier'] for identifier in volume_info.get('industryIdentifiers', [])],
-                           'score' : 0,
-                           'related_to' : ''
-                       })
-                   start_indices[genre] += random.randint(20, 40)
-               else:
-                   genre_list.remove(genre)
-           else:
-               genre_list.remove(genre)
-   return books[:max_results]
+    books = []
+    genre_list = list(genres)
+    random.shuffle(genre_list)
+    start_indices = {genre: random.randint(0, 100) for genre in genre_list}
+    
+    # Log the genres being queried
+    print(f"Genres being queried: {genre_list}", file=sys.stderr)
+    
+    while len(books) < max_results and genre_list:
+        for genre in genre_list:
+            if len(books) >= max_results:
+                break
+            params = {
+                'q': f'subject:{genre}',
+                'maxResults': random.randint(10, 30),
+                'startIndex': start_indices[genre],
+                'key': API_KEY
+            }
+            response = requests.get(GOOGLE_BOOKS_API_URL, params=params)
+            
+            # Log the API response status and URL
+            print(f"Querying genre: {genre}, Response status: {response.status_code}, URL: {response.url}", file=sys.stderr)
+            
+            if response.status_code == 200:
+                data = response.json()
+                
+                # Log the number of items found
+                print(f"Items found for genre {genre}: {len(data.get('items', []))}", file=sys.stderr)
+                
+                if 'items' in data:
+                    for item in data['items']:
+                        volume_info = item.get('volumeInfo')
+                        books.append({
+                            'title': volume_info.get('title'),
+                            'authors': volume_info.get('authors', []),
+                            'categories': volume_info.get('categories', []),
+                            'publishedDate': volume_info.get('publishedDate', ''),
+                            'description': volume_info.get('description', ''),
+                            'pageCount': volume_info.get('pageCount', 0),
+                            'thumbnail': volume_info.get('imageLinks', {}).get('thumbnail', 'https://via.placeholder.com/150'),
+                            'isbn': [identifier['identifier'] for identifier in volume_info.get('industryIdentifiers', [])],
+                            'score': 0,
+                            'related_to': ''
+                        })
+                    start_indices[genre] += random.randint(20, 40)
+                else:
+                    genre_list.remove(genre)
+            elif response.status_code == 429:
+                # Implementing exponential backoff
+                backoff_time = 1  # Start with 1 second
+                while response.status_code == 429:
+                    print(f"Rate limit hit for genre: {genre}, backing off for {backoff_time} seconds", file=sys.stderr)
+                    time.sleep(backoff_time)
+                    backoff_time *= 2  # Exponentially increase the backoff time
+                    response = requests.get(GOOGLE_BOOKS_API_URL, params=params)
+                    print(f"Retrying genre: {genre}, Response status: {response.status_code}, URL: {response.url}", file=sys.stderr)
+                if response.status_code == 200:
+                    data = response.json()
+                    if 'items' in data:
+                        for item in data['items']:
+                            volume_info = item.get('volumeInfo')
+                            books.append({
+                                'title': volume_info.get('title'),
+                                'authors': volume_info.get('authors', []),
+                                'categories': volume_info.get('categories', []),
+                                'publishedDate': volume_info.get('publishedDate', ''),
+                                'description': volume_info.get('description', ''),
+                                'pageCount': volume_info.get('pageCount', 0),
+                                'thumbnail': volume_info.get('imageLinks', {}).get('thumbnail', 'https://via.placeholder.com/150'),
+                                'isbn': [identifier['identifier'] for identifier in volume_info.get('industryIdentifiers', [])],
+                                'score': 0,
+                                'related_to': ''
+                            })
+                        start_indices[genre] += random.randint(20, 40)
+                    else:
+                        genre_list.remove(genre)
+                else:
+                    genre_list.remove(genre)
+            else:
+                genre_list.remove(genre)
+    return books[:max_results]
 
 
 def find_best_matches(library, total_recommendations=25):
