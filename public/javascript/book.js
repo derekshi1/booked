@@ -4,8 +4,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const bookDetails = document.getElementById('bookDetails');
     const username = localStorage.getItem('username');
     const userSection = document.getElementById('userSection');
-    const scrollLeftButton = document.getElementById('scrollLeft');
-    const scrollRightButton = document.getElementById('scrollRight');
     const recommendationsContainer = document.getElementById('recommendationsContainer');
     const apiKey = 'AIzaSyCFDaqjpgA8K_NqqCw93xorS3zumc_52u8'
     const createSparkles = () => {
@@ -50,8 +48,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (isbn) {
         try {
             showSparkles();
+            console.log(`Fetching data for ISBN: ${isbn}`);  // Logging ISBN
             const response = await fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}&key=${apiKey}`);
             const data = await response.json();
+            console.log(`API response: `, data);  // Logging API response
             if (data.totalItems > 0) {
                 const book = data.items[0].volumeInfo;
 
@@ -63,7 +63,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                             <button id="addToTop5Button" class="mt-4 px-4 py-2 bg-green-900 text-white rounded w-64">Add to Top 5</button>
                             <button id="addToReadingListButton" class="mt-4 px-4 py-2 bg-blue-400 text-white rounded w-64">Add to Reading List</button>
                             <button onclick="loadBook('${isbn}')" class="mt-4 px-4 py-2 bg-green-500 text-white rounded w-64">Preview</button>
-
                         </div>
                         <div>
                             <h1 class="text-4xl font-bold mb-4">${book.title}</h1>
@@ -81,8 +80,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                             <h2 class="text-3xl font-bold">Similar Books</h2>
                             <div id="sparkleContainer" class="ml-4 sparkle-container"></div>
                         </div>
-                        <div class="recommendations-wrapper relative w-full mt-8">
-                            <div id="recommendationsContainer" class="recommendations-container"></div>
+                        <div class="single-recommendations-wrapper relative w-full mt-8 overflow-hidden">
+                            <div id="recommendationsContainer" class="single-recommendations-container">
+                                <!-- Recommendations will be dynamically inserted here -->
+                            </div>
                             <div class="arrow-hover-region left"></div>
                             <div class="arrow-hover-region right"></div>
                             <button class="arrow arrow-left" id="scrollLeft"><i class="fas fa-chevron-left"></i></button>
@@ -116,20 +117,7 @@ async function fetchRecommendations(isbn) {
         const data = await response.json();
 
         if (data.success) {
-            const recommendationsContainer = document.getElementById('recommendationsContainer');
-            recommendationsContainer.innerHTML = ''; // Clear previous recommendations if any
-            data.recommendations.forEach(book => {
-                const bookElement = document.createElement('div');
-                bookElement.classList.add('bg-white', 'rounded', 'shadow-lg', 'p-4');
-                bookElement.innerHTML = `
-                    <img src="${book.thumbnail}" alt="${book.title}" class="w-full h-64 object-cover mb-4">
-                    <h3 class="text-2xl font-bold mb-2">${book.title}</h3>
-                    <p class="text-xl mb-2">by ${book.authors.join(', ')}</p>
-                    <p class="text-md mb-4"><strong>Categories:</strong> ${book.categories.join(', ')}</p>
-                    <p class="text-md mb-4">${book.description ? book.description.substring(0, 100) + '...' : 'No description available'}</p>
-                `;
-                recommendationsContainer.appendChild(bookElement);
-            });
+            renderRecommendations(data.recommendations);
         } else {
             console.error('Error fetching recommendations:', data.message);
         }
@@ -327,58 +315,26 @@ function addToLibrary(isbn) {
 
 
 
-const showArrow = (arrowButton) => {
-    arrowButton.classList.add('visible');
-};
 
-const hideArrow = (arrowButton) => {
-    arrowButton.classList.remove('visible');
-};
+function renderRecommendations(recommendations) {
+    const recommendationsContainer = document.getElementById('recommendationsContainer');
+    recommendationsContainer.innerHTML = ''; // Clear previous recommendations if any
 
-scrollLeftButton.addEventListener('mouseenter', () => showArrow(scrollLeftButton));
-scrollLeftButton.addEventListener('mouseleave', () => hideArrow(scrollLeftButton));
+    recommendations.slice(0, 7).forEach(book => {
+        const bookElement = document.createElement('div');
+        bookElement.classList.add('single-recommendation-card', 'relative', 'p-6', 'rounded-lg', 'shadow-lg', 'cursor-pointer', 'hover:shadow-2xl', 'transition', 'duration-300', 'ease-in-out');
+        bookElement.style.width = '14%'; // Adjust this width to fit 7 books in the container
+        bookElement.innerHTML = `
+            <a href="../html/book.html?isbn=${book.isbn}" class="block relative overflow-hidden rounded-lg shadow-lg hover:shadow-2xl transition duration-300 ease-in-out group">
+                <img src="${book.thumbnail}" alt="${book.title}" class="w-full h-64 object-cover rounded-t-lg">
+                                <div class="absolute bottom-0 left-0 w-full p-4 bg-black bg-opacity-60 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-in-out">
+                                    <h2 class="text-lg font-bold">${book.title}</h2>
+                                    <p class="text-gray-300">by ${book.authors}</p>
+                                </div>
+            </a>
 
-scrollRightButton.addEventListener('mouseenter', () => showArrow(scrollRightButton));
-scrollRightButton.addEventListener('mouseleave', () => hideArrow(scrollRightButton));
-
-document.querySelector('.arrow-hover-region.left').addEventListener('mouseenter', () => showArrow(scrollLeftButton));
-document.querySelector('.arrow-hover-region.left').addEventListener('mouseleave', () => hideArrow(scrollLeftButton));
-
-document.querySelector('.arrow-hover-region.right').addEventListener('mouseenter', () => showArrow(scrollRightButton));
-document.querySelector('.arrow-hover-region.right').addEventListener('mouseleave', () => hideArrow(scrollRightButton));
-
-scrollLeftButton.addEventListener('click', () => {
-    recommendationsContainer.scrollBy({
-        top: 0,
-        left: -recommendationsContainer.clientWidth,
-        behavior: 'smooth'
-    });
-});
-
-scrollRightButton.addEventListener('click', () => {
-    recommendationsContainer.scrollBy({
-        top: 0,
-        left: recommendationsContainer.clientWidth,
-        behavior: 'smooth'
-    });
-});
-
-const renderRecommendations = (recommendations) => {
-    recommendationsContainer.innerHTML = '';
-    recommendations.forEach(recommendation => {
-        const recommendationElement = document.createElement('div');
-        recommendationElement.classList.add('recommendation-card', 'p-4', 'bg-gray-100', 'rounded', 'shadow');
-        recommendationElement.innerHTML = `
-            <div class="relative group">
-                <a href="../html/book.html?isbn=${recommendation.isbn[0]}" class="block relative overflow-hidden rounded-lg shadow-lg hover:shadow-2xl transition duration-300 ease-in-out group">
-                    <img src="${recommendation.thumbnail}" alt="${recommendation.title}" class="w-full h-72 object-cover">
-                    <div class="absolute bottom-0 left-0 w-full p-4 bg-black bg-opacity-60 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-in-out">
-                        <h2 class="text-lg font-bold">${recommendation.title}</h2>
-                        <p class="text-gray-300">by ${recommendation.authors}</p>
-                    </div>
-                </a>
-            </div>
         `;
-        recommendationsContainer.appendChild(recommendationElement);
-    });    
-};
+        recommendationsContainer.appendChild(bookElement);
+    });
+}
+

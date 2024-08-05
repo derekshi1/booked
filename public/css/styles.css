@@ -282,6 +282,28 @@ body {
     color: #B0B0B0; /* Lighter color for author text */
 }
 
+.single-recommendations-wrapper{
+    width: 100%; /* Full width of the parent container */
+    position: relative;
+    overflow: hidden;
+}
+
+.single-recommendations-container {
+    display: flex;
+    flex-direction: row;
+    overflow-x: auto;
+    gap: 1rem; /* Adjust the gap as needed */
+}
+
+.single-recommendation-card {
+    flex-shrink: 0;
+    width: 14%; /* Adjust this width to fit 7 books in the container */
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    border-radius: 0.5rem;
+    padding: 1rem;
+    background-color: white;
+}
+
 .library-container {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(185px, 1fr));
@@ -588,4 +610,10 @@ input[type=range]::-moz-range-thumb {
     align-items: center; /* Center vertically */
     justify-content: center; /* Center horizontally */
     flex-direction: column; /* Align items in a column */
+}
+.grid-container {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr); /* 7 columns */
+    grid-template-rows: repeat(4, auto);  /* 4 rows */
+    gap: 1rem; /* Adjust gap as needed */
 }

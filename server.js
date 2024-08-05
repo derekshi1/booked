@@ -547,6 +547,7 @@ app.get('/api/library/readList/:username', async (req, res) => {
 });
 
 // Endpoint to generate book lists
+
 app.post('/api/generate-lists', (req, res) => {
   const query = req.body.query;
 
@@ -572,13 +573,14 @@ app.post('/api/generate-lists', (req, res) => {
     }
     try {
       const listJSON = JSON.parse(list);
-      res.status(200).json({ success: true, list: listJSON });
+      res.status(200).json({ success: true, list: listJSON.list });
     } catch (error) {
       console.error('Error parsing list:', error);
       res.status(500).json({ error: 'Error parsing list' });
     }
   });
 });
+
 app.listen(port, () => {
   console.log(`Server listening at http://localhost:${port}`);
 });
