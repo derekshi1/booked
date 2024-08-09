@@ -11,6 +11,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const sparkleContainer = document.getElementById('sparkleContainer');
     const bestSellersContainer = document.getElementById('bestSellersContainer');
 
+    const oppRecommendationsContainer = document.getElementById('oppRecommendationsContainer');
+    const scrollLeft_OppRec = document.getElementById('scrollLeft_OppRec');
+    const scrollRight_OppRec = document.getElementById('scrollRight_OppRec');
+
 
     // Function to create sparkles
     const createSparkles = () => {
@@ -83,6 +87,49 @@ document.addEventListener('DOMContentLoaded', () => {
             recommendationsContainer.appendChild(placeholderElement);
         }
     };
+    const renderOppositeRecommendations = (recommendations) => {
+        oppRecommendationsContainer.innerHTML = '';
+        recommendations.forEach(recommendation => {
+            const recommendationElement = document.createElement('div');
+            recommendationElement.classList.add('recommendation-card', 'p-4', 'bg-gray-100', 'rounded', 'shadow');
+            recommendationElement.innerHTML = `
+                <div class="relative group">
+                    <a href="../html/book.html?isbn=${recommendation.isbn[0]}" class="block relative overflow-hidden rounded-lg shadow-lg hover:shadow-2xl transition duration-300 ease-in-out group">
+                        <img src="${recommendation.thumbnail}" alt="${recommendation.title}" class="w-full h-72 object-cover">
+                        <div class="absolute bottom-0 left-0 w-full p-4 bg-black bg-opacity-60 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-in-out">
+                            <h2 class="text-lg font-bold">${recommendation.title}</h2>
+                            <p class="text-gray-300">by ${recommendation.authors}</p>
+                        </div>
+                    </a>
+                </div>
+            `;
+            oppRecommendationsContainer.appendChild(recommendationElement);
+        });
+    };
+    const fetchAndDisplayOppositeRecommendations = async () => {
+        if (username) {
+            try {
+                const response = await fetch(`/api/opposite-recommendations/${username}`);
+                const data = await response.json();
+
+                console.log('Opposite Recommendations response:', data);
+
+                if (data.success && data.recommendations.length > 0) {
+                    renderOppositeRecommendations(data.recommendations);
+                } else {
+                    console.error('No opposite recommendations found or failed to fetch recommendations:', data.message);
+                }
+            } catch (error) {
+                console.error('Error fetching opposite recommendations:', error);
+            }
+        } else {
+            console.log('No username found in localStorage.');
+        }
+    };
+
+    // Fetch and display opposite recommendations on page load
+    fetchAndDisplayOppositeRecommendations();
+
     if (username) {
         const savedRecommendationsKey = `recommendations_${username}`;
         const savedRecommendations = localStorage.getItem(savedRecommendationsKey);
@@ -184,6 +231,28 @@ document.addEventListener('DOMContentLoaded', () => {
         bestSellersContainer.scrollBy({
             top: 0,
             left: recommendationsContainer.clientWidth,
+            behavior: 'smooth'
+        });
+    });
+
+    scrollLeft_OppRec.addEventListener('mouseenter', () => showArrow(scrollLeft_OppRec));
+    scrollLeft_OppRec.addEventListener('mouseleave', () => hideArrow(scrollLeft_OppRec));
+
+    scrollRight_OppRec.addEventListener('mouseenter', () => showArrow(scrollRight_OppRec));
+    scrollRight_OppRec.addEventListener('mouseleave', () => hideArrow(scrollRight_OppRec));
+
+    scrollLeft_OppRec.addEventListener('click', () => {
+        oppRecommendationsContainer.scrollBy({
+            top: 0,
+            left: -oppRecommendationsContainer.clientWidth,
+            behavior: 'smooth'
+        });
+    });
+
+    scrollRight_OppRec.addEventListener('click', () => {
+        oppRecommendationsContainer.scrollBy({
+            top: 0,
+            left: oppRecommendationsContainer.clientWidth,
             behavior: 'smooth'
         });
     });

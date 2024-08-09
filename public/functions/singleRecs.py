@@ -4,7 +4,9 @@ import requests
 from sentence_transformers import SentenceTransformer, util
 import random
 import time
-
+import asyncio
+import aiohttp
+import aiofiles
 
 # Define the Google Books API URL
 GOOGLE_BOOKS_API_URL = "https://www.googleapis.com/books/v1/volumes"
@@ -12,31 +14,32 @@ API_KEY = 'AIzaSyCFDaqjpgA8K_NqqCw93xorS3zumc_52u8'
 # Load the pre-trained sentence transformer model
 model = SentenceTransformer('paraphrase-MiniLM-L6-v2')
 
-def get_book_info(isbn):
+
+async def get_book_info(isbn):
     params = {
         'q': f'isbn:{isbn}',
         'maxResults': 1,
         'key': API_KEY
-
     }
-    response = requests.get(GOOGLE_BOOKS_API_URL, params=params)
-    if response.status_code == 200:
-        data = response.json()
-        if 'items' in data:
-            book = data['items'][0]['volumeInfo']
-            return {
-                'title': book.get('title'),
-                'authors': book.get('authors', []),  # Default to empty list if None
-                'categories': book.get('categories', []),  # Default to empty list if None
-                'publishedDate': book.get('publishedDate', ''),  # Default to empty string if None
-                'description': book.get('description', ''),
-                'pageCount': book.get('pageCount', 0),
-                'publisher': book.get('publisher', ''),
-                'isbn': [identifier['identifier'] for identifier in book.get('industryIdentifiers', [])],
-                'language': book.get('language', ''),
-                'averageRating': book.get('averageRating', 0),
-                'thumbnail': book.get('imageLinks', {}).get('thumbnail', 'https://via.placeholder.com/150')
-            }
+    async with aiohttp.ClientSession() as session:
+        async with session.get(GOOGLE_BOOKS_API_URL, params=params) as response:
+            if response.status == 200:
+                data = await response.json()
+                if 'items' in data:
+                    book = data['items'][0]['volumeInfo']
+                    return {
+                        'title': book.get('title'),
+                        'authors': book.get('authors', []),
+                        'categories': book.get('categories', []),
+                        'publishedDate': book.get('publishedDate', ''),
+                        'description': book.get('description', ''),
+                        'pageCount': book.get('pageCount', 0),
+                        'publisher': book.get('publisher', ''),
+                        'isbn': [identifier['identifier'] for identifier in book.get('industryIdentifiers', [])],
+                        'language': book.get('language', ''),
+                        'averageRating': book.get('averageRating', 0),
+                        'thumbnail': book.get('imageLinks', {}).get('thumbnail', 'https://via.placeholder.com/150')
+                    }
     return None
 
 def calculate_description_similarity(desc1, desc2):
@@ -61,107 +64,64 @@ def calculate_initial_compatibility(book1, book2):
         except ValueError:
             pass
     compatibility_score = (
-                          0.8 * category_similarity +
-                          0.2 * pub_date_similarity)
+        0.8 * category_similarity +
+        0.2 * pub_date_similarity
+    )
     return compatibility_score * 100
 
-def find_books_by_genres(genres, max_results=500):
+async def fetch_books_by_genre(session, genre, start_index, max_results):
+    params = {
+        'q': f'subject:{genre}',
+        'maxResults': max_results,
+        'startIndex': start_index,
+        'key': API_KEY
+    }
+    async with session.get(GOOGLE_BOOKS_API_URL, params=params) as response:
+        if response.status == 200:
+            data = await response.json()
+            if 'items' in data:
+                books = []
+                for item in data['items']:
+                    volume_info = item.get('volumeInfo')
+                    books.append({
+                        'title': volume_info.get('title'),
+                        'authors': volume_info.get('authors', []),
+                        'categories': volume_info.get('categories', []),
+                        'publishedDate': volume_info.get('publishedDate', ''),
+                        'description': volume_info.get('description', ''),
+                        'pageCount': volume_info.get('pageCount', 0),
+                        'thumbnail': volume_info.get('imageLinks', {}).get('thumbnail', 'https://via.placeholder.com/150'),
+                        'isbn': [identifier['identifier'] for identifier in volume_info.get('industryIdentifiers', [])],
+                        'score': 0,
+                        'related_to': ''
+                    })
+                return books
+    return []
+
+async def find_books_by_genres(genres, max_results=500):
     books = []
     genre_list = list(genres)
     random.shuffle(genre_list)
     start_indices = {genre: random.randint(0, 100) for genre in genre_list}
-    
-    # Log the genres being queried
-    print(f"Genres being queried: {genre_list}", file=sys.stderr)
-    
-    while len(books) < max_results and genre_list:
+
+    async with aiohttp.ClientSession() as session:
+        tasks = []
         for genre in genre_list:
-            if len(books) >= max_results:
-                break
-            params = {
-                'q': f'subject:{genre}',
-                'maxResults': random.randint(10, 30),
-                'startIndex': start_indices[genre],
-                'key': API_KEY  # Ensure the API key is included in the request
-            }
-            response = requests.get(GOOGLE_BOOKS_API_URL, params=params)
-            
-            # Log the API response status and URL
-            print(f"Querying genre: {genre}, Response status: {response.status_code}, URL: {response.url}", file=sys.stderr)
-            
-            if response.status_code == 200:
-                data = response.json()
-                
-                # Log the number of items found
-                print(f"Items found for genre {genre}: {len(data.get('items', []))}", file=sys.stderr)
-                
-                if 'items' in data:
-                    for item in data['items']:
-                        volume_info = item.get('volumeInfo')
-                        books.append({
-                            'title': volume_info.get('title'),
-                            'authors': volume_info.get('authors', []),
-                            'categories': volume_info.get('categories', []),
-                            'publishedDate': volume_info.get('publishedDate', ''),
-                            'description': volume_info.get('description', ''),
-                            'pageCount': volume_info.get('pageCount', 0),
-                            'thumbnail': volume_info.get('imageLinks', {}).get('thumbnail', 'https://via.placeholder.com/150'),
-                            'isbn': [identifier['identifier'] for identifier in volume_info.get('industryIdentifiers', [])],
-                            'score': 0,
-                            'related_to': ''
-                        })
-                    start_indices[genre] += random.randint(20, 40)
-                else:
-                    genre_list.remove(genre)
-            elif response.status_code == 429:
-                # Implementing exponential backoff
-                backoff_time = 1  # Start with 1 second
-                while response.status_code == 429:
-                    print(f"Rate limit hit for genre: {genre}, backing off for {backoff_time} seconds", file=sys.stderr)
-                    time.sleep(backoff_time)
-                    backoff_time *= 2  # Exponentially increase the backoff time
-                    response = requests.get(GOOGLE_BOOKS_API_URL, params=params)
-                    print(f"Retrying genre: {genre}, Response status: {response.status_code}, URL: {response.url}", file=sys.stderr)
-                if response.status_code == 200:
-                    data = response.json()
-                    if 'items' in data:
-                        for item in data['items']:
-                            volume_info = item.get('volumeInfo')
-                            books.append({
-                                'title': volume_info.get('title'),
-                                'authors': volume_info.get('authors', []),
-                                'categories': volume_info.get('categories', []),
-                                'publishedDate': volume_info.get('publishedDate', ''),
-                                'description': volume_info.get('description', ''),
-                                'pageCount': volume_info.get('pageCount', 0),
-                                'thumbnail': volume_info.get('imageLinks', {}).get('thumbnail', 'https://via.placeholder.com/150'),
-                                'isbn': [identifier['identifier'] for identifier in volume_info.get('industryIdentifiers', [])],
-                                'score': 0,
-                                'related_to': ''
-                            })
-                        start_indices[genre] += random.randint(20, 40)
-                    else:
-                        genre_list.remove(genre)
-                else:
-                    genre_list.remove(genre)
-            else:
-                genre_list.remove(genre)
+            tasks.append(fetch_books_by_genre(session, genre, start_indices[genre], max_results // len(genre_list)))
+
+        results = await asyncio.gather(*tasks)
+        for result in results:
+            books.extend(result)
+
     return books[:max_results]
-def find_best_matches(book, total_recommendations=7):
+
+async def find_best_matches(book, total_recommendations=7):
     recommendations_per_book = total_recommendations
     extra_recommendations = 0
 
-    # Log the book details and categories being used
-    print(f"Book details: {json.dumps(book)}", file=sys.stderr)
     all_genres = set(book['categories'])
+    potential_matches = await find_books_by_genres(all_genres, max_results=recommendations_per_book * 3)
 
-    print(f"All genres derived from book: {all_genres}", file=sys.stderr)
-    
-    potential_matches = find_books_by_genres(all_genres, max_results=recommendations_per_book * 3)
-    
-    # Log the potential matches found
-    print(f"Potential Matches: {json.dumps(potential_matches)}", file=sys.stderr)
-    
     recommended_titles = set()
     book_recommendations = []
 
@@ -169,10 +129,6 @@ def find_best_matches(book, total_recommendations=7):
     for potential_book in potential_matches:
         if potential_book['title'] not in recommended_titles:
             initial_score = calculate_initial_compatibility(book, potential_book)
-            
-            # Log the compatibility calculation
-            print(f"Initial Compatibility for {book['title']} and {potential_book['title']}: {initial_score}", file=sys.stderr)
-            
             if initial_score > 0:
                 initial_compatibilities.append((potential_book, initial_score))
     initial_compatibilities.sort(key=lambda x: x[1], reverse=True)
@@ -183,21 +139,10 @@ def find_best_matches(book, total_recommendations=7):
         final_score = score * 0.4 + description_similarity * 0.6
         final_score = (final_score / 100) * 200
 
-        try:
-            if isinstance(match, tuple) and isinstance(match[0], dict):
-                match[0]['score'] = final_score
-                match[0]['related_to'] = book['title']
-            else:
-                print(f"Unexpected structure in match: {match}", file=sys.stderr)
-        except KeyError as e:
-            print(f"Error adding score and related_to: {e}", file=sys.stderr)
-            print(f"Match: {json.dumps(match[0])}", file=sys.stderr)
-            continue
-
-        # Log the refined compatibility score
-        print(f"Refined Compatibility for {book['title']} and {match['title']}: {final_score}", file=sys.stderr)
-        
+        match['score'] = final_score
+        match['related_to'] = book['title']
         refined_compatibilities.append((match, final_score))
+
     refined_compatibilities.sort(key=lambda x: x[1], reverse=True)
     count_added = 0
     for match in refined_compatibilities:
@@ -212,14 +157,7 @@ def find_best_matches(book, total_recommendations=7):
 
     recommendations = book_recommendations[:total_recommendations]
 
-    try:
-        recommendations = recommendations[:total_recommendations]
-    except Exception as e:
-        print(f"Error slicing recommendations: {e}", file=sys.stderr)
-        print(f"Recommendations: {json.dumps(recommendations)}", file=sys.stderr)
-
     if len(recommendations) < total_recommendations:
-        # If we don't have enough recommendations, add more from potential matches
         additional_recommendations = [book for book in potential_matches if book['title'] not in recommended_titles]
         additional_recommendations.sort(key=lambda x: x['score'], reverse=True)
         recommendations.extend(additional_recommendations[:total_recommendations - len(recommendations)])    
@@ -229,11 +167,11 @@ def find_best_matches(book, total_recommendations=7):
 if __name__ == "__main__":
     try:
         book_isbn = sys.argv[1]
-        book_info = get_book_info(book_isbn)
+        book_info = asyncio.run(get_book_info(book_isbn))
         if not book_info:
             print("Error: Book not found", file=sys.stderr)
             sys.exit(1)
-        recommendations = find_best_matches(book_info)
+        recommendations = asyncio.run(find_best_matches(book_info))
         print(json.dumps(recommendations))
     except Exception as e:
         print(f"Error: {str(e)}", file=sys.stderr)

@@ -6,7 +6,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             localStorage.removeItem('username');
             window.location.href = '../html/index.html';
         });
-
+        try {
+            const response = await fetch(`/api/number-of-friends/${username}`);
+            const data = await response.json();
+            if (data.success) {
+                document.getElementById('numberOfFriends').textContent = `${data.numberOfFriends}`;
+            } else {
+                console.error('Failed to fetch number of friends:', data.message);
+            }
+        } catch (error) {
+            console.error('Error fetching number of friends:', error);
+        }
         // Fetch library details
         try {
             const response = await fetch(`/api/library/${username}`);

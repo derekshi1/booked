@@ -26,7 +26,7 @@
     <main class="w-full mt-8 px-4">
         <h1 class="text-3xl font-bold mb-6 text-white">Recommended Reads...</h1>
         <div class="flex items-center">
-            <button id="generateRecommendationsButton" class="mb-4 p-2 bg-green-900 text-white rounded">Generate Recommendations</button>
+            <button id="generateRecommendationsButton" class="mb-4 p-2 bg-green-900 text-gray-400 rounded">Generate Recommendations</button>
             <div id="sparkleContainer" class="ml-4 sparkle-container ml-4"></div>
         </div>
         <div class="recommendations-wrapper relative w-full">
@@ -40,14 +40,25 @@
         </div>
         <h1 class="text-3xl font-bold mb-6 text-white">NY Times Best Sellers...</h1>
         <div class="recommendations-wrapper relative w-full">
-
             <div id="bestSellersContainer" class="recommendations-container">
+                <!-- NY Times Best Sellers will be dynamically inserted here -->
             </div>
             <div class="arrow-hover-region left"></div>
             <div class="arrow-hover-region right"></div>
             <button class="arrow arrow-left" id="scrollLeft_nyt"><i class="fas fa-chevron-left"></i></button>
             <button class="arrow arrow-right" id="scrollRight_nyt"><i class="fas fa-chevron-right"></i></button>
-
+        </div>
+        <h1 class="text-3xl font-bold mb-6 text-white">Read Something New...</h1>
+        <div class="flex items-center">
+        </div>
+        <div class="recommendations-wrapper relative w-full">
+            <div id="oppRecommendationsContainer" class="recommendations-container">
+                <!-- Opposite Recommendations will be dynamically inserted here -->
+            </div>
+            <div class="arrow-hover-region left"></div>
+            <div class="arrow-hover-region right"></div>
+            <button class="arrow arrow-left" id="scrollLeft_OppRec"><i class="fas fa-chevron-left"></i></button>
+            <button class="arrow arrow-right" id="scrollRight_OppRec"><i class="fas fa-chevron-right"></i></button>
         </div>
     </main>
     <!-- Modal structure -->

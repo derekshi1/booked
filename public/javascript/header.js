@@ -2,13 +2,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const username = localStorage.getItem('username');
     const logoAndHomeContainer = document.getElementById('logoAndHome');
     const userSection = document.getElementById('userSection');
+    const currentPath = window.location.pathname;
 
     // Create logo and home link elements
+    const logoLink = document.createElement('a');
+    logoLink.href = '../html/index.html';
     const logo = document.createElement('img');
     logo.src = '../logo.jpg';
     logo.alt = 'Booked Logo';
     logo.classList.add('w-50', 'h-20', 'mr-4');
-
+    logoLink.appendChild(logo);
+    
     const homeLink = document.createElement('a');
     homeLink.href = '../html/index.html';
     homeLink.classList.add('ml-4', 'bg-green-900', 'text-white', 'px-4', 'py-2', 'rounded', 'mr-8'); // Added 'mr-8' for spacing
@@ -17,16 +21,31 @@ document.addEventListener('DOMContentLoaded', () => {
     // Create lists link element
     const listsLink = document.createElement('a');
     listsLink.href = '../html/lists.html';
-    listsLink.classList.add('ml-4', 'bg-green-900', 'text-white', 'px-4', 'py-2', 'rounded');
+    listsLink.classList.add('ml-4', 'bg-green-900', 'text-white', 'px-4', 'py-2', 'rounded', 'mr-8');
     listsLink.textContent = 'Lists';
+
+    const socialLink = document.createElement('a');
+    socialLink.href = '../html/social.html';
+    socialLink.classList.add('ml-4', 'bg-green-900', 'text-white', 'px-4', 'py-2', 'rounded', 'mr-8');
+    socialLink.textContent = 'Social';
+
 
     // Append logo and home link to the container
     logoAndHomeContainer.appendChild(logo);
     logoAndHomeContainer.appendChild(homeLink);
     logoAndHomeContainer.appendChild(listsLink);
+    logoAndHomeContainer.appendChild(socialLink);
 
 
-
+    const greenButtons = document.querySelectorAll('.bg-green-900');
+    greenButtons.forEach(button => {
+        button.addEventListener('mouseover', () => {
+            button.classList.add('hover:bg-green-800', 'hover:text-gray-300');
+        });
+        button.addEventListener('mouseout', () => {
+            button.classList.remove('hover:bg-green-800', 'hover:text-gray-300');
+        });
+    });
     userSection.innerHTML = `
         <div class="search-container relative">
             <img src="https://cdn-icons-png.flaticon.com/512/54/54481.png" alt="Search" class="search-icon w-6 h-6" onclick="expandSearch()">
@@ -34,9 +53,8 @@ document.addEventListener('DOMContentLoaded', () => {
             <img src="https://cdn-icons-png.flaticon.com/512/1828/1828778.png" alt="Close" class="close-icon w-6 h-6" onclick="collapseSearch()">
             <div id="suggestionsBox" class="suggestions"></div> <!-- Suggestions Box -->
         </div>
-        <a href="../html/library.html" class="ml-4 bg-green-900 text-white px-4 py-2 rounded">Library</a>
+        <a href="../html/library.html" class="ml-4 bg-green-900 text-white px-4 py-2 rounded library-link">Library</a>
     `;
-
     if (username) {
         userSection.innerHTML += `
             <div class="flex flex-col items-center">
@@ -48,6 +66,15 @@ document.addEventListener('DOMContentLoaded', () => {
         userSection.innerHTML += `
             <a href="../html/login.html" class="ml-4 bg-green-900 text-white px-4 py-2 rounded">Login</a>
         `;
+    }
+    if (currentPath.includes('index.html')) {
+        homeLink.classList.add('active-link');
+    } else if (currentPath.includes('lists.html')) {
+        listsLink.classList.add('active-link');
+    } else if (currentPath.includes('social.html')) {
+        socialLink.classList.add('active-link');
+    } else if (currentPath.includes('library.html')) {
+        document.querySelector('.library-link').classList.add('active-link');
     }
 
     // Attach event listeners to the search input and close icon

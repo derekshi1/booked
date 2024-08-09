@@ -14,7 +14,9 @@ mongoose.connect(mongoUri, { useNewUrlParser: true, useUnifiedTopology: true })
 // Mongoose Schema and Model for Users
 const userSchema = new mongoose.Schema({
   username: { type: String, required: true, unique: true },
-  password: { type: String, required: true }
+  password: { type: String, required: true },
+  friends: { type: [String], default: [] },  
+  friendRequests: { type: [String], default: [] }  // Added for friend requests
 });
 const User = mongoose.model('User', userSchema);
 
@@ -69,6 +71,30 @@ const userLibrarySchema = new mongoose.Schema({
 
 const UserLibrary = mongoose.model('UserLibrary', userLibrarySchema);
 
+// Mongoose Schema and Model for Friends
+const friendSchema = new mongoose.Schema({
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  friendId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }
+});
+const Friend = mongoose.model('Friend', friendSchema);
+
+// Mongoose Schema and Model for Activities
+const activitySchema = new mongoose.Schema({
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  action: { type: String, required: true },
+  bookTitle: { type: String, required: true },
+  timestamp: { type: Date, default: Date.now }
+});
+const Activity = mongoose.model('Activity', activitySchema);
+
+const friendRequestSchema = new mongoose.Schema({
+  from: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  to: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  status: { type: String, enum: ['pending', 'accepted', 'rejected'], default: 'pending' },
+  createdAt: { type: Date, default: Date.now }
+});
+
+const FriendRequest = mongoose.model('FriendRequest', friendRequestSchema);
 
 app.use(express.static('public'));
 app.use(express.json());
@@ -580,6 +606,180 @@ app.post('/api/generate-lists', (req, res) => {
     }
   });
 });
+
+// New Opposite Recommendations Route
+app.get('/api/opposite-recommendations/:username', async (req, res) => {
+  const { username } = req.params;
+  try {
+    const userLibrary = await UserLibrary.findOne({ username });
+    if (!userLibrary) {
+      console.error(`No library found for user: ${username}`);
+      return res.status(404).json({ success: false, message: 'No library found for user' });
+    }
+
+    const library = userLibrary.books;
+    if (library.length === 0) {
+      console.log(`User ${username} has an empty library.`);
+      return res.status(200).json({ success: true, recommendations: [] });
+    }
+
+    const pythonProcess = spawn('python3', ['public/functions/oppositerecommendations.py', JSON.stringify(library)]);
+
+    let recommendations = '';
+    pythonProcess.stdout.on('data', (data) => {
+      recommendations += data.toString();
+    });
+
+    pythonProcess.stderr.on('data', (data) => {
+      console.error(`stderr: ${data}`);
+    });
+
+    pythonProcess.on('close', (code) => {
+      if (code !== 0) {
+        console.error(`Python process exited with code ${code}`);
+        return res.status(500).json({ success: false, message: 'Error generating recommendations' });
+      }
+      try {
+        const recommendationsJSON = JSON.parse(recommendations);
+        console.log('Parsed recommendations JSON:', JSON.stringify(recommendationsJSON, null, 2));
+        res.status(200).json({ success: true, recommendations: recommendationsJSON });
+      } catch (error) {
+        console.error('Error parsing recommendations:', error);
+        res.status(500).json({ success: false, message: 'Error parsing recommendations' });
+      }
+    });
+
+  } catch (error) {
+    console.error('Error during recommendations generation:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
+app.get('/api/search-users', async (req, res) => {
+  const query = req.query.query;
+  try {
+    const users = await User.find({ username: new RegExp(query, 'i') }).select('username');
+    res.status(200).json({ success: true, users });
+  } catch (error) {
+    console.error('Error searching users:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
+// Endpoint to send a friend request
+app.post('/api/add-friend', async (req, res) => {
+  const { username, friendUsername } = req.body;
+
+  try {
+      const user = await User.findOne({ username });
+      const friend = await User.findOne({ username: friendUsername });
+
+      if (!user || !friend) {
+          return res.status(404).json({ success: false, message: 'User or friend not found' });
+      }
+
+      // Create a friend request document
+      const friendRequest = new FriendRequest({
+          from: user._id,
+          to: friend._id,
+      });
+
+      await friendRequest.save();
+
+      res.status(200).json({ success: true, message: 'Friend request sent successfully' });
+  } catch (error) {
+      console.error('Error sending friend request:', error);
+      res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
+
+// Endpoint to fetch friend requests for a user
+app.get('/api/friend-requests/:username', async (req, res) => {
+  try {
+    const username = req.params.username;
+    const user = await User.findOne({ username }).populate('friendRequests.from', 'username');
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    res.status(200).json({ success: true, friendRequests: user.friendRequests });
+  } catch (error) {
+    console.error('Error fetching friend requests:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
+// Endpoint to accept a friend request
+app.post('/api/accept-friend', async (req, res) => {
+  const { username, friendUsername } = req.body;
+  try {
+    const user = await User.findOne({ username });
+    const friend = await User.findOne({ username: friendUsername });
+
+    if (!user || !friend) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    if (!user.friendRequests.includes(friendUsername)) {
+      return res.status(400).json({ success: false, message: 'No friend request found' });
+    }
+
+    user.friendRequests = user.friendRequests.filter(req => req !== friendUsername);
+    user.friends.push(friendUsername);
+    friend.friends.push(username);
+
+    await user.save();
+    await friend.save();
+
+    res.status(200).json({ success: true, message: 'Friend request accepted' });
+  } catch (error) {
+    console.error('Error accepting friend request:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
+app.get('/api/number-of-friends/:username', async (req, res) => {
+  const { username } = req.params;
+  try {
+      const user = await User.findOne({ username });
+      if (!user) {
+          return res.status(404).json({ success: false, message: 'User not found' });
+      }
+      const numberOfFriends = user.friends ? user.friends.length : 0;
+      res.status(200).json({ success: true, numberOfFriends });
+  } catch (error) {
+      console.error('Error fetching number of friends:', error);
+      res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+app.get('/api/friends-activities/:username', async (req, res) => {
+  const { username } = req.params;
+  try {
+      const user = await User.findOne({ username }).populate('friends').exec();
+      if (!user) {
+          return res.status(404).json({ success: false, message: 'User not found' });
+      }
+
+      const friendsActivities = [];
+      for (const friend of user.friends) {
+          // Assume each friend has an activities field that logs their actions
+          const activities = friend.activities.map(activity => ({
+              username: friend.username,
+              action: activity.action,
+              bookTitle: activity.bookTitle
+          }));
+          friendsActivities.push(...activities);
+      }
+
+      res.json({ success: true, activities: friendsActivities });
+  } catch (error) {
+      console.error('Error getting friends\' activities:', error);
+      res.status(500).json({ success: false, message: 'Error getting friends\' activities' });
+  }
+});
+
 
 app.listen(port, () => {
   console.log(`Server listening at http://localhost:${port}`);

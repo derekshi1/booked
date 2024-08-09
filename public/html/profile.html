@@ -23,24 +23,28 @@
         </div>
     </header>
     <main class="container mx-auto mt-8">
-        <div class="profile-container">
+        <div class="profile-container bg-gray-800 p-6 rounded-lg shadow-md">
             <div class="flex items-center">
                 <div class="profile-pic">
-                    <img src="../profile.png" alt="Profile Picture">
+                    <img src="../profile.png" alt="Profile Picture" class="w-24 h-24 rounded-full">
                 </div>
                 <div class="username-container ml-4">
-                    <h1 id="usernameDisplay" class="handwriting-font text-white">dshi1</h1>
+                    <h1 id="usernameDisplay" class="handwriting-font text-white text-3xl">Username</h1>
                     <button id="logoutButton" class="text-white bg-red-700 px-4 py-2 rounded mt-2">Logout</button>
                 </div>
             </div>
-            <div class="stats-container">
+            <div class="stats-container mt-6 flex justify-around text-center">
                 <div class="stats-item">
-                    <p id="bookCount" class="stats-value text-white font-bold">0</p>
+                    <p id="bookCount" class="stats-value text-white font-bold text-2xl">0</p>
                     <span class="stats-label" style="color: #D3D3D3;">Books</span>
                 </div>
                 <div class="stats-item">
-                    <p id="pageCount" class="stats-value text-white font-bold">0</p>
+                    <p id="pageCount" class="stats-value text-white font-bold text-2xl">0</p>
                     <span class="stats-label" style="color: #D3D3D3;">Pages</span>
+                </div>
+                <div class="stats-item">
+                    <p id="numberOfFriends" class="stats-value text-white font-bold text-2xl">0</p>
+                    <span class="stats-label" style="color: #D3D3D3;">Friends</span>
                 </div>
             </div>
         </div>
