@@ -15,32 +15,24 @@
             console.log('Google Books API loaded successfully.');
         });
     </script>
-    
-
-
 </head>
 <body>
     <header class="custom-header text-green-900 py-4">
         <div class="container mx-auto flex items-center justify-between">
-            <div class="flex items-center">
-                <img src="../logo.jpg" alt="Booked Logo" class="w-50 h-20 mr-4">
-                <a href="../html/index.html" class="ml-4 bg-green-900 text-white px-4 py-2 rounded">Home</a>
+            <div class="flex items-center" id="logoAndHome">
+                <!-- Logo and Home button will be populated by header.js -->
             </div>
             <div id="userSection" class="flex items-center space-x-4">
-                <div class="search-container">
-                    <img src="https://cdn-icons-png.flaticon.com/512/54/54481.png" alt="Search" class="search-icon w-6 h-6" onclick="expandSearch()">
-                    <input type="text" id="titleInput" name ="titleInput" placeholder="Search for books" class="search-input" onblur="collapseSearch()" onkeydown="handleSearch(event)">
-                    <img src="https://cdn-icons-png.flaticon.com/512/1828/1828778.png" alt="Close" class="close-icon w-6 h-6" onclick="collapseSearch()">
-                </div>
-                <a href="../html/library.html" class="ml-4 bg-green-900 text-white px-4 py-2 rounded">Library</a>
-                <span class="ml-4 handwriting-font cursor-pointer" onclick="window.location.href='../html/profile.html'">booked_ceo</span>
+                <!-- User Section will be populated by header.js -->
             </div>
         </div>
     </header>
+
     <main class="container mx-auto mt-8">
         <h1 class="text-3xl font-bold mb-6 text-white">Search Results</h1>
         <div id="results" class="space-y-4"></div>
     </main>
+
     <div id="myModal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
         <div class="modal-content bg-white p-6 rounded shadow-lg relative w-11/12 md:w-3/4 lg:w-1/2">
             <span class="close absolute top-4 right-4 text-2xl cursor-pointer" onclick="closeModal()">&times;</span>

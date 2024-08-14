@@ -13,6 +13,7 @@ API_KEY = 'AIzaSyCFDaqjpgA8K_NqqCw93xorS3zumc_52u8'
 # Load the pre-trained sentence transformer model
 model = SentenceTransformer('paraphrase-MiniLM-L6-v2')
 
+
 async def fetch_book_info(session, genre, start_index, backoff=1):
     params = {
         'q': f'subject:{genre}',
@@ -30,7 +31,7 @@ async def fetch_book_info(session, genre, start_index, backoff=1):
         else:
             return []
 
-async def fetch_books_by_genres(genres, max_results=500):
+async def fetch_books_by_genres(genres, max_results=1000):
     books = []
     genre_list = list(genres)
     random.shuffle(genre_list)
@@ -43,6 +44,9 @@ async def fetch_books_by_genres(genres, max_results=500):
                     break
                 for item in fetched_books:
                     volume_info = item.get('volumeInfo')
+                    thumbnail = volume_info.get('imageLinks', {}).get('thumbnail')
+                    if thumbnail and 'books.google.com' in thumbnail and '150x150' in thumbnail:
+                        thumbnail = None  # Treat this as if no thumbnail is available
                     books.append({
                         'title': volume_info.get('title'),
                         'authors': volume_info.get('authors', []),
@@ -50,7 +54,7 @@ async def fetch_books_by_genres(genres, max_results=500):
                         'publishedDate': volume_info.get('publishedDate', ''),
                         'description': volume_info.get('description', ''),
                         'pageCount': volume_info.get('pageCount', 0),
-                        'thumbnail': volume_info.get('imageLinks', {}).get('thumbnail', 'https://via.placeholder.com/150'),
+                        'thumbnail': thumbnail,
                         'isbn': [identifier['identifier'] for identifier in volume_info.get('industryIdentifiers', [])],
                         'score': 0,
                         'related_to': ''
@@ -71,8 +75,20 @@ def calculate_description_similarity(desc1, desc2):
 def calculate_initial_compatibility(book1, book2):
     if not book1 or not book2:
         return 0
-    common_categories = set(book1.get('categories', [])).intersection(set(book2.get('categories', [])))
-    category_similarity = len(common_categories) / (len(book1.get('categories', [])) + len(book2.get('categories', [])))
+    
+    # Handle category similarity
+    categories1 = set(book1.get('categories', []))
+    categories2 = set(book2.get('categories', []))
+    
+    if categories1 and categories2:
+        common_categories = categories1.intersection(categories2)
+        category_similarity = len(common_categories) / (len(categories1) + len(categories2))
+    else:
+        # Assign a default similarity score if categories are missing
+        # You could also use other heuristics here based on titles, etc.
+        category_similarity = 0.5  # Assuming a neutral similarity if categories are missing
+
+    # Handle publication date similarity
     pub_date_similarity = 0
     if book1.get('publishedDate') and book2.get('publishedDate'):
         try:
@@ -81,13 +97,17 @@ def calculate_initial_compatibility(book1, book2):
             pub_date_similarity = 1 - abs(year1 - year2) / max(year1, year2)
         except ValueError:
             pass
+
+    # Calculate the final compatibility score
     compatibility_score = (
-        0.8 * category_similarity +
-        0.2 * pub_date_similarity)
+        0.8 * category_similarity +  # Decrease weight if relying on a default similarity score
+        0.2 * pub_date_similarity     # Increase weight if categories are missing
+    )
+    
     return compatibility_score * 100
 
+
 async def find_best_matches(library, total_recommendations=25):
-    # Calculate recommendations per book
     num_books = len(library)
     base_recommendations_per_book = total_recommendations // num_books
     extra_recommendations = total_recommendations % num_books
@@ -115,40 +135,33 @@ async def find_best_matches(library, total_recommendations=25):
         for potential_book in potential_matches:
             if potential_book['title'] not in recommended_titles:
                 initial_score = calculate_initial_compatibility(user_book, potential_book)
-                if initial_score > 0:
-                    initial_compatibilities.append((potential_book, initial_score))
+                # Add the book to initial_compatibilities regardless of the score
+                initial_compatibilities.append((potential_book, initial_score))
         initial_compatibilities.sort(key=lambda x: x[1], reverse=True)
         top_initial_matches = initial_compatibilities[:base_recommendations_per_book * 3]
         refined_compatibilities = []
         for match, score in top_initial_matches:
             description_similarity = calculate_description_similarity(user_book.get('description', ''), match.get('description', ''))
-            final_score = score * 0.4 + description_similarity * 0.6
+            final_score = score * 0.6 + description_similarity * 0.4
             final_score = (final_score / 100) * 200
 
-            try:
-                if isinstance(match, tuple) and isinstance(match[0], dict):
-                    match[0]['score'] = final_score
-                    match[0]['related_to'] = user_book['title']  # Update the related_to field here
-                else:
-                    print(f"Unexpected structure in match: {match}", file=sys.stderr)
-            except KeyError as e:
-                print(f"Error adding score and related_to: {e}", file=sys.stderr)
-                print(f"Match: {json.dumps(match[0])}", file=sys.stderr)
-                continue
+            match['score'] = final_score
+            match['related_to'] = user_book['title']  # Update the related_to field here
 
             refined_compatibilities.append((match, final_score))
         refined_compatibilities.sort(key=lambda x: x[1], reverse=True)
         count_added = 0
         recommendations_for_this_book = base_recommendations_per_book + (1 if extra_recommendations > 0 else 0)
-        for match in refined_compatibilities:
-            if match[0]['title'] not in recommended_titles:
-                recommended_titles.add(match[0]['title'])
-                book_recommendations[user_book['title']].append(match[0])
+        for match, _ in refined_compatibilities:
+            if match['title'] not in recommended_titles:
+                recommended_titles.add(match['title'])
+                book_recommendations[user_book['title']].append(match)
                 count_added += 1
                 if count_added >= recommendations_for_this_book:
                     break
         if extra_recommendations > 0:
             extra_recommendations -= 1
+
 
     recommendations = [rec for recs in book_recommendations.values() for rec in recs]
 
@@ -176,6 +189,7 @@ async def find_best_matches(library, total_recommendations=25):
         print(f"Recommended Book: {rec['title']} - Related to: {rec['related_to']}", file=sys.stderr)
 
     return recommendations
+
 
 if __name__ == "__main__":
     try:

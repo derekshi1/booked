@@ -27,6 +27,9 @@ async def get_book_info(isbn):
                 data = await response.json()
                 if 'items' in data:
                     book = data['items'][0]['volumeInfo']
+                    isbn_13 = next(
+                        (identifier['identifier'] for identifier in book.get('industryIdentifiers', [])
+                         if identifier['type'] == 'ISBN_13'), None)
                     return {
                         'title': book.get('title'),
                         'authors': book.get('authors', []),
@@ -35,7 +38,7 @@ async def get_book_info(isbn):
                         'description': book.get('description', ''),
                         'pageCount': book.get('pageCount', 0),
                         'publisher': book.get('publisher', ''),
-                        'isbn': [identifier['identifier'] for identifier in book.get('industryIdentifiers', [])],
+                        'isbn': isbn_13,
                         'language': book.get('language', ''),
                         'averageRating': book.get('averageRating', 0),
                         'thumbnail': book.get('imageLinks', {}).get('thumbnail', 'https://via.placeholder.com/150')
@@ -83,6 +86,9 @@ async def fetch_books_by_genre(session, genre, start_index, max_results):
                 books = []
                 for item in data['items']:
                     volume_info = item.get('volumeInfo')
+                    isbn_13 = next(
+                        (identifier['identifier'] for identifier in volume_info.get('industryIdentifiers', [])
+                         if identifier['type'] == 'ISBN_13'), None)
                     books.append({
                         'title': volume_info.get('title'),
                         'authors': volume_info.get('authors', []),
@@ -91,7 +97,7 @@ async def fetch_books_by_genre(session, genre, start_index, max_results):
                         'description': volume_info.get('description', ''),
                         'pageCount': volume_info.get('pageCount', 0),
                         'thumbnail': volume_info.get('imageLinks', {}).get('thumbnail', 'https://via.placeholder.com/150'),
-                        'isbn': [identifier['identifier'] for identifier in volume_info.get('industryIdentifiers', [])],
+                        'isbn': isbn_13,
                         'score': 0,
                         'related_to': ''
                     })

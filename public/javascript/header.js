@@ -4,6 +4,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const userSection = document.getElementById('userSection');
     const currentPath = window.location.pathname;
 
+    const footer = document.createElement('footer');
+    footer.classList.add('bg-green-850', 'text-white', 'text-center', 'py-4', 'mt-8'); // Adjust styling as needed
+    footer.innerHTML = `
+        <p>&copy; ${new Date().getFullYear()} <em>Booked</em>. All rights reserved.</p>
+    `;
+
+    // Append the footer to the body
+    document.body.appendChild(footer);
+
     // Create logo and home link elements
     const logoLink = document.createElement('a');
     logoLink.href = '../html/index.html';

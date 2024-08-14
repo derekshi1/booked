@@ -15,12 +15,38 @@ mongoose.connect(mongoUri, { useNewUrlParser: true, useUnifiedTopology: true })
 const userSchema = new mongoose.Schema({
   username: { type: String, required: true, unique: true },
   password: { type: String, required: true },
-  friends: { type: [String], default: [] },  
-  friendRequests: { type: [String], default: [] }  // Added for friend requests
+  friends: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], default: [] },
+  friendRequests: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'FriendRequest' }], default: [] }
 });
-const User = mongoose.model('User', userSchema);
 
-// Mongoose Schema and Model for Books
+const activitySchema = new mongoose.Schema({
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  action: { type: String, required: true },
+  bookTitle: { type: String, required: true },
+  thumbnail: { type: String }, // Add this line to store the thumbnail URL
+  timestamp: { type: Date, default: Date.now }
+});
+
+const friendRequestSchema = new mongoose.Schema({
+  from: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  to: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  status: { type: String, enum: ['pending', 'accepted', 'rejected'], default: 'pending' },
+  createdAt: { type: Date, default: Date.now }
+});
+
+// Models
+const User = mongoose.model('User', userSchema);
+const Activity = mongoose.model('Activity', activitySchema);
+const FriendRequest = mongoose.model('FriendRequest', friendRequestSchema);
+
+// Optional: If the Friend schema is necessary, ensure it's used correctly.
+const friendSchema = new mongoose.Schema({
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  friendId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }
+});
+const Friend = mongoose.model('Friend', friendSchema);
+
+// Book Schema (unchanged)
 const bookSchema = new mongoose.Schema({
   title: String,
   author: String,
@@ -68,33 +94,7 @@ const userLibrarySchema = new mongoose.Schema({
     rating: Number
   }]
 });
-
 const UserLibrary = mongoose.model('UserLibrary', userLibrarySchema);
-
-// Mongoose Schema and Model for Friends
-const friendSchema = new mongoose.Schema({
-  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  friendId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }
-});
-const Friend = mongoose.model('Friend', friendSchema);
-
-// Mongoose Schema and Model for Activities
-const activitySchema = new mongoose.Schema({
-  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  action: { type: String, required: true },
-  bookTitle: { type: String, required: true },
-  timestamp: { type: Date, default: Date.now }
-});
-const Activity = mongoose.model('Activity', activitySchema);
-
-const friendRequestSchema = new mongoose.Schema({
-  from: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  to: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  status: { type: String, enum: ['pending', 'accepted', 'rejected'], default: 'pending' },
-  createdAt: { type: Date, default: Date.now }
-});
-
-const FriendRequest = mongoose.model('FriendRequest', friendRequestSchema);
 
 app.use(express.static('public'));
 app.use(express.json());
@@ -232,6 +232,17 @@ app.post('/api/library/add', async (req, res) => {
     userLibrary.books.push({ isbn, title, authors, description, thumbnail, categories, pageCount});
     await userLibrary.save();
 
+    const user = await User.findOne({ username });
+    if (user) {
+      const newActivity = new Activity({
+        userId: user._id,
+        action: 'added to library',  // Specify the action
+        bookTitle: title,
+        thumbnail: thumbnail, // Add the thumbnail URL here
+        timestamp: new Date()  // Automatically set the timestamp
+      });
+      await newActivity.save();
+    }
     res.status(200).json({ success: true, message: 'Book added to library' });
   } catch (error) {
     console.error(error);
@@ -249,9 +260,18 @@ app.post('/api/library/remove', async (req, res) => {
           return res.status(404).json({ success: false, message: 'No library found for user' });
       }
 
+      // Find the book to get its title before removing it
+      const bookToRemove = userLibrary.books.find(book => book.isbn === isbn);
+      if (!bookToRemove) {
+          return res.status(404).json({ success: false, message: 'Book not found in library' });
+      }
+
+      const title = bookToRemove.title;
+
       // Remove the book from the library
       userLibrary.books = userLibrary.books.filter(book => book.isbn !== isbn);
       await userLibrary.save();
+
 
       res.status(200).json({ success: true, message: 'Book removed from library' });
   } catch (error) {
@@ -667,6 +687,7 @@ app.get('/api/search-users', async (req, res) => {
 });
 
 // Endpoint to send a friend request
+// Endpoint to send a friend request
 app.post('/api/add-friend', async (req, res) => {
   const { username, friendUsername } = req.body;
 
@@ -678,7 +699,13 @@ app.post('/api/add-friend', async (req, res) => {
           return res.status(404).json({ success: false, message: 'User or friend not found' });
       }
 
-      // Create a friend request document
+      // Check if a friend request already exists
+      const existingRequest = await FriendRequest.findOne({ from: user._id, to: friend._id });
+      if (existingRequest) {
+          return res.status(400).json({ success: false, message: 'Friend request already sent' });
+      }
+
+      // Create a new friend request
       const friendRequest = new FriendRequest({
           from: user._id,
           to: friend._id,
@@ -694,44 +721,41 @@ app.post('/api/add-friend', async (req, res) => {
 });
 
 
-// Endpoint to fetch friend requests for a user
-app.get('/api/friend-requests/:username', async (req, res) => {
-  try {
-    const username = req.params.username;
-    const user = await User.findOne({ username }).populate('friendRequests.from', 'username');
 
-    if (!user) {
-      return res.status(404).json({ success: false, message: 'User not found' });
-    }
-
-    res.status(200).json({ success: true, friendRequests: user.friendRequests });
-  } catch (error) {
-    console.error('Error fetching friend requests:', error);
-    res.status(500).json({ success: false, message: 'Internal server error' });
-  }
-});
 
 // Endpoint to accept a friend request
 app.post('/api/accept-friend', async (req, res) => {
-  const { username, friendUsername } = req.body;
+  const { username, requestId } = req.body;
+
   try {
-    const user = await User.findOne({ username });
-    const friend = await User.findOne({ username: friendUsername });
+    // Find the friend request by ID
+    const friendRequest = await FriendRequest.findById(requestId).populate('from to');
+
+    if (!friendRequest) {
+      return res.status(404).json({ success: false, message: 'Friend request not found' });
+    }
+
+    const user = await User.findById(friendRequest.to._id);
+    const friend = await User.findById(friendRequest.from._id);
 
     if (!user || !friend) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
 
-    if (!user.friendRequests.includes(friendUsername)) {
-      return res.status(400).json({ success: false, message: 'No friend request found' });
-    }
+    // Initialize the friends array if it doesn't exist
+    if (!user.friends) user.friends = [];
+    if (!friend.friends) friend.friends = [];
 
-    user.friendRequests = user.friendRequests.filter(req => req !== friendUsername);
-    user.friends.push(friendUsername);
-    friend.friends.push(username);
+    // Add each other as friends
+    user.friends.push(friend._id);
+    friend.friends.push(user._id);
 
+    // Save both users
     await user.save();
     await friend.save();
+
+    // Remove the friend request after it's accepted
+    await FriendRequest.findByIdAndDelete(requestId);
 
     res.status(200).json({ success: true, message: 'Friend request accepted' });
   } catch (error) {
@@ -740,43 +764,124 @@ app.post('/api/accept-friend', async (req, res) => {
   }
 });
 
+
+
+
 app.get('/api/number-of-friends/:username', async (req, res) => {
   const { username } = req.params;
   try {
-      const user = await User.findOne({ username });
+      const user = await User.findOne({ username }).populate('friends');
+      console.log('User data:', user);
+
       if (!user) {
+          console.error(`User not found: ${username}`);
           return res.status(404).json({ success: false, message: 'User not found' });
       }
-      const numberOfFriends = user.friends ? user.friends.length : 0;
+
+      if (!Array.isArray(user.friends)) {
+          console.error(`User's friends: ${user.friends}`);
+          console.log('User has no friends or friends field is not an array');
+          return res.status(200).json({ success: true, numberOfFriends: 0 });
+      }
+
+      const numberOfFriends = user.friends.length;
+      console.log(`User ${username} has ${numberOfFriends} friends.`);
+      
       res.status(200).json({ success: true, numberOfFriends });
   } catch (error) {
       console.error('Error fetching number of friends:', error);
       res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });
+// Endpoint to fetch friend requests for a user
 app.get('/api/friends-activities/:username', async (req, res) => {
   const { username } = req.params;
   try {
-      const user = await User.findOne({ username }).populate('friends').exec();
+      // Find the user and populate the friends field
+      const user = await User.findOne({ username }).populate('friends');
+
       if (!user) {
+          console.log('User not found');
           return res.status(404).json({ success: false, message: 'User not found' });
       }
 
+      console.log(`User's friends:`, user.friends);  // Debugging output
+
+      if (!Array.isArray(user.friends) || user.friends.length === 0) {
+          console.log('User has no friends or friends field is not an array');
+          return res.status(200).json({ success: true, activities: [] });  // No friends, no activities
+      }
+
       const friendsActivities = [];
+      
+      // For each friend, fetch their activities
       for (const friend of user.friends) {
-          // Assume each friend has an activities field that logs their actions
-          const activities = friend.activities.map(activity => ({
-              username: friend.username,
-              action: activity.action,
-              bookTitle: activity.bookTitle
-          }));
-          friendsActivities.push(...activities);
+          const activities = await Activity.find({ userId: friend._id });
+          activities.forEach(activity => {
+              friendsActivities.push({
+                  username: friend.username,
+                  action: activity.action,
+                  bookTitle: activity.bookTitle,
+                  timestamp: activity.timestamp
+              });
+          });
       }
 
       res.json({ success: true, activities: friendsActivities });
   } catch (error) {
       console.error('Error getting friends\' activities:', error);
       res.status(500).json({ success: false, message: 'Error getting friends\' activities' });
+  }
+});
+
+app.get('/api/friend-requests/:username', async (req, res) => {
+  // Ensure this route is correctly defined and matches the client-side fetch call.
+  try {
+      const username = req.params.username;
+      const user = await User.findOne({ username });
+
+      if (!user) {
+          return res.status(404).json({ success: false, message: 'User not found' });
+      }
+
+      const friendRequests = await FriendRequest.find({ to: user._id, status: 'pending' }).populate('from', 'username');
+      res.status(200).json({ success: true, friendRequests });
+  } catch (error) {
+      console.error('Error fetching friend requests:', error);
+      res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
+// Endpoint to check friendship status between two users
+app.post('/api/check-friendship-status', async (req, res) => {
+  const { username, friendUsername } = req.body;
+
+  try {
+      const user = await User.findOne({ username }).populate('friends').populate('friendRequests');
+      const friend = await User.findOne({ username: friendUsername });
+
+      if (!user || !friend) {
+          return res.status(404).json({ success: false, message: 'User or friend not found' });
+      }
+
+      // Check if the users are already friends
+      const isFriend = user.friends.some(f => f.username === friendUsername);
+      if (isFriend) {
+          return res.status(200).json({ success: true, status: 'friend' });
+      }
+
+      // Check if there is a pending friend request
+      const isPending = await FriendRequest.findOne({ from: friend._id, to: user._id, status: 'pending' });
+      if (isPending) {
+          return res.status(200).json({ success: true, status: 'pending' });
+      }
+
+      // If not friends and no pending request, return 'none'
+      return res.status(200).json({ success: true, status: 'none' });
+
+  } catch (error) {
+      console.error('Error checking friendship status:', error);
+      res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });
 

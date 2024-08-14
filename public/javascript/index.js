@@ -52,21 +52,71 @@ document.addEventListener('DOMContentLoaded', () => {
         recommendationsContainer.innerHTML = '';
         recommendations.forEach(recommendation => {
             const recommendationElement = document.createElement('div');
-            recommendationElement.classList.add('recommendation-card', 'p-4', 'bg-gray-100', 'rounded', 'shadow');
+            recommendationElement.classList.add('recommendation-card', 'p-4', 'bg-gray-100', 'rounded', 'shadow-lg');
+    
+            // Function to generate a random color
+            const generateRandomColor = () => {
+                const r = Math.floor((Math.random() * 100) + 50); // Red value between 50 and 150
+                const g = Math.floor((Math.random() * 100) + 50); // Green value between 50 and 150
+                const b = Math.floor((Math.random() * 100) + 50); // Blue value between 50 and 150
+            
+                // Convert to hexadecimal format
+                const hex = `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
+                return hex;
+            };
+    
+            // Fallback to a colored cover if the image is a placeholder or fails to load
+            const onErrorFallback = (event) => {
+                const parentElement = event.target.closest('.relative.group');
+                const randomColor = generateRandomColor();
+                parentElement.querySelector('img').remove(); // Remove the failed image
+    
+                parentElement.innerHTML += `
+                    <div class="w-full h-60 flex flex-col justify-center items-center text-center p-4" style="background-color: ${randomColor};">
+                        <h2 class="text-lg font-bold text-white">${recommendation.title}</h2>
+                        <p class="text-gray-300">by ${recommendation.authors.join(', ')}</p>
+                    </div>
+                `;
+            };
+    
+            // Check if the thumbnail is a Google Books placeholder
+            const isPlaceholder = (url) => {
+                return url.includes('books.google.com') && url.includes('150x150');
+            };
+    
+            let thumbnail = recommendation.thumbnail;
+            if (!thumbnail || isPlaceholder(thumbnail)) {
+                thumbnail = 'invalid-url.jpg'; // This will trigger the onErrorFallback
+            }
+    
             recommendationElement.innerHTML = `
                 <div class="relative group">
                     <a href="../html/book.html?isbn=${recommendation.isbn[0]}" class="block relative overflow-hidden rounded-lg shadow-lg hover:shadow-2xl transition duration-300 ease-in-out group">
-                        <img src="${recommendation.thumbnail}" alt="${recommendation.title}" class="w-full h-72 object-cover">
+                        <img 
+                            src="${thumbnail}?zoom=1" 
+                            alt="${recommendation.title}" 
+                            class="w-full h-72 object-cover"
+                        />
                         <div class="absolute bottom-0 left-0 w-full p-4 bg-black bg-opacity-60 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-in-out">
                             <h2 class="text-lg font-bold">${recommendation.title}</h2>
-                            <p class="text-gray-300">by ${recommendation.authors}</p>
+                            <p class="text-gray-300">by ${recommendation.authors.join(', ')} </p>
                         </div>
                     </a>
                 </div>
             `;
+    
+            // Append the recommendation element to the container first
             recommendationsContainer.appendChild(recommendationElement);
-        });    
+    
+            // Attach the onErrorFallback handler directly in JavaScript
+            const imgElement = recommendationElement.querySelector('img');
+            imgElement.addEventListener('error', onErrorFallback);
+        });
     };
+    
+    
+    
+    
     const renderPlaceholderRecommendations = () => {
         recommendationsContainer.innerHTML = '';
         for (let i = 0; i < 10; i++) {

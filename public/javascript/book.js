@@ -6,48 +6,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     const userSection = document.getElementById('userSection');
     const recommendationsContainer = document.getElementById('recommendationsContainer');
     const apiKey = 'AIzaSyCFDaqjpgA8K_NqqCw93xorS3zumc_52u8'
-    const createSparkles = () => {
-        const sparkleContainer = document.getElementById('sparkleContainer');
-        sparkleContainer.innerHTML = '';
 
-        for (let i = 0; i < 9; i++) {
-            const sparkle = document.createElement('div');
-            const size = Math.random() * 10 + 8; // Random size between 10px and 20px
-            const animationDuration = Math.random() * 1 + 0.5; // Random duration between 0.5s and 1.5s
-    
-            sparkle.className = 'sparkle';
-            sparkle.style.width = `${size}px`;
-            sparkle.style.height = `${size}px`;
-            sparkle.style.top = `${Math.random() * 100}%`; // Random vertical position
-            sparkle.style.left = `${Math.random() * 100}%`; // Random horizontal position
-            sparkle.style.animationDuration = `${animationDuration}s`;
-    
-            sparkleContainer.appendChild(sparkle);
-        }
-    };
-    
-    // Function to show sparkles
-    const showSparkles = () => {
-        const sparkleContainer = document.getElementById('sparkleContainer');
-        if (sparkleContainer) {
-            sparkleContainer.style.display = 'flex';
-            createSparkles();
-        }
-    };
-
-    const hideSparkles = () => {
-        const sparkleContainer = document.getElementById('sparkleContainer');
-        if (sparkleContainer) {
-            sparkleContainer.style.display = 'none';
-            sparkleContainer.innerHTML = '';
-        }
-    };
     
     
 
     if (isbn) {
         try {
-            showSparkles();
             console.log(`Fetching data for ISBN: ${isbn}`);  // Logging ISBN
             const response = await fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}&key=${apiKey}`);
             const data = await response.json();
@@ -58,7 +22,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 bookDetails.innerHTML = `
                     <div class="flex flex-col md:flex-row">
                         <div class="mr-8 mb-8 md:mb-0">
-                            <img src="${book.imageLinks ? book.imageLinks.thumbnail : 'https://via.placeholder.com/128x192?text=No+Image'}" alt="${book.title}" class="w-64 h-96 object-cover mr-8 mb-8 md:mb-0">
+                            <img src="${book.imageLinks ? book.imageLinks.thumbnail.replace('zoom=1', '') + '&zoom=1' : 'https://via.placeholder.com/128x192?text=No+Image'}" alt="${book.title}" class="w-64 h-96 object-cover mr-8 mb-8 md:mb-0">
                             <button id="addToLibraryButton" class="mt-4 px-4 py-2 bg-blue-500 text-white rounded w-64">Add to Library</button>
                             <button id="addToTop5Button" class="mt-4 px-4 py-2 bg-green-900 text-white rounded w-64">Add to Top 5</button>
                             <button id="addToReadingListButton" class="mt-4 px-4 py-2 bg-blue-400 text-white rounded w-64">Add to Reading List</button>
@@ -78,16 +42,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <div id="recommendations" class="mt-8">
                         <div class="flex items-center mb-4">
                             <h2 class="text-3xl font-bold">Similar Books</h2>
-                            <div id="sparkleContainer" class="ml-4 sparkle-container"></div>
                         </div>
                         <div class="single-recommendations-wrapper relative w-full mt-8 overflow-hidden">
                             <div id="recommendationsContainer" class="single-recommendations-container">
                                 <!-- Recommendations will be dynamically inserted here -->
                             </div>
-                            <div class="arrow-hover-region left"></div>
-                            <div class="arrow-hover-region right"></div>
-                            <button class="arrow arrow-left" id="scrollLeft"><i class="fas fa-chevron-left"></i></button>
-                            <button class="arrow arrow-right" id="scrollRight"><i class="fas fa-chevron-right"></i></button>
                         </div>
                     </div>
                 `;
@@ -101,12 +60,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 bookDetails.innerHTML = '<p>Book not found.</p>';
             }
         } catch (error) {
-            hideSparkles();
 
         }
-        finally{
-            hideSparkles();        }
-    } else {
+        } else {
         bookDetails.innerHTML = '<p>ISBN not provided.</p>';
     }
 });
