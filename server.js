@@ -569,6 +569,7 @@ app.put('/api/library/review', async (req, res) => {
         isbn: book.isbn,
         thumbnail: book.thumbnail,  // Assuming book.thumbnail is available
         timestamp: new Date(),
+        username: user.username,
       });
       await newActivity.save();
     }

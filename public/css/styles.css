@@ -662,3 +662,23 @@ html, body {
 main {
     flex: 1; /* Ensures main content fills available space */
 }
+
+/* Default styles for the activity container */
+.activity {
+    transition: background-color 0.3s ease, transform 0.3s ease;
+}
+
+/* Hover effect for the activity container */
+.activity:hover {
+    background-color: #f0f4f8; /* Lighten the background color */
+    transform: translateY(-3px); /* Slight lift on hover */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Add a subtle shadow */
+}
+
+/* Make sure the comment button also responds to the hover */
+.activity:hover .comment-button {
+    display: block;
+    opacity: 1;
+    transform: scale(1.1); /* Slightly scale up the button */
+}
+

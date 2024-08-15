@@ -139,16 +139,26 @@ document.addEventListener('DOMContentLoaded', () => {
                         </div>
                         <div class="relative">
                             <img src="${thumbnailUrl}" alt="${bookTitle}" class="w-20 h-32 object-cover rounded ml-4">
-                            <button class="comment-button ease-in-out-transition absolute top-0 right-0 mt-2 mr-2" data-username="${activity.username}" data-isbn="${activity.isbn}"></button>
+                            ${activity.action.includes('reviewed') ? `
+                            <button class="comment-button ease-in-out-transition" 
+                                style="top: -25px; right: -25px; position: absolute;" 
+                                data-username="${activity.username}" 
+                                data-isbn="${activity.isbn}">
+                            </button>
+                        ` : ''}                        
                         </div>
+                    </div>
+                    <div class="review-content hidden p-4 bg-gray-100 mt-2 rounded">
+                        <p class="review-text text-sm">
+                            <strong>${activity.username}</strong> review: ${activity.review}
+                        </p>
+                        <p class="rating-text text-sm font-bold">
+                            Rating: ${activity.rating}
+                        </p>
                     </div>
                     <div class="flex justify-between items-end mt-2">
                         <p class="time-ago text-gray-600 text-xs">${timeAgo}</p>
-                    </div>
-                    <div class="review-content hidden p-4 bg-gray-100 mt-2 rounded">
-                        <p class="review-text text-sm"></p>
-                        <p class="rating-text text-sm font-bold"></p>
-                    </div>
+                    </div> 
                 `;
 
     
@@ -345,14 +355,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     const data = await response.json();
 
                     if (data.success) {
-                        reviewText.textContent = data.review || 'No review available';
-                        ratingText.textContent = `Rating: ${data.rating || 'Not rated'}`;
+                        reviewText.innerHTML = `"${data.review || 'No review available'}"`;
+                        ratingText.innerHTML = `Rating: ${data.rating || 'Not rated'}`;
                     } else {
                         reviewText.textContent = 'Failed to load review.';
                     }
-                } catch (error) {
-                    reviewText.textContent = 'Error loading review.';
-                }
+                    } catch (error) {
+                        reviewText.textContent = 'Error loading review.';
+                    }
 
                 reviewContentDiv.classList.remove('hidden');
             } else {
