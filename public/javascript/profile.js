@@ -1,11 +1,26 @@
 document.addEventListener('DOMContentLoaded', async () => {
-    const username = localStorage.getItem('username');
+    const urlParams = new URLSearchParams(window.location.search);
+    const profileUsername = urlParams.get('username'); // Get the username from the URL
+    const loggedInUsername = localStorage.getItem('username'); // Get the logged-in username
+
+    // If no username is specified in the URL, use the logged-in username
+    const username = profileUsername || loggedInUsername;
+
     if (username) {
         document.getElementById('usernameDisplay').textContent = username;
-        document.getElementById('logoutButton').addEventListener('click', () => {
-            localStorage.removeItem('username');
-            window.location.href = '../html/index.html';
-        });
+
+        if (username === loggedInUsername) {
+            // Show the logout button if it's the user's own profile
+            document.getElementById('logoutButton').style.display = 'inline-block';
+            document.getElementById('logoutButton').addEventListener('click', () => {
+                localStorage.removeItem('username');
+                window.location.href = '../html/index.html';
+            });
+        } else {
+            // Hide the logout button if viewing someone else's profile
+            document.getElementById('logoutButton').style.display = 'none';
+        }
+
         try {
             const response = await fetch(`/api/number-of-friends/${username}`);
             const data = await response.json();
@@ -17,6 +32,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         } catch (error) {
             console.error('Error fetching number of friends:', error);
         }
+
         // Fetch library details
         try {
             const response = await fetch(`/api/library/${username}`);

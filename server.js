@@ -4,7 +4,6 @@ const { spawn } = require('child_process');
 
 const app = express();
 const port = 8080;
-
 // MongoDB Connection
 const mongoUri = 'mongodb+srv://derekshi:Rsds0601@library.k27zbxq.mongodb.net/?retryWrites=true&w=majority&appName=library';
 mongoose.connect(mongoUri, { useNewUrlParser: true, useUnifiedTopology: true })
@@ -16,14 +15,16 @@ const userSchema = new mongoose.Schema({
   username: { type: String, required: true, unique: true },
   password: { type: String, required: true },
   friends: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], default: [] },
-  friendRequests: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'FriendRequest' }], default: [] }
+  friendRequests: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'FriendRequest' }], default: [] },
+  profilePicture: { type: String, default: 'default-profile.png' } 
 });
 
 const activitySchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   action: { type: String, required: true },
-  bookTitle: { type: String, required: true },
-  thumbnail: { type: String }, // Add this line to store the thumbnail URL
+  bookTitle: { type: String, required: true }, // Store the book title directly
+  isbn: { type: String, required: true }, // Store the ISBN directly
+  thumbnail: { type: String }, // Store the thumbnail URL directly
   timestamp: { type: Date, default: Date.now }
 });
 
@@ -216,39 +217,56 @@ app.delete('/books/:id', async (req, res) => {
 
 // Add book to user's library
 app.post('/api/library/add', async (req, res) => {
-  const { username, isbn, title, authors, description, thumbnail, categories, pageCount} = req.body;
+  const { username, isbn, title, authors, description, thumbnail, categories, pageCount } = req.body;
+
+  // Debugging logs
+  console.log("Add to Library Request Body:", req.body);
+
   try {
     let userLibrary = await UserLibrary.findOne({ username });
     if (!userLibrary) {
       userLibrary = new UserLibrary({ username, books: [] });
     }
 
-    // Check if the book is already in the library
     const existingBook = userLibrary.books.find(book => book.isbn === isbn);
     if (existingBook) {
+      console.log(`Book with ISBN ${isbn} already exists in the library.`);
       return res.status(400).json({ success: false, message: 'Book already in library' });
     }
 
-    userLibrary.books.push({ isbn, title, authors, description, thumbnail, categories, pageCount});
+    console.log("Adding book to user library:", { isbn, title, authors, description, thumbnail, categories, pageCount });
+    userLibrary.books.push({ isbn, title, authors, description, thumbnail, categories, pageCount });
     await userLibrary.save();
+    console.log("Book successfully added to user library.");
 
     const user = await User.findOne({ username });
     if (user) {
+      // More debugging logs
+      console.log("Creating Activity with:", { title, isbn, thumbnail });
+
       const newActivity = new Activity({
         userId: user._id,
-        action: 'added to library',  // Specify the action
+        action: 'added to library',
         bookTitle: title,
-        thumbnail: thumbnail, // Add the thumbnail URL here
-        timestamp: new Date()  // Automatically set the timestamp
+        isbn: isbn,
+        thumbnail: thumbnail,
+        timestamp: new Date()
       });
+
       await newActivity.save();
+      console.log("Activity created and saved successfully:", newActivity);
+    } else {
+      console.error(`User not found: ${username}`);
     }
+
     res.status(200).json({ success: true, message: 'Book added to library' });
   } catch (error) {
-    console.error(error);
+    console.error("Error occurred while adding book to library:", error);
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });
+
+
 
 // Remove book from user's library
 app.post('/api/library/remove', async (req, res) => {
@@ -477,6 +495,21 @@ app.post('/api/library/review', async (req, res) => {
     book.rating = rating;
 
     await userLibrary.save();
+
+    // Log review as an activity
+    const user = await User.findOne({ username });
+    if (user) {
+      const newActivity = new Activity({
+        userId: user._id,
+        action: 'reviewed',
+        bookTitle: book.title,  // Assuming book.title is available
+        isbn: book.isbn,
+        thumbnail: book.thumbnail,  // Assuming book.thumbnail is available
+        timestamp: new Date(),
+      });
+      await newActivity.save();
+    }
+
     res.status(200).json({ success: true, message: 'Review saved successfully' });
   } catch (error) {
     console.error(error);
@@ -525,12 +558,28 @@ app.put('/api/library/review', async (req, res) => {
     book.rating = rating;
 
     await userLibrary.save();
+
+    // Log review update as an activity
+    const user = await User.findOne({ username });
+    if (user) {
+      const newActivity = new Activity({
+        userId: user._id,
+        action: 'updated review for',
+        bookTitle: book.title,  // Assuming book.title is available
+        isbn: book.isbn,
+        thumbnail: book.thumbnail,  // Assuming book.thumbnail is available
+        timestamp: new Date(),
+      });
+      await newActivity.save();
+    }
+
     res.status(200).json({ success: true, message: 'Review updated successfully' });
   } catch (error) {
     console.error(error);
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });
+
 
 //add book to reading list
 app.post('/api/library/readList/add', async (req, res) => {
@@ -793,7 +842,7 @@ app.get('/api/number-of-friends/:username', async (req, res) => {
       res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });
-// Endpoint to fetch friend requests for a user
+
 app.get('/api/friends-activities/:username', async (req, res) => {
   const { username } = req.params;
   try {
@@ -805,27 +854,29 @@ app.get('/api/friends-activities/:username', async (req, res) => {
           return res.status(404).json({ success: false, message: 'User not found' });
       }
 
-      console.log(`User's friends:`, user.friends);  // Debugging output
-
       if (!Array.isArray(user.friends) || user.friends.length === 0) {
-          console.log('User has no friends or friends field is not an array');
           return res.status(200).json({ success: true, activities: [] });  // No friends, no activities
       }
 
       const friendsActivities = [];
       
-      // For each friend, fetch their activities
+      // For each friend, fetch their activities and sort by timestamp descending
       for (const friend of user.friends) {
-          const activities = await Activity.find({ userId: friend._id });
+          const activities = await Activity.find({ userId: friend._id }).sort({ timestamp: -1 });
           activities.forEach(activity => {
-              friendsActivities.push({
-                  username: friend.username,
-                  action: activity.action,
-                  bookTitle: activity.bookTitle,
-                  timestamp: activity.timestamp
-              });
+            friendsActivities.push({
+              username: friend.username,
+              action: activity.action,
+              bookTitle: activity.bookTitle, // Access the book's title directly
+              isbn: activity.isbn,       // Access the ISBN directly
+              thumbnail: activity.thumbnail, // Access the thumbnail directly
+              timestamp: activity.timestamp
+            });
           });
       }
+
+      // Sort all activities by timestamp in descending order before sending the response
+      friendsActivities.sort((a, b) => b.timestamp - a.timestamp);
 
       res.json({ success: true, activities: friendsActivities });
   } catch (error) {

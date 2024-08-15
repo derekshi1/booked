@@ -142,20 +142,65 @@ document.addEventListener('DOMContentLoaded', () => {
         recommendations.forEach(recommendation => {
             const recommendationElement = document.createElement('div');
             recommendationElement.classList.add('recommendation-card', 'p-4', 'bg-gray-100', 'rounded', 'shadow');
+    
+            // Function to generate a random color for the fallback cover
+            const generateRandomColor = () => {
+                const letters = '89ABCDEF'; // Limiting to pastel colors
+                let color = '#';
+                for (let i = 0; i < 6; i++) {
+                    color += letters[Math.floor(Math.random() * letters.length)];
+                }
+                return color;
+            };
+    
+            // Fallback to a colored cover if the image is a placeholder or fails to load
+            const onErrorFallback = (event) => {
+                const parentElement = event.target.closest('.relative.group');
+                const randomColor = generateRandomColor();
+                parentElement.querySelector('img').remove(); // Remove the failed image
+    
+                parentElement.innerHTML += `
+                    <div class="w-full h-60 flex flex-col justify-center items-center text-center p-4" style="background-color: ${randomColor};">
+                        <h2 class="text-lg font-bold text-white">${recommendation.title}</h2>
+                        <p class="text-gray-300">by ${recommendation.authors.join(', ')}</p>
+                    </div>
+                `;
+            };
+    
+            // Check if the thumbnail is a Google Books placeholder
+            const isPlaceholder = (url) => {
+                return url.includes('books.google.com') && url.includes('150x150');
+            };
+    
+            let thumbnail = recommendation.thumbnail;
+            if (!thumbnail || isPlaceholder(thumbnail)) {
+                thumbnail = 'invalid-url.jpg'; // This will trigger the onErrorFallback
+            }
+    
             recommendationElement.innerHTML = `
                 <div class="relative group">
                     <a href="../html/book.html?isbn=${recommendation.isbn[0]}" class="block relative overflow-hidden rounded-lg shadow-lg hover:shadow-2xl transition duration-300 ease-in-out group">
-                        <img src="${recommendation.thumbnail}" alt="${recommendation.title}" class="w-full h-72 object-cover">
+                        <img 
+                            src="${thumbnail}?zoom=1" 
+                            alt="${recommendation.title}" 
+                            class="w-full h-72 object-cover"
+                        />
                         <div class="absolute bottom-0 left-0 w-full p-4 bg-black bg-opacity-60 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-in-out">
                             <h2 class="text-lg font-bold">${recommendation.title}</h2>
-                            <p class="text-gray-300">by ${recommendation.authors}</p>
+                            <p class="text-gray-300">by ${recommendation.authors.join(', ')} </p>
                         </div>
                     </a>
                 </div>
             `;
+    
             oppRecommendationsContainer.appendChild(recommendationElement);
+    
+            // Attach the onErrorFallback handler directly in JavaScript
+            const imgElement = recommendationElement.querySelector('img');
+            imgElement.addEventListener('error', onErrorFallback);
         });
     };
+    
     const fetchAndDisplayOppositeRecommendations = async () => {
         if (username) {
             try {
