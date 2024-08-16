@@ -4,7 +4,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const searchResults = document.getElementById('searchResults');
     const activitiesFeed = document.getElementById('activitiesFeed');
     const username = localStorage.getItem('username');
-
     console.log('DOM fully loaded and parsed');
     console.log(`Current logged in username: ${username}`);
     const formatTimeAgo = (timestamp) => {
@@ -101,72 +100,176 @@ document.addEventListener('DOMContentLoaded', () => {
     const renderActivitiesFeed = (activities) => {
         console.log('Activities to be rendered:', activities);  // Logging the activities
     
+        // Group activities by user and remove duplicates
         const seenActivities = new Set();
-        const uniqueActivities = activities.filter(activity => {
-            const activityKey = `${activity.username}-${activity.action}-${activity.bookTitle}`;
-            if (seenActivities.has(activityKey)) {
-                return false; // Duplicate found, skip it
-            }
+        const activitiesByUser = activities.reduce((acc, activity) => {
+        const { username } = activity;
+        const activityKey = `${activity.username}-${activity.action}-${activity.bookTitle}`;
+
+        if (!seenActivities.has(activityKey)) {
             seenActivities.add(activityKey);
-            return true; // Unique activity, include it
-        });
+
+            if (!acc[username]) {
+                acc[username] = [];
+            }
+
+            acc[username].push(activity);
+        }
+
+    return acc;
+}, {});
+
+        
+        
     
         activitiesFeed.innerHTML = '';
     
-        if (uniqueActivities.length === 0) {
-            console.log('No activities found, showing empty message.');
-            activitiesFeed.innerHTML = '<p class="text-gray-400 text-center">Add some friends...!</p>';
-        } else {
-            uniqueActivities.forEach(activity => {
-                console.log(`Rendering activity for book: ${activity.bookTitle}, ISBN: ${activity.isbn}`);
+        // Iterate over users and render their activities
+        Object.keys(activitiesByUser).forEach(username => {
+            const userActivities = Object.values(activitiesByUser[username]).flat();
+            const mostRecentActivity = userActivities[0];
     
-                // Use the thumbnail and other data from the activity object
-                let thumbnailUrl = activity.thumbnail || 'https://via.placeholder.com/128x192?text=No+Image';
-                let bookTitle = activity.bookTitle || 'Unknown Title';
-                let bookIsbn = activity.isbn || 'Unknown ISBN';
-                let timeAgo = formatTimeAgo(activity.timestamp);
+            const activityElement = document.createElement('div');
+            activityElement.classList.add('activity', 'p-2', 'bg-gray-100', 'rounded', 'shadow', 'mb-2');
+            activityElement.setAttribute('data-total-activities', userActivities.length);
 
-                const activityElement = document.createElement('div');
-                activityElement.classList.add('activity', 'p-4', 'bg-gray-100', 'rounded', 'shadow', 'mb-2');
+            activityElement.innerHTML = `
+                <div class="flex justify-between items-center">
+                    <div>
+                        <a href="../html/profile.html?username=${mostRecentActivity.username}" class="text-blue-500 hover:underline">
+                            <strong>${mostRecentActivity.username}</strong>
+                        </a> 
+                        ${mostRecentActivity.action} 
+                        <a href="../html/book.html?isbn=${mostRecentActivity.isbn}" class="text-grey-500 hover:underline">
+                            <em>${mostRecentActivity.bookTitle}</em>
+                        </a>
+                    </div>
+                    <div class="relative">
+                        <img src="${mostRecentActivity.thumbnail}" alt="${mostRecentActivity.bookTitle}" class="w-16 h-24 object-cover rounded ml-4">
+                        ${mostRecentActivity.action.includes('reviewed') ? `
+                        <button class="comment-button ease-in-out-transition" 
+                            style="top: -16px; right: -16px; position: absolute;" 
+                            data-username="${mostRecentActivity.username}" 
+                            data-isbn="${mostRecentActivity.isbn}">
+                        </button>
+                        ` : ''}                        
+                    </div>
+                </div>
+
+                <div class="review-content hidden p-4 bg-gray-100" style="margin-top: 2px; rounded">
+                    <p class="review-text text-sm">
+                        <strong>${mostRecentActivity.username}</strong> review: ${mostRecentActivity.review}
+                    </p>
+                    <p class="rating-text text-sm">
+                        Rating: ${mostRecentActivity.rating}/100
+                    </p>
+                </div>
+                <div class="flex justify-between items-end mt-2">
+                    <p class="time-ago text-gray-600 text-xs">${formatTimeAgo(mostRecentActivity.timestamp)}</p>
+                    ${userActivities.length > 1 ? `<a href="#" class="text-blue-500 hover:underline see-more" data-username="${username}">See ${userActivities.length - 1} more actions...</a>` : ''}
+                </div>
+        `;
+            activitiesFeed.appendChild(activityElement);
     
-                activityElement.innerHTML = `
+            if (userActivities.length > 1) {
+                const seeMoreLink = activityElement.querySelector('.see-more');
+                seeMoreLink.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    renderAdditionalActivities(userActivities.slice(1), activityElement, seeMoreLink);
+                });
+            }
+        });
+    };
+    
+    const renderAdditionalActivities = (activities, containerElement, seeMoreLink) => {
+        // Clear any previously added additional activities
+        containerElement.querySelectorAll('.additional-activity').forEach(activityEl => activityEl.remove());
+    
+        // Add up to 5 more activities
+        activities.slice(0, 5).forEach(activity => {
+            const additionalActivityElement = document.createElement('div');
+            additionalActivityElement.classList.add('activity', 'p-2', 'bg-gray-50', 'rounded', 'shadow', 'mb-2', 'ml-4', 'additional-activity');
+    
+            additionalActivityElement.innerHTML = `
                     <div class="flex justify-between items-center">
                         <div>
-                            <a href="../html/profile.html?username=${activity.username}" class="text-blue-500 hover:underline">
-                                <strong>${activity.username}</strong>
-                            </a> 
-                            ${activity.action} <em>${bookTitle}</em>
+                            ${activity.action} 
+                            <a href="../html/book.html?isbn=${activity.isbn}" class="text-grey-500 hover:underline">
+                            <em>${activity.bookTitle}</em>
+                        </a>
                         </div>
                         <div class="relative">
-                            <img src="${thumbnailUrl}" alt="${bookTitle}" class="w-20 h-32 object-cover rounded ml-4">
+                            <img src="${activity.thumbnail}" alt="${activity.bookTitle}" class="w-16 h-24 object-cover rounded ml-4">
                             ${activity.action.includes('reviewed') ? `
                             <button class="comment-button ease-in-out-transition" 
-                                style="top: -25px; right: -25px; position: absolute;" 
+                                style="top: -16px; right: -16px; position: absolute;" 
                                 data-username="${activity.username}" 
                                 data-isbn="${activity.isbn}">
                             </button>
-                        ` : ''}                        
+                            ` : ''}
                         </div>
                     </div>
-                    <div class="review-content hidden p-4 bg-gray-100 mt-2 rounded">
+                    <div class="review-content hidden p-4 bg-gray-100" style="margin-top: 2px; rounded">
                         <p class="review-text text-sm">
                             <strong>${activity.username}</strong> review: ${activity.review}
                         </p>
-                        <p class="rating-text text-sm font-bold">
-                            Rating: ${activity.rating}
+                        <p class="rating-text text-sm">
+                            Rating: <strong>${activity.rating}</strong>
                         </p>
                     </div>
                     <div class="flex justify-between items-end mt-2">
-                        <p class="time-ago text-gray-600 text-xs">${timeAgo}</p>
+                        <p class="time-ago text-gray-600 text-xs">${formatTimeAgo(activity.timestamp)}</p>
                     </div> 
-                `;
-
+            `;
     
-                console.log(`Appended activity for book: ${bookTitle} with thumbnail: ${thumbnailUrl}`);
-                activitiesFeed.appendChild(activityElement);
-            });
+            containerElement.appendChild(additionalActivityElement);
+        });
+    
+        const remainingActions = activities.length - 5;
+    
+        if (remainingActions > 0) {
+            seeMoreLink.textContent = `See ${remainingActions} more actions...`;
+        } else {
+            seeMoreLink.textContent = 'See less actions';
         }
+    
+        // Update event listener for "See less"
+        seeMoreLink.removeEventListener('click', handleSeeMoreClick);
+        seeMoreLink.addEventListener('click', handleSeeLessClick);
     };
+    
+    function handleSeeLessClick(event) {
+        event.preventDefault();
+        const seeMoreLink = event.target;
+        const containerElement = seeMoreLink.closest('.activity');
+        
+        // Remove only the additional activities
+        containerElement.querySelectorAll('.additional-activity').forEach(activityEl => activityEl.remove());
+    
+        // Retrieve the original total number of activities from a stored data attribute
+        const totalActivities = parseInt(containerElement.getAttribute('data-total-activities'), 10);
+        
+        // Calculate remaining actions (original total minus one for the most recent activity)
+        const remainingActions = totalActivities - 1;
+        
+        seeMoreLink.textContent = `See ${remainingActions} more actions...`;
+    
+        // Reset event listener for "See more"
+        seeMoreLink.removeEventListener('click', handleSeeLessClick);
+        seeMoreLink.addEventListener('click', handleSeeMoreClick);
+    }
+    
+    
+    function handleSeeMoreClick(event) {
+        event.preventDefault();
+        const seeMoreLink = event.target;
+        const username = seeMoreLink.getAttribute('data-username');
+        const activities = activitiesByUser[username];
+        renderAdditionalActivities(activities.slice(1), seeMoreLink.closest('.activity'), seeMoreLink);
+    }
+    
+    
+    
     
     
     
@@ -356,7 +459,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     if (data.success) {
                         reviewText.innerHTML = `"${data.review || 'No review available'}"`;
-                        ratingText.innerHTML = `Rating: ${data.rating || 'Not rated'}`;
+                        ratingText.innerHTML = `Rating: ${data.rating || 'Not rated'}/100`;
                     } else {
                         reviewText.textContent = 'Failed to load review.';
                     }
