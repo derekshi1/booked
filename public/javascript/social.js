@@ -3,6 +3,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const searchFriendButton = document.getElementById('searchFriendButton');
     const searchResults = document.getElementById('searchResults');
     const activitiesFeed = document.getElementById('activitiesFeed');
+    const clearSearchButton = document.getElementById('clearSearchButton');
     const username = localStorage.getItem('username');
     console.log('DOM fully loaded and parsed');
     console.log(`Current logged in username: ${username}`);
@@ -43,10 +44,16 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log('Rendering search results', results);
     
         // Clear previous results
-        const existingUsers = new Set();
         searchResults.innerHTML = '';
     
-        results.forEach(async (user) => {
+        // Filter out the current user's own username from the search results
+        const filteredResults = results.filter(user => user.username !== username);
+    
+        // If no results after filtering, display a "No user found" message
+       
+        const existingUsers = new Set();
+    
+        filteredResults.forEach(async (user) => {
             if (existingUsers.has(user.username)) {
                 return; // Skip if this user is already rendered
             }
@@ -97,38 +104,35 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
     
-    const renderActivitiesFeed = (activities) => {
+     const renderActivitiesFeed = (activities) => {
         console.log('Activities to be rendered:', activities);  // Logging the activities
     
         // Group activities by user and remove duplicates
         const seenActivities = new Set();
         const activitiesByUser = activities.reduce((acc, activity) => {
-        const { username } = activity;
-        const activityKey = `${activity.username}-${activity.action}-${activity.bookTitle}`;
+            const { username } = activity;
+            const activityKey = `${activity.username}-${activity.action}-${activity.bookTitle}`;
 
-        if (!seenActivities.has(activityKey)) {
-            seenActivities.add(activityKey);
+            if (!seenActivities.has(activityKey)) {
+                seenActivities.add(activityKey);
 
-            if (!acc[username]) {
-                acc[username] = [];
+                if (!acc[username]) {
+                    acc[username] = [];
+                }
+
+                acc[username].push(activity);
             }
 
-            acc[username].push(activity);
-        }
+            return acc;
+        }, {});
 
-    return acc;
-}, {});
-
-        
-        
-    
         activitiesFeed.innerHTML = '';
-    
+
         // Iterate over users and render their activities
         Object.keys(activitiesByUser).forEach(username => {
             const userActivities = Object.values(activitiesByUser[username]).flat();
             const mostRecentActivity = userActivities[0];
-    
+
             const activityElement = document.createElement('div');
             activityElement.classList.add('activity', 'p-2', 'bg-gray-100', 'rounded', 'shadow', 'mb-2');
             activityElement.setAttribute('data-total-activities', userActivities.length);
@@ -140,37 +144,42 @@ document.addEventListener('DOMContentLoaded', () => {
                             <strong>${mostRecentActivity.username}</strong>
                         </a> 
                         ${mostRecentActivity.action} 
-                        <a href="../html/book.html?isbn=${mostRecentActivity.isbn}" class="text-grey-500 hover:underline">
+                        <a href="../html/book.html?isbn=${mostRecentActivity.isbn}" class="text-gray-500 hover:text-gray-800 hover:font-bold">
                             <em>${mostRecentActivity.bookTitle}</em>
                         </a>
                     </div>
                     <div class="relative">
                         <img src="${mostRecentActivity.thumbnail}" alt="${mostRecentActivity.bookTitle}" class="w-16 h-24 object-cover rounded ml-4">
-                        ${mostRecentActivity.action.includes('reviewed') ? `
-                        <button class="comment-button ease-in-out-transition" 
-                            style="top: -16px; right: -16px; position: absolute;" 
-                            data-username="${mostRecentActivity.username}" 
-                            data-isbn="${mostRecentActivity.isbn}">
-                        </button>
-                        ` : ''}                        
                     </div>
                 </div>
 
-                <div class="review-content hidden p-4 bg-gray-100" style="margin-top: 2px; rounded">
+                <div class="review-content hidden p-4 bg-gray-100" style="margin-top: -20px;">
                     <p class="review-text text-sm">
-                        <strong>${mostRecentActivity.username}</strong> review: ${mostRecentActivity.review}
+                        <strong>${mostRecentActivity.username}</strong> review: "${mostRecentActivity.review}"
                     </p>
                     <p class="rating-text text-sm">
-                        Rating: ${mostRecentActivity.rating}/100
+                        Rating: <strong>${mostRecentActivity.rating}/100</strong>
                     </p>
                 </div>
-                <div class="flex justify-between items-end mt-2">
+                <div class="flex justify-between items-end mt-2 relative">
                     <p class="time-ago text-gray-600 text-xs">${formatTimeAgo(mostRecentActivity.timestamp)}</p>
-                    ${userActivities.length > 1 ? `<a href="#" class="text-blue-500 hover:underline see-more" data-username="${username}">See ${userActivities.length - 1} more actions...</a>` : ''}
+                    ${userActivities.length > 1 ? `
+                        <a href="#" class="text-blue-500 hover:underline hover:italic see-more" data-username="${username}">
+                            See ${userActivities.length - 1} more actions...
+                        </a>` : ''}
+                    ${mostRecentActivity.action.includes('reviewed') ? `
+                    <a href="#" class="see-review-link text-gray-500 hover:underline" 
+                        style="position: absolute; bottom: 20px; left: 0; font-size: 15px;" 
+                        data-username="${mostRecentActivity.username}" 
+                        data-isbn="${mostRecentActivity.isbn}">
+                        see review...
+                    </a>
+                    ` : ''}
                 </div>
-        `;
+            `;
+
+
             activitiesFeed.appendChild(activityElement);
-    
             if (userActivities.length > 1) {
                 const seeMoreLink = activityElement.querySelector('.see-more');
                 seeMoreLink.addEventListener('click', (event) => {
@@ -193,34 +202,35 @@ document.addEventListener('DOMContentLoaded', () => {
             additionalActivityElement.innerHTML = `
                     <div class="flex justify-between items-center">
                         <div>
-                            ${activity.action} 
-                            <a href="../html/book.html?isbn=${activity.isbn}" class="text-grey-500 hover:underline">
-                            <em>${activity.bookTitle}</em>
-                        </a>
+                            ${activity.action}  
+                            <a href="../html/book.html?isbn=${activity.isbn}" class="text-gray-500 hover:text-gray-800 hover:font-bold">
+                                <em>${activity.bookTitle}</em>
+                            </a>
                         </div>
                         <div class="relative">
                             <img src="${activity.thumbnail}" alt="${activity.bookTitle}" class="w-16 h-24 object-cover rounded ml-4">
-                            ${activity.action.includes('reviewed') ? `
-                            <button class="comment-button ease-in-out-transition" 
-                                style="top: -16px; right: -16px; position: absolute;" 
-                                data-username="${activity.username}" 
-                                data-isbn="${activity.isbn}">
-                            </button>
-                            ` : ''}
                         </div>
                     </div>
-                    <div class="review-content hidden p-4 bg-gray-100" style="margin-top: 2px; rounded">
+                    <div class="review-content hidden p-4 bg-gray-100" style="margin-top: -20px; rounded">
                         <p class="review-text text-sm">
-                            <strong>${activity.username}</strong> review: ${activity.review}
+                            <strong>${activity.username}</strong> review: "${activity.review}"
                         </p>
                         <p class="rating-text text-sm">
-                            Rating: <strong>${activity.rating}</strong>
+                            Rating: <strong>${activity.rating}/100</strong>
                         </p>
                     </div>
-                    <div class="flex justify-between items-end mt-2">
+                    <div class="flex justify-between items-end mt-2 relative">
                         <p class="time-ago text-gray-600 text-xs">${formatTimeAgo(activity.timestamp)}</p>
+                        ${activity.action.includes('reviewed') ? `
+                        <a href="#" class="see-review-link text-gray-500 hover:underline" 
+                            style="position: absolute; bottom: 20px; left: 0; font-size: 15px;" 
+                            data-username="${activity.username}" 
+                            data-isbn="${activity.isbn}">
+                            see review...
+                        </a>
+                        ` : ''}
                     </div> 
-            `;
+                `;
     
             containerElement.appendChild(additionalActivityElement);
         });
@@ -297,7 +307,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const newUsers = data.users.map(user => user.username).sort().join(',');
                     const displayedUsers = currentDisplayedUsers.sort().join(',');
     
-                    if (newUsers !== displayedUsers) {
+                        if (newUsers !== displayedUsers) {
                         currentDisplayedUsers = data.users.map(user => user.username);
                         renderSearchResults(data.users);
                     }
@@ -314,9 +324,18 @@ document.addEventListener('DOMContentLoaded', () => {
     
     searchFriendInput.addEventListener('input', (event) => {
         const query = event.target.value.trim();
-        searchFriends(query);
+        if (query) {
+            clearSearchButton.style.display = 'inline-block'; // Show the 'x' button
+        } else {
+            clearSearchButton.style.display = 'none'; // Hide the 'x' button
+        }
+        searchFriends(query); 
     });
-    
+    clearSearchButton.addEventListener('click', () => {
+        searchFriendInput.value = ''; // Clear the search input
+        clearSearchButton.style.display = 'none'; // Hide the 'x' button
+        renderSearchResults([]); // Clear the search results
+    });
     
     const sendFriendRequest = async (friendUsername) => {
         console.log(`Sending request to add friend: ${friendUsername}`);
@@ -442,38 +461,43 @@ document.addEventListener('DOMContentLoaded', () => {
     fetchActivities();
     fetchFriendRequests();
     activitiesFeed.addEventListener('click', async (event) => {
-        const toggleButton = event.target.closest('.comment-button');
+        const reviewLink = event.target.closest('.see-review-link');
         
-        if (toggleButton) {
-            const reviewContentDiv = toggleButton.closest('.activity').querySelector('.review-content');
+        if (reviewLink) {
+            const reviewContentDiv = reviewLink.closest('.activity').querySelector('.review-content');
             const reviewText = reviewContentDiv.querySelector('.review-text');
             const ratingText = reviewContentDiv.querySelector('.rating-text');
-            const username = toggleButton.getAttribute('data-username');
-            const isbn = toggleButton.getAttribute('data-isbn');
-
+            const username = reviewLink.getAttribute('data-username');
+            const isbn = reviewLink.getAttribute('data-isbn');
+    
             // Toggle visibility of the review content
             if (reviewContentDiv.classList.contains('hidden')) {
                 try {
                     const response = await fetch(`/api/library/review/${username}/${isbn}`);
                     const data = await response.json();
-
+    
                     if (data.success) {
                         reviewText.innerHTML = `"${data.review || 'No review available'}"`;
-                        ratingText.innerHTML = `Rating: ${data.rating || 'Not rated'}/100`;
+                        ratingText.innerHTML = `Rating: <strong>${data.rating || 'Not rated'}/100</strong>`;
+                        reviewText.classList.add('text-gray-500'); // Apply the light gray color
                     } else {
                         reviewText.textContent = 'Failed to load review.';
+                        reviewText.classList.add('text-gray-500'); // Apply the light gray color
                     }
-                    } catch (error) {
-                        reviewText.textContent = 'Error loading review.';
-                    }
-
+                } catch (error) {
+                    reviewText.textContent = 'Error loading review.';
+                    reviewText.classList.add('text-gray-500'); // Apply the light gray color
+                }
+    
                 reviewContentDiv.classList.remove('hidden');
+                reviewLink.textContent = "hide review..."; // Update the link text
             } else {
                 reviewContentDiv.classList.add('hidden');
+                reviewLink.textContent = "see review..."; // Update the link text
             }
         }
     });
-
+    
 });
 const checkFriendshipStatus = async (username, friendUsername) => {
     try {

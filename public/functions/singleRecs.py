@@ -14,7 +14,6 @@ API_KEY = 'AIzaSyCFDaqjpgA8K_NqqCw93xorS3zumc_52u8'
 # Load the pre-trained sentence transformer model
 model = SentenceTransformer('paraphrase-MiniLM-L6-v2')
 
-
 async def get_book_info(isbn):
     params = {
         'q': f'isbn:{isbn}',
@@ -83,6 +82,8 @@ async def fetch_books_by_genre(session, genre, start_index, max_results):
         if response.status == 200:
             data = await response.json()
             if 'items' in data:
+                # Write debug information to stderr
+                print(f"Found {len(data['items'])} books in genre: {genre}", file=sys.stderr)
                 books = []
                 for item in data['items']:
                     volume_info = item.get('volumeInfo')
@@ -102,6 +103,8 @@ async def fetch_books_by_genre(session, genre, start_index, max_results):
                         'related_to': ''
                     })
                 return books
+    # Write debug information to stderr
+    print(f"No books found for genre: {genre}", file=sys.stderr)
     return []
 
 async def find_books_by_genres(genres, max_results=500):
@@ -119,6 +122,8 @@ async def find_books_by_genres(genres, max_results=500):
         for result in results:
             books.extend(result)
 
+    # Write debug information to stderr
+    print(f"Total books found: {len(books)}", file=sys.stderr)
     return books[:max_results]
 
 async def find_best_matches(book, total_recommendations=7):
@@ -168,6 +173,8 @@ async def find_best_matches(book, total_recommendations=7):
         additional_recommendations.sort(key=lambda x: x['score'], reverse=True)
         recommendations.extend(additional_recommendations[:total_recommendations - len(recommendations)])    
 
+    # Write debug information to stderr
+    print(f"Recommendations found: {len(recommendations)}", file=sys.stderr)
     return recommendations
 
 if __name__ == "__main__":
@@ -178,6 +185,7 @@ if __name__ == "__main__":
             print("Error: Book not found", file=sys.stderr)
             sys.exit(1)
         recommendations = asyncio.run(find_best_matches(book_info))
-        print(json.dumps(recommendations))
+        # Only print the final JSON output
+        print(json.dumps(recommendations, indent=4))
     except Exception as e:
         print(f"Error: {str(e)}", file=sys.stderr)
