@@ -23,7 +23,7 @@ const activitySchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   action: { type: String, required: true },
   bookTitle: { type: String, required: true }, // Store the book title directly
-  isbn: { type: String, required: true }, // Store the ISBN directly
+  isbn: { type: String }, // Store the ISBN directly
   thumbnail: { type: String }, // Store the thumbnail URL directly
   timestamp: { type: Date, default: Date.now }
 });
@@ -43,8 +43,8 @@ const FriendRequest = mongoose.model('FriendRequest', friendRequestSchema);
 // Optional: If the Friend schema is necessary, ensure it's used correctly.
 const friendSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  friendId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }
-});
+  friendId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+}, { timestamps: true });  // Automatically adds createdAt and updatedAt fields
 const Friend = mongoose.model('Friend', friendSchema);
 
 // Book Schema (unchanged)
@@ -429,6 +429,18 @@ app.post('/api/library/top5/add', async (req, res) => {
 
     userLibrary.top5.push({ isbn, title, authors, description, thumbnail, categories, pageCount });
     await userLibrary.save();
+    // Example of activity logging when adding a book to top 5
+    const user = await User.findOne({ username });
+
+    const newActivity = new Activity({
+      userId: user._id,
+      action: 'added to top 5',
+      bookTitle: title, // The book's title
+      isbn: isbn, // The book's ISBN
+      thumbnail: thumbnail, // The book's thumbnail
+      timestamp: new Date(),
+    });
+    await newActivity.save();
 
     res.status(200).json({ success: true, message: 'Book added to top 5' });
   } catch (error) {
@@ -599,6 +611,17 @@ app.post('/api/library/readList/add', async (req, res) => {
 
     userLibrary.readList.push({ isbn, title, authors, description, thumbnail, categories, pageCount});
     await userLibrary.save();
+    const user = await User.findOne({ username });
+    // Example of activity logging when adding a book to the reading list
+    const newActivity = new Activity({
+      userId: user._id,
+      action: 'added to reading list',
+      bookTitle: title, // The book's title
+      isbn: isbn, // The book's ISBN
+      thumbnail: thumbnail, // The book's thumbnail
+      timestamp: new Date(),
+    });
+    await newActivity.save();
 
     res.status(200).json({ success: true, message: 'Book added to reading list' });
   } catch (error) {
@@ -804,6 +827,27 @@ app.post('/api/accept-friend', async (req, res) => {
     await user.save();
     await friend.save();
 
+     // Log the activity for the user accepting the request
+     const userActivity = new Activity({
+      userId: user._id,
+      action: `became friends with`,
+      bookTitle: friend.username, // Use this field to log friend's username
+      isbn: '', // No ISBN for this action
+      thumbnail: '', // No thumbnail for this action
+      timestamp: new Date(),
+    });
+    await userActivity.save();
+
+    // Log the activity for the friend who was accepted
+    const friendActivity = new Activity({
+      userId: friend._id,
+      action: `became friends with`,
+      bookTitle: user.username, // Use this field to log friend's username
+      isbn: '', // No ISBN for this action
+      thumbnail: '', // No thumbnail for this action
+      timestamp: new Date(),
+    });
+    await friendActivity.save();
     // Remove the friend request after it's accepted
     await FriendRequest.findByIdAndDelete(requestId);
 
@@ -861,7 +905,7 @@ app.get('/api/friends-activities/:username', async (req, res) => {
 
       const friendsActivities = [];
       
-      // For each friend, fetch their activities and sort by timestamp descending
+      // For each friend, fetch their activities only after the friendship was established
       for (const friend of user.friends) {
           const activities = await Activity.find({ userId: friend._id }).sort({ timestamp: -1 });
           activities.forEach(activity => {
@@ -885,6 +929,7 @@ app.get('/api/friends-activities/:username', async (req, res) => {
       res.status(500).json({ success: false, message: 'Error getting friends\' activities' });
   }
 });
+
 
 app.get('/api/friend-requests/:username', async (req, res) => {
   // Ensure this route is correctly defined and matches the client-side fetch call.

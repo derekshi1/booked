@@ -132,54 +132,70 @@ document.addEventListener('DOMContentLoaded', () => {
         Object.keys(activitiesByUser).forEach(username => {
             const userActivities = Object.values(activitiesByUser[username]).flat();
             const mostRecentActivity = userActivities[0];
-
+        
             const activityElement = document.createElement('div');
             activityElement.classList.add('activity', 'p-2', 'bg-gray-100', 'rounded', 'shadow', 'mb-2');
             activityElement.setAttribute('data-total-activities', userActivities.length);
-
-            activityElement.innerHTML = `
-                <div class="flex justify-between items-center">
-                    <div>
-                        <a href="../html/profile.html?username=${mostRecentActivity.username}" class="text-blue-500 hover:underline">
-                            <strong>${mostRecentActivity.username}</strong>
-                        </a> 
-                        ${mostRecentActivity.action} 
-                        <a href="../html/book.html?isbn=${mostRecentActivity.isbn}" class="text-gray-500 hover:text-gray-800 hover:font-bold">
-                            <em>${mostRecentActivity.bookTitle}</em>
-                        </a>
+        
+            let activityContent;
+        
+            if (mostRecentActivity.action.includes("became friends with")) {
+                // Activity related to friendship
+                activityContent = `
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <a href="../html/profile.html?username=${mostRecentActivity.username}" class="text-blue-500 hover:underline hover:font-bold">
+                                <strong>${mostRecentActivity.username}</strong>
+                            </a> 
+                            ${mostRecentActivity.action}
+                            <a href="../html/profile.html?username=${mostRecentActivity.bookTitle}" class="text-blue-500 hover:underline hover:font-bold">
+                                ${mostRecentActivity.bookTitle}
+                            </a>
+                        </div>
                     </div>
-                    <div class="relative">
-                        <img src="${mostRecentActivity.thumbnail}" alt="${mostRecentActivity.bookTitle}" class="w-16 h-24 object-cover rounded ml-4">
-                    </div>
-                </div>
 
-                <div class="review-content hidden p-4 bg-gray-100" style="margin-top: -20px;">
-                    <p class="review-text text-sm">
-                        <strong>${mostRecentActivity.username}</strong> review: "${mostRecentActivity.review}"
-                    </p>
-                    <p class="rating-text text-sm">
-                        Rating: <strong>${mostRecentActivity.rating}/100</strong>
-                    </p>
-                </div>
+                `;
+            } else {
+                // Activity related to books
+                activityContent = `
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <a href="../html/profile.html?username=${mostRecentActivity.username}" class="text-blue-500 hover:underline">
+                                <strong>${mostRecentActivity.username}</strong>
+                            </a> 
+                            ${mostRecentActivity.action} 
+                            <a href="../html/book.html?isbn=${mostRecentActivity.isbn}" class="text-gray-500 hover:text-gray-800 hover:font-bold">
+                                <em>${mostRecentActivity.bookTitle}</em>
+                            </a>
+                        </div>
+                        <div class="relative">
+                            <img src="${mostRecentActivity.thumbnail}" alt="${mostRecentActivity.bookTitle}" class="w-16 h-24 object-cover rounded ml-4">
+                        </div>
+                    </div>
+        
+                    <div class="review-content hidden p-4 bg-gray-100" style="margin-top: -20px;">
+                        <p class="review-text text-sm">
+                            <strong>${mostRecentActivity.username}</strong> review: "${mostRecentActivity.review}"
+                        </p>
+                        <p class="rating-text text-sm">
+                            Rating: <strong>${mostRecentActivity.rating}/100</strong>
+                        </p>
+                    </div>
+                `;
+            }
+        
+            activityElement.innerHTML = activityContent + `
                 <div class="flex justify-between items-end mt-2 relative">
                     <p class="time-ago text-gray-600 text-xs">${formatTimeAgo(mostRecentActivity.timestamp)}</p>
                     ${userActivities.length > 1 ? `
                         <a href="#" class="text-blue-500 hover:underline hover:italic see-more" data-username="${username}">
                             See ${userActivities.length - 1} more actions...
                         </a>` : ''}
-                    ${mostRecentActivity.action.includes('reviewed') ? `
-                    <a href="#" class="see-review-link text-gray-500 hover:underline" 
-                        style="position: absolute; bottom: 20px; left: 0; font-size: 15px;" 
-                        data-username="${mostRecentActivity.username}" 
-                        data-isbn="${mostRecentActivity.isbn}">
-                        see review...
-                    </a>
-                    ` : ''}
                 </div>
             `;
-
-
+        
             activitiesFeed.appendChild(activityElement);
+        
             if (userActivities.length > 1) {
                 const seeMoreLink = activityElement.querySelector('.see-more');
                 seeMoreLink.addEventListener('click', (event) => {
@@ -188,6 +204,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             }
         });
+        
     };
     
     const renderAdditionalActivities = (activities, containerElement, seeMoreLink) => {
@@ -460,6 +477,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initial fetch of friends' activities and friend requests
     fetchActivities();
     fetchFriendRequests();
+    
     activitiesFeed.addEventListener('click', async (event) => {
         const reviewLink = event.target.closest('.see-review-link');
         

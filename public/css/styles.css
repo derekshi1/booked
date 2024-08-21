@@ -675,10 +675,5 @@ main {
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Add a subtle shadow */
 }
 
-/* Make sure the comment button also responds to the hover */
-.activity:hover .comment-button {
-    display: block;
-    opacity: 1;
-    transform: scale(1.1); /* Slightly scale up the button */
-}
+
 
