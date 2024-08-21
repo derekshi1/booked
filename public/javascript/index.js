@@ -15,6 +15,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const scrollLeft_OppRec = document.getElementById('scrollLeft_OppRec');
     const scrollRight_OppRec = document.getElementById('scrollRight_OppRec');
 
+    const lastFetchTimeKey = `${username}_lastFetchTime`;
+    const nextFetchTimeKey = `${username}_nextFetchTime`;
+    const recommendationsKey = `${username}_recommendations`;
+    const lastFetchTime = localStorage.getItem(lastFetchTimeKey);
+    const storedRecommendations = JSON.parse(localStorage.getItem(recommendationsKey));
+    const now = new Date().getTime();
+    const hoursBetweenFetches = 4; // Number of hours before fetching new recommendations
+    const timeThreshold = hoursBetweenFetches * 60 * 60 * 1000; // Convert hours to milliseconds
 
     // Function to create sparkles
     const createSparkles = () => {
@@ -203,24 +211,68 @@ document.addEventListener('DOMContentLoaded', () => {
     
     const fetchAndDisplayOppositeRecommendations = async () => {
         if (username) {
-            try {
-                const response = await fetch(`/api/opposite-recommendations/${username}`);
-                const data = await response.json();
-
-                console.log('Opposite Recommendations response:', data);
-
-                if (data.success && data.recommendations.length > 0) {
-                    renderOppositeRecommendations(data.recommendations);
-                } else {
-                    console.error('No opposite recommendations found or failed to fetch recommendations:', data.message);
+            const nextFetchTime = localStorage.getItem(nextFetchTimeKey);
+    
+            // Display existing recommendations if available
+            if (storedRecommendations && storedRecommendations.length > 0) {
+                renderOppositeRecommendations(storedRecommendations);
+            }
+    
+            // Start the countdown timer
+            if (nextFetchTime && now < nextFetchTime) {
+                startCountdown(nextFetchTime);
+            } else {
+                // If the timer is up or no fetch has been made yet, fetch new recommendations
+                try {
+                    const response = await fetch(`/api/opposite-recommendations/${username}`);
+                    const data = await response.json();
+    
+                    console.log('Opposite Recommendations response:', data);
+    
+                    if (data.success && data.recommendations.length > 0) {
+                        renderOppositeRecommendations(data.recommendations);
+                        localStorage.setItem(recommendationsKey, JSON.stringify(data.recommendations)); // Store new recommendations
+                        localStorage.setItem(lastFetchTimeKey, now); // Update the fetch timestamp
+                        const newNextFetchTime = now + timeThreshold;
+                        localStorage.setItem(nextFetchTimeKey, newNextFetchTime); // Store the next fetch time
+                        startCountdown(newNextFetchTime); // Start the countdown
+                    } else {
+                        console.error('No opposite recommendations found or failed to fetch recommendations:', data.message);
+                    }
+                } catch (error) {
+                    console.error('Error fetching opposite recommendations:', error);
                 }
-            } catch (error) {
-                console.error('Error fetching opposite recommendations:', error);
             }
         } else {
             console.log('No username found in localStorage.');
         }
     };
+
+    const startCountdown = (nextFetchTime) => {
+        const countdownElement = document.getElementById('countdownTimer'); // Element to display the countdown
+    
+        const updateCountdown = () => {
+            const now = new Date().getTime();
+            const timeLeft = nextFetchTime - now;
+    
+            if (timeLeft <= 0) {
+                countdownElement.textContent = "New recommendations will be available soon!";
+                clearInterval(countdownInterval);
+                return;
+            }
+    
+            const hours = Math.floor(timeLeft / (1000 * 60 * 60));
+            const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
+    
+            countdownElement.textContent = `Next recommendations in ${hours}h ${minutes}m ${seconds}s`;
+        };
+    
+        const countdownInterval = setInterval(updateCountdown, 1000); // Declare countdownInterval after updateCountdown
+        updateCountdown(); // Initial call to display the countdown immediately
+    };
+    
+    
 
     // Fetch and display opposite recommendations on page load
     fetchAndDisplayOppositeRecommendations();

@@ -482,6 +482,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const reviewLink = event.target.closest('.see-review-link');
         
         if (reviewLink) {
+            event.preventDefault(); // Prevent the default link behavior
             const reviewContentDiv = reviewLink.closest('.activity').querySelector('.review-content');
             const reviewText = reviewContentDiv.querySelector('.review-text');
             const ratingText = reviewContentDiv.querySelector('.rating-text');

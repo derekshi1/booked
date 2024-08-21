@@ -42,8 +42,11 @@ def calculate_opposite_compatibility(book1, book2):
         return 0
     # Opposite categories
     common_categories = set(book1.get('categories', [])).intersection(set(book2.get('categories', [])))
-    category_opposite = 1 - (len(common_categories) / (len(book1.get('categories', [])) + len(book2.get('categories', []))))
-    
+    category_length_sum = len(book1.get('categories', [])) + len(book2.get('categories', []))
+    if category_length_sum == 0:
+        category_opposite = 0  # Or some other default value
+    else:
+        category_opposite = 1 - (len(common_categories) / category_length_sum)  
     # Opposite publication dates
     pub_date_opposite = 0
     if book1.get('publishedDate') and book2.get('publishedDate'):
@@ -183,3 +186,5 @@ if __name__ == "__main__":
         print(json.dumps(recommendations))
     except Exception as e:
         print(f"Error: {str(e)}", file=sys.stderr)
+        # Return an empty list if an error occurs
+        print(json.dumps([]))

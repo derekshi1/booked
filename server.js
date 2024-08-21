@@ -801,7 +801,6 @@ app.post('/api/accept-friend', async (req, res) => {
   const { username, requestId } = req.body;
 
   try {
-    // Find the friend request by ID
     const friendRequest = await FriendRequest.findById(requestId).populate('from to');
 
     if (!friendRequest) {
@@ -815,41 +814,31 @@ app.post('/api/accept-friend', async (req, res) => {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
 
-    // Initialize the friends array if it doesn't exist
-    if (!user.friends) user.friends = [];
-    if (!friend.friends) friend.friends = [];
-
     // Add each other as friends
     user.friends.push(friend._id);
     friend.friends.push(user._id);
-
-    // Save both users
     await user.save();
     await friend.save();
 
-     // Log the activity for the user accepting the request
-     const userActivity = new Activity({
-      userId: user._id,
-      action: `became friends with`,
-      bookTitle: friend.username, // Use this field to log friend's username
-      isbn: '', // No ISBN for this action
-      thumbnail: '', // No thumbnail for this action
-      timestamp: new Date(),
-    });
-    await userActivity.save();
-
-    // Log the activity for the friend who was accepted
-    const friendActivity = new Activity({
-      userId: friend._id,
-      action: `became friends with`,
-      bookTitle: user.username, // Use this field to log friend's username
-      isbn: '', // No ISBN for this action
-      thumbnail: '', // No thumbnail for this action
-      timestamp: new Date(),
-    });
-    await friendActivity.save();
     // Remove the friend request after it's accepted
     await FriendRequest.findByIdAndDelete(requestId);
+
+    // Log activity for both users that they became friends
+    const newFriendshipActivity = new Activity({
+      userId: user._id,
+      action: `became friends with`,
+      bookTitle: friend.username,  // Using bookTitle as a placeholder for the friend's name
+      timestamp: new Date(),
+    });
+    await newFriendshipActivity.save();
+
+    const reciprocalFriendshipActivity = new Activity({
+      userId: friend._id,
+      action: `became friends with`,
+      bookTitle: user.username,  // Using bookTitle as a placeholder for the friend's name
+      timestamp: new Date(),
+    });
+    await reciprocalFriendshipActivity.save();
 
     res.status(200).json({ success: true, message: 'Friend request accepted' });
   } catch (error) {
@@ -857,6 +846,7 @@ app.post('/api/accept-friend', async (req, res) => {
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });
+
 
 
 
@@ -904,20 +894,32 @@ app.get('/api/friends-activities/:username', async (req, res) => {
       }
 
       const friendsActivities = [];
-      
-      // For each friend, fetch their activities only after the friendship was established
+
       for (const friend of user.friends) {
-          const activities = await Activity.find({ userId: friend._id }).sort({ timestamp: -1 });
-          activities.forEach(activity => {
-            friendsActivities.push({
-              username: friend.username,
-              action: activity.action,
-              bookTitle: activity.bookTitle, // Access the book's title directly
-              isbn: activity.isbn,       // Access the ISBN directly
-              thumbnail: activity.thumbnail, // Access the thumbnail directly
-              timestamp: activity.timestamp
-            });
-          });
+          // Find the earliest "became friends" activity between the user and the friend
+          const friendshipActivity = await Activity.findOne({
+              userId: { $in: [user._id, friend._id] },
+              action: 'became friends with',
+              bookTitle: { $in: [user.username, friend.username] }
+          }).sort({ timestamp: 1 });  // Sort in ascending order to get the earliest
+
+          if (friendshipActivity) {
+              const activities = await Activity.find({
+                  userId: friend._id,
+                  timestamp: { $gte: friendshipActivity.timestamp }
+              }).sort({ timestamp: -1 });
+
+              activities.forEach(activity => {
+                  friendsActivities.push({
+                      username: friend.username,
+                      action: activity.action,
+                      bookTitle: activity.bookTitle,
+                      isbn: activity.isbn,
+                      thumbnail: activity.thumbnail,
+                      timestamp: activity.timestamp
+                  });
+              });
+          }
       }
 
       // Sort all activities by timestamp in descending order before sending the response
@@ -929,7 +931,6 @@ app.get('/api/friends-activities/:username', async (req, res) => {
       res.status(500).json({ success: false, message: 'Error getting friends\' activities' });
   }
 });
-
 
 app.get('/api/friend-requests/:username', async (req, res) => {
   // Ensure this route is correctly defined and matches the client-side fetch call.
