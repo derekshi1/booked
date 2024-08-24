@@ -24,6 +24,66 @@ document.addEventListener('DOMContentLoaded', () => {
     const hoursBetweenFetches = 4; // Number of hours before fetching new recommendations
     const timeThreshold = hoursBetweenFetches * 60 * 60 * 1000; // Convert hours to milliseconds
 
+    const clickLimit = 3; // Number of allowed clicks
+    const limitResetTime = 3 * 60 * 60 * 1000; // Reset time in milliseconds (3 hours)
+    const clickDataKey = `${username}_clickData`;
+    const clickData = getClickData();
+    const countdownElement = document.getElementById('countdownTimer_rec'); // Moved here to ensure it's available in all functions
+
+
+    const startGenerateCountdown = (timeLeft) => {
+        const countdownElement = document.getElementById('countdownTimer_rec'); // Use the new ID for countdown timer
+    
+        const updateCountdown = () => {
+            const currentTime = new Date().getTime();
+            const timeRemaining = timeLeft - (currentTime - clickData.lastReset);
+    
+            if (timeRemaining <= 0) {
+                countdownElement.textContent = "You can generate recommendations again!";
+                generateButton.disabled = false;
+                clearInterval(generateCountdownInterval);
+                return;
+            }
+    
+            const hours = Math.floor(timeRemaining / (1000 * 60 * 60));
+            const minutes = Math.floor((timeRemaining % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((timeRemaining % (1000 * 60)) / 1000);
+    
+            countdownElement.textContent = `Next recommendations in ${hours}h ${minutes}m ${seconds}s`;
+        };
+    
+        const generateCountdownInterval = setInterval(updateCountdown, 1000); // Declare generateCountdownInterval after updateCountdown
+        updateCountdown(); // Initial call to display the countdown immediately
+    };
+    function getClickData() {
+        const clickData = JSON.parse(localStorage.getItem(clickDataKey));
+        return clickData ? clickData : { count: 0, lastReset: Date.now() };
+    }
+    
+    function updateClickData(data) {
+        localStorage.setItem(clickDataKey, JSON.stringify(data));
+    }
+    const updateRecommendationStatus = (clickData) => {
+        const remainingRecs = clickLimit - clickData.count;
+        if (remainingRecs > 0) {
+            countdownElement.textContent = `${remainingRecs} recommendation generations left`;
+        } else {
+            const timeUntilReset = limitResetTime - (now - clickData.lastReset);
+            startGenerateCountdown(timeUntilReset);
+            generateButton.disabled = true; // Disable the button if the limit has been reached
+        }
+    };
+    // Check if the reset time has passed
+    if (now - clickData.lastReset >= limitResetTime) {
+        clickData.count = 0; // Reset the count
+        clickData.lastReset = now; // Reset the timestamp
+        updateClickData(clickData); // Make sure to save this reset
+    }
+    
+
+    updateRecommendationStatus(clickData);
+
+    
     // Function to create sparkles
     const createSparkles = () => {
         sparkleContainer.innerHTML = '';
@@ -265,7 +325,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
             const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
     
-            countdownElement.textContent = `Next recommendations in ${hours}h ${minutes}m ${seconds}s`;
+            countdownElement.textContent = `New recommendations in ${hours}h ${minutes}m ${seconds}s`;
         };
     
         const countdownInterval = setInterval(updateCountdown, 1000); // Declare countdownInterval after updateCountdown
@@ -293,40 +353,52 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     
 
-    generateButton.addEventListener('click', async () => {
-        const username = localStorage.getItem('username');
-        if (username) {
-            scrollLeftButton.classList.remove('visible');
-            scrollRightButton.classList.remove('visible');
+        generateButton.addEventListener('click', async () => {
+            if (!username) {
+                console.log('No username found in localStorage.');
+                return;
+            }
+    
+            const now = Date.now();
+    
+            if (now - clickData.lastReset >= limitResetTime) {
+                clickData.count = 0;
+                clickData.lastReset = now;
+                updateClickData(clickData);
+            }
+    
+            if (clickData.count >= clickLimit) {
+                const timeUntilReset = limitResetTime - (now - clickData.lastReset);
+                startGenerateCountdown(timeUntilReset);
+                console.log('Click limit reached. Please wait until the countdown ends.');
+                return;
+            }
+    
+            clickData.count += 1;
+            updateClickData(clickData);
+            updateRecommendationStatus(clickData);
+    
+            // Proceed with generating recommendations
             try {
-                //loadingSpinner.style.display = 'block';
                 showSparkles();
                 const response = await fetch(`/api/recommendations/${username}`);
                 const data = await response.json();
     
-                // Log the entire response for debugging
                 console.log('Recommendations response:', data);
     
                 if (data.success && data.recommendations.length > 0) {
-                    // Save recommendations to localStorage
-                    localStorage.setItem(savedRecommendationsKey, JSON.stringify(data.recommendations));
-                    // Render recommendations
+                    localStorage.setItem(`${username}_recommendations`, JSON.stringify(data.recommendations));
                     renderRecommendations(data.recommendations);
                 } else {
-                    //renderPlaceholderRecommendations();
                     console.error('No recommendations found or failed to fetch recommendations:', data.message);
                 }
             } catch (error) {
                 renderPlaceholderRecommendations();
                 console.error('Error fetching recommendations:', error);
             } finally {
-                //loadingSpinner.style.display = 'none';
                 hideSparkles();
             }
-        } else {
-            console.log('No username found in localStorage.');
-        }
-    });
+        });
 }      else{
     renderPlaceholderRecommendations();
 }

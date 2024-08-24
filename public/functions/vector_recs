@@ -1,0 +1,98 @@
+import sys
+import json
+import random
+import asyncio
+import pymongo
+from sentence_transformers import SentenceTransformer, util
+from collections import defaultdict
+
+# MongoDB Connection
+client = pymongo.MongoClient("mongodb://your_mongodb_uri")
+db = client['your_database_name']
+collection = db['your_collection_name']
+
+# Load the pre-trained sentence transformer model
+model = SentenceTransformer('paraphrase-MiniLM-L6-v2')
+
+def calculate_custom_score(book1, book2, description_similarity):
+    # Custom scoring function based on categories, publication date, and description similarity
+    categories1 = set(book1.get('categories', []))
+    categories2 = set(book2.get('categories', []))
+    
+    category_similarity = 0.5  # Default similarity if categories are missing
+    if categories1 and categories2:
+        common_categories = categories1.intersection(categories2)
+        category_similarity = len(common_categories) / (len(categories1) + len(categories2))
+    
+    pub_date_similarity = 0
+    if book1.get('publishedDate') and book2.get('publishedDate'):
+        try:
+            year1 = int(book1['publishedDate'][:4])
+            year2 = int(book2['publishedDate'][:4])
+            pub_date_similarity = 1 - abs(year1 - year2) / max(year1, year2)
+        except ValueError:
+            pass
+
+    # Combine the similarities into a final score
+    final_score = 0.4 * category_similarity + 0.2 * pub_date_similarity + 0.4 * description_similarity
+    return final_score * 100
+
+async def find_books_by_vector(description_vector, total_recommendations=25):
+    # Perform vector search in MongoDB
+    pipeline = [
+        {
+            "$search": {
+                "index": "description_vector_index",  # Replace with your index name
+                "knnBeta": {
+                    "vector": description_vector.tolist(),
+                    "path": "description_vector",
+                    "k": total_recommendations * 3,  # Fetch more results to filter later
+                    "score": {"function": "cosine"}
+                }
+            }
+        }
+    ]
+    results = list(collection.aggregate(pipeline))
+    return results
+
+async def find_best_matches(library, total_recommendations=25):
+    selected_books = []
+    for book in library:
+        selected_books.append(book)
+
+    recommendations = []
+    recommended_titles = set()
+
+    for user_book in selected_books:
+        description = user_book.get('description', '')
+        description_vector = model.encode(description)
+        potential_matches = await find_books_by_vector(description_vector, total_recommendations)
+
+        initial_compatibilities = []
+        for potential_book in potential_matches:
+            if potential_book['title'] not in recommended_titles:
+                description_similarity = potential_book['score']
+                custom_score = calculate_custom_score(user_book, potential_book, description_similarity)
+                initial_compatibilities.append((potential_book, custom_score))
+
+        initial_compatibilities.sort(key=lambda x: x[1], reverse=True)
+        refined_matches = initial_compatibilities[:total_recommendations]
+        
+        for match, score in refined_matches:
+            if match['title'] not in recommended_titles:
+                match['score'] = score
+                match['related_to'] = user_book['title']
+                recommendations.append(match)
+                recommended_titles.add(match['title'])
+                if len(recommendations) >= total_recommendations:
+                    break
+
+    return recommendations
+
+if __name__ == "__main__":
+    try:
+        library = json.loads(sys.argv[1])
+        recommendations = asyncio.run(find_best_matches(library, total_recommendations=25))
+        print(json.dumps(recommendations, indent=4))
+    except Exception as e:
+        print(f"Error: {str(e)}", file=sys.stderr)

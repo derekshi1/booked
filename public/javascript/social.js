@@ -187,11 +187,19 @@ document.addEventListener('DOMContentLoaded', () => {
             activityElement.innerHTML = activityContent + `
                 <div class="flex justify-between items-end mt-2 relative">
                     <p class="time-ago text-gray-600 text-xs">${formatTimeAgo(mostRecentActivity.timestamp)}</p>
-                    ${userActivities.length > 1 ? `
-                        <a href="#" class="text-blue-500 hover:underline hover:italic see-more" data-username="${username}">
-                            See ${userActivities.length - 1} more actions...
-                        </a>` : ''}
-                </div>
+                    ${mostRecentActivity.action.includes('reviewed') ? `
+                    <a href="#" class="see-review-link text-gray-500 hover:underline" 
+                        style="position: absolute; bottom: 20px; left: 0; font-size: 15px;" 
+                        data-username="${mostRecentActivity.username}" 
+                        data-isbn="${mostRecentActivity.isbn}">
+                        see review...
+                    </a>
+                    ` : ''}
+        ${userActivities.length > 1 ? `
+            <a href="#" class="text-blue-500 hover:underline hover:italic see-more" data-username="${username}">
+                See ${userActivities.length - 1} more actions...
+            </a>` : ''}
+    </div>
             `;
         
             activitiesFeed.appendChild(activityElement);
@@ -216,7 +224,27 @@ document.addEventListener('DOMContentLoaded', () => {
             const additionalActivityElement = document.createElement('div');
             additionalActivityElement.classList.add('activity', 'p-2', 'bg-gray-50', 'rounded', 'shadow', 'mb-2', 'ml-4', 'additional-activity');
     
-            additionalActivityElement.innerHTML = `
+            let activityContent;
+    
+            if (activity.action.includes("became friends with")) {
+                // Activity related to friendship
+                activityContent = `
+                    <div class="flex justify-between items-center">
+                    <div>
+                        <a href="../html/profile.html?username=${activity.username}" class="text-blue-500 hover:underline hover:font-bold">
+                            <strong>${activity.username}</strong>
+                        </a> 
+                        ${activity.action}
+                        <a href="../html/profile.html?username=${activity.bookTitle}" class="text-blue-500 hover:underline hover:font-bold">
+                            ${activity.bookTitle}
+                        </a>
+                    </div>
+                    <p class="time-ago text-gray-600 text-xs">${formatTimeAgo(activity.timestamp)}</p>
+                     </div>
+                `;
+            } else {
+                // Activity related to books
+                activityContent = `
                     <div class="flex justify-between items-center">
                         <div>
                             ${activity.action}  
@@ -239,7 +267,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div class="flex justify-between items-end mt-2 relative">
                         <p class="time-ago text-gray-600 text-xs">${formatTimeAgo(activity.timestamp)}</p>
                         ${activity.action.includes('reviewed') ? `
-                        <a href="#" class="see-review-link text-gray-500 hover:underline" 
+                        <a href="#" class="see-review-link hidden text-gray-500 hover:underline" 
                             style="position: absolute; bottom: 20px; left: 0; font-size: 15px;" 
                             data-username="${activity.username}" 
                             data-isbn="${activity.isbn}">
@@ -248,7 +276,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         ` : ''}
                     </div> 
                 `;
+            }
     
+            additionalActivityElement.innerHTML = activityContent;
             containerElement.appendChild(additionalActivityElement);
         });
     

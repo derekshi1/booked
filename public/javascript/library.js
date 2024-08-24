@@ -96,6 +96,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const rating = ratingInput.value;
             const bookIsbn = modal.dataset.isbn;
             const username = localStorage.getItem('username');
+            const reviewDate = new Date().toISOString(); // Get the current date and time in ISO format
 
 
             try {
@@ -104,7 +105,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ username, isbn: bookIsbn, review: reviewText, rating }),
+                    body: JSON.stringify({ username, isbn: bookIsbn, review: reviewText, rating, reviewDate }),
                 });
 
                 if (response.ok) {
@@ -176,22 +177,37 @@ async function showReviewPopup(bookIsbn, bookTitle) {
     const modal = document.getElementById('reviewModal');
     const username = localStorage.getItem('username');
     modal.dataset.isbn = bookIsbn; // Set the bookIsbn in the modal's dataset
-    modal.querySelector('h2').textContent = `Review for ${bookTitle}`;
+    modal.querySelector('h2').innerHTML = `Review for <em>${bookTitle}</em>`;
 
     try {
         const response = await fetch(`/api/library/review/${username}/${bookIsbn}`);
         const data = await response.json();
+
+        console.log('Fetched review data:', data); // Log the fetched data
 
         if (data.success) {
             document.getElementById('reviewText').value = data.review || '';
             document.getElementById('rating').value = data.rating || 50;
             document.getElementById('ratingValue').textContent = data.rating || 50;
             updateSliderBackground(document.getElementById('rating'), data.rating || null);
+
+            if (data.reviewDate) {
+                const reviewDate = new Date(data.reviewDate);
+                console.log('Parsed review date:', reviewDate); // Log the parsed date
+                const formattedDate = reviewDate.toLocaleString();
+                document.getElementById('reviewDate').textContent = `Reviewed on: ${formattedDate}`;
+                console.log('Formatted review date:', formattedDate); // Log the formatted date
+            } else {
+                console.log('No review date available'); // Log if no date is found
+                document.getElementById('reviewDate').textContent = ''; // Clear if no date
+            }
         } else {
+            console.log('Failed to fetch review successfully'); // Log if the success flag is false
             document.getElementById('reviewText').value = '';
             document.getElementById('rating').value = 50;
             document.getElementById('ratingValue').textContent = 50;
             updateSliderBackground(document.getElementById('rating'), null);
+            document.getElementById('reviewDate').textContent = ''; // Clear if no date
         }
     } catch (error) {
         console.error('Error fetching book review:', error);
@@ -199,10 +215,12 @@ async function showReviewPopup(bookIsbn, bookTitle) {
         document.getElementById('rating').value = 0;
         document.getElementById('ratingValue').textContent = 0;
         updateSliderBackground(document.getElementById('rating'), 0);
+        document.getElementById('reviewDate').textContent = ''; // Clear if no date
     }
 
     modal.style.display = 'block';
 }
+
 /*
 function getGradientColor(value) {
     const hue = (value / 100) * 120; // 0 is red, 120 is green

@@ -70,7 +70,8 @@ const userLibrarySchema = new mongoose.Schema({
     categories: [String],
     pageCount: Number,
     review: String,
-    rating: Number
+    rating: Number,
+    reviewDate: Date// Ensure this field exists
   }],
   top5: [{
     isbn: String,
@@ -92,7 +93,8 @@ const userLibrarySchema = new mongoose.Schema({
     categories: [String],
     pageCount: Number,
     review: String,
-    rating: Number
+    rating: Number,
+
   }]
 });
 const UserLibrary = mongoose.model('UserLibrary', userLibrarySchema);
@@ -452,6 +454,7 @@ app.post('/api/library/top5/add', async (req, res) => {
 // Get user's top 5 books
 app.get('/api/library/top5/:username', async (req, res) => {
   const { username } = req.params;
+  
   try {
     const userLibrary = await UserLibrary.findOne({ username });
     if (userLibrary) {
@@ -490,7 +493,7 @@ app.post('/api/library/top5/remove', async (req, res) => {
 
 // Save review for a book in user's library
 app.post('/api/library/review', async (req, res) => {
-  const { username, isbn, review, rating } = req.body;
+  const { username, isbn, review, rating} = req.body;
 
   try {
     const userLibrary = await UserLibrary.findOne({ username });
@@ -505,6 +508,7 @@ app.post('/api/library/review', async (req, res) => {
 
     book.review = review;
     book.rating = rating;
+    book.reviewDate = new Date(); // Set the current date and time when the review is saved
 
     await userLibrary.save();
 
@@ -530,8 +534,9 @@ app.post('/api/library/review', async (req, res) => {
 });
 
 // Fetch a specific book's review and rating from user's library
-app.get('/api/library/review/:username/:isbn', async (req, res) => {
-  const { username, isbn } = req.params;
+app.get('/api/library/:username/books', async (req, res) => {
+  const { username } = req.params;
+  const { sortBy } = req.query; // Retrieve the sortBy query parameter
 
   try {
     const userLibrary = await UserLibrary.findOne({ username });
@@ -539,21 +544,26 @@ app.get('/api/library/review/:username/:isbn', async (req, res) => {
       return res.status(404).json({ success: false, message: 'No library found for user' });
     }
 
-    const book = userLibrary.books.find(book => book.isbn === isbn);
-    if (!book) {
-      return res.status(404).json({ success: false, message: 'Book not found in library' });
+    let books = userLibrary.books;
+
+    // Sort the books based on the sortBy parameter
+    if (sortBy === 'reviewDate') {
+      books = books.sort((a, b) => new Date(b.reviewDate) - new Date(a.reviewDate));
+    } else if (sortBy === 'rating') {
+      books = books.sort((a, b) => b.rating - a.rating);
     }
 
-    res.status(200).json({ success: true, review: book.review, rating: book.rating });
+    res.status(200).json({ success: true, books });
   } catch (error) {
     console.error(error);
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });
 
+
 // PUT route to update a review for a book in user's library
 app.put('/api/library/review', async (req, res) => {
-  const { username, isbn, review, rating } = req.body;
+  const { username, isbn, review, rating, reviewDate } = req.body;
 
   try {
     const userLibrary = await UserLibrary.findOne({ username });
@@ -568,6 +578,7 @@ app.put('/api/library/review', async (req, res) => {
 
     book.review = review;
     book.rating = rating;
+    book.reviewDate = reviewDate || new Date(); // Update the date to the provided or current date
 
     await userLibrary.save();
 
