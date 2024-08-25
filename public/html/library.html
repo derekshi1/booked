@@ -25,6 +25,15 @@
     </header>
     <main class="container mx-auto mt-8">
         <h1 class="text-3xl font-bold mb-6 text-white">Your Library</h1>
+        <div>
+            <label for="sortOptions" class="text-white mr-2">Sort by:</label>
+            <select id="sortOptions" class="px-4 py-2 rounded">
+                <option value="none">Select</option>
+                <option value="none">None</option>
+                <option value="reviewDate">Review Date</option>
+                <option value="rating">Rating</option>
+            </select>
+        </div>
         <div id="libraryGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             <!-- Book images will be dynamically inserted here -->
         </div>

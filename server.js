@@ -548,12 +548,47 @@ app.get('/api/library/:username/books', async (req, res) => {
 
     // Sort the books based on the sortBy parameter
     if (sortBy === 'reviewDate') {
-      books = books.sort((a, b) => new Date(b.reviewDate) - new Date(a.reviewDate));
-    } else if (sortBy === 'rating') {
-      books = books.sort((a, b) => b.rating - a.rating);
-    }
+      books = books.sort((a, b) => {
+          const dateA = a.reviewDate ? new Date(a.reviewDate) : new Date(0); // Handle missing dates by treating them as very old
+          const dateB = b.reviewDate ? new Date(b.reviewDate) : new Date(0);
+          return dateB - dateA; // Sort in descending order
+      });
+  } else if (sortBy === 'rating') {
+      books = books.sort((a, b) => b.rating - a.rating); // Sort by rating in descending order
+  }
+  else if (sortBy == "none"){}
 
     res.status(200).json({ success: true, books });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
+// Add this new route to handle fetching a specific book's review by username and ISBN
+app.get('/api/library/review/:username/:isbn', async (req, res) => {
+  const { username, isbn } = req.params;
+
+  try {
+    // Find the user's library
+    const userLibrary = await UserLibrary.findOne({ username });
+    if (!userLibrary) {
+      return res.status(404).json({ success: false, message: 'No library found for user' });
+    }
+
+    // Find the specific book in the user's library
+    const book = userLibrary.books.find(book => book.isbn === isbn);
+    if (!book) {
+      return res.status(404).json({ success: false, message: 'Book not found in library' });
+    }
+
+    // Return the review and rating for that book
+    res.status(200).json({
+      success: true,
+      review: book.review,
+      rating: book.rating,
+      reviewDate: book.reviewDate || null,
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ success: false, message: 'Internal server error' });

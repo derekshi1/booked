@@ -6,9 +6,84 @@ document.addEventListener('DOMContentLoaded', async () => {
     const ratingInput = document.getElementById('rating');
     const ratingValue = document.getElementById('ratingValue');
     const saveReviewButton = document.getElementById('saveReview');
+    const sortOptions = document.getElementById('sortOptions');
+    let booksData = []; // Store fetched books data here
+
     let currentRating = 0;
 
+    await fetchAndDisplayBooks();
+    
+    sortOptions.addEventListener('change', async (event) => {
+        const sortBy = event.target.value;
+        await fetchAndDisplayBooks(sortBy); // Fetch and display books based on selected sort option
+      });
 
+    async function fetchAndDisplayBooks(sortBy = 'none') {
+        try {
+            let url = `/api/library/${username}/books`;
+            if (sortBy !== 'none') {
+                url += `?sortBy=${sortBy}`;
+            }
+    
+            const response = await fetch(url);
+            const data = await response.json();
+    
+            if (data.success && data.books.length > 0) {
+                booksData = data.books; // Store the fetched books data
+                renderBooks(booksData, sortBy); // Pass sortBy to renderBooks
+            } else {
+                addPlaceholderCards(libraryGrid, "Empty Book");
+            }
+        } catch (error) {
+            console.error('Error fetching books:', error);
+            document.getElementById('libraryGrid').innerHTML = '<p>Error loading library.</p>';
+        }
+    }
+    async function renderBooks(books, sortBy) {
+        const libraryGrid = document.getElementById('libraryGrid');
+        libraryGrid.innerHTML = ''; // Clear the grid before rendering new content
+    
+        books.forEach(book => {
+            const bookDiv = document.createElement('div');
+            bookDiv.classList.add('library-card', 'relative', 'p-6', 'rounded-lg', 'shadow-lg', 'cursor-pointer', 'hover:shadow-2xl', 'transition', 'duration-300', 'ease-in-out');
+            
+            let additionalInfo = ''; // This will store either the review date or rating
+            if (sortBy === 'reviewDate') {
+                additionalInfo = `<p class="text-gray-500 text-sm">Reviewed on: ${book.reviewDate ? new Date(book.reviewDate).toLocaleString() : 'No Review Date'}</p>`;
+            } else if (sortBy === 'rating') {
+                additionalInfo = `<p class="text-gray-500 text-sm">Rating: ${book.rating || 'N/A'}</p>`;
+            }
+
+            bookDiv.innerHTML = `
+                <div class="relative group library-card" style="border: 4px solid ${getGradientColor(book.rating)};">
+                    <a href="../html/book.html?isbn=${book.isbn}" class="block relative overflow-hidden rounded-lg shadow-lg hover:shadow-2xl transition duration-300 ease-in-out group">
+                        <img src="${book.thumbnail}" alt="${book.title}" class="w-full h-full object-cover rounded-t-lg">
+                        <div class="absolute bottom-0 left-0 w-full p-4 bg-black bg-opacity-60 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-in-out">
+                            <h2 class="text-lg font-bold">${book.title}</h2>
+                            <p class="text-gray-300">by ${book.authors}</p>
+                        </div>
+                    </a>
+                    ${additionalInfo} <!-- Display either review date or rating -->
+                    <button onclick="removeFromLibrary('${username}', '${book.isbn}')" class="absolute top-0 left-0 mt-2 ml-2 text-xs bg-red-700 text-white px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-in-out">Remove</button>
+                    <button class="comment-button ease-in-out-transition absolute top-0 right-0 mt-2 mr-2 text-xs bg-blue-500 text-white px-2 py-1 rounded" data-isbn="${book.isbn}" data-title="${book.title}"></button>
+                </div>
+            `;
+
+            libraryGrid.appendChild(bookDiv);
+        });
+
+        // Attach event listeners to comment buttons
+        const commentButtons = document.querySelectorAll('.comment-button');
+        commentButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                console.log(`Comment button clicked for ISBN: ${button.getAttribute('data-isbn')}`);
+                showReviewPopup(button.getAttribute('data-isbn'), button.getAttribute('data-title'));
+            });
+        });
+    }
+
+    
+      
     if (username) {
         
         clearBookCards();
@@ -174,6 +249,7 @@ function addPlaceholderCards(container, message) {
 
 // Function to show the review popup
 async function showReviewPopup(bookIsbn, bookTitle) {
+
     const modal = document.getElementById('reviewModal');
     const username = localStorage.getItem('username');
     modal.dataset.isbn = bookIsbn; // Set the bookIsbn in the modal's dataset
@@ -183,7 +259,6 @@ async function showReviewPopup(bookIsbn, bookTitle) {
         const response = await fetch(`/api/library/review/${username}/${bookIsbn}`);
         const data = await response.json();
 
-        console.log('Fetched review data:', data); // Log the fetched data
 
         if (data.success) {
             document.getElementById('reviewText').value = data.review || '';
