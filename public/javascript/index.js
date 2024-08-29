@@ -29,6 +29,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const clickDataKey = `${username}_clickData`;
     const clickData = getClickData();
     const countdownElement = document.getElementById('countdownTimer_rec'); // Moved here to ensure it's available in all functions
+    const urlParams = new URLSearchParams(window.location.search);
+    const bypassLimit = urlParams.get('bypassLimit') === 'true';
 
 
     const startGenerateCountdown = (timeLeft) => {
@@ -80,27 +82,26 @@ document.addEventListener('DOMContentLoaded', () => {
         updateClickData(clickData); // Make sure to save this reset
     }
     
-
-    updateRecommendationStatus(clickData);
+    if(!bypassLimit){
+        updateRecommendationStatus(clickData);
+    }
 
     
     // Function to create sparkles
     const createSparkles = () => {
         sparkleContainer.innerHTML = '';
-        for (let i = 0; i < 9; i++) {
             const sparkle = document.createElement('div');
-            const size = Math.random() * 10 + 8; // Random size between 10px and 20px
-            const animationDuration = Math.random() * 1 + 0.5; // Random duration between 0.5s and 1.5s
+            const size = Math.random() * 10 + 15; // Random size between 10px and 20px
 
             sparkle.className = 'sparkle';
             sparkle.style.width = `${size}px`;
             sparkle.style.height = `${size}px`;
-            sparkle.style.top = `${Math.random() * 100}%`; // Random vertical position
-            sparkle.style.left = `${Math.random() * 100}%`; // Random horizontal position
-            sparkle.style.animationDuration = `${animationDuration}s`;
+            sparkle.style.top = '30%'; // Random vertical position
+            sparkle.style.left = `20%`; // Random horizontal position
+            sparkle.style.transform = 'translate(-50%, -50%)';
+            sparkle.style.animationDuration = `1s`;
 
             sparkleContainer.appendChild(sparkle);
-        }
     };
 
     // Function to show sparkles
@@ -367,17 +368,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 updateClickData(clickData);
             }
     
-            if (clickData.count >= clickLimit) {
-                const timeUntilReset = limitResetTime - (now - clickData.lastReset);
-                startGenerateCountdown(timeUntilReset);
-                console.log('Click limit reached. Please wait until the countdown ends.');
-                return;
+            if (!bypassLimit) {
+                if (clickData.count >= clickLimit) {
+                    const timeUntilReset = limitResetTime - (now - clickData.lastReset);
+                    startGenerateCountdown(timeUntilReset);
+                    console.log('Click limit reached. Please wait until the countdown ends.');
+                    return;
+                }
+                clickData.count += 1;
+                updateClickData(clickData);
+                updateRecommendationStatus(clickData);
             }
-    
-            clickData.count += 1;
-            updateClickData(clickData);
-            updateRecommendationStatus(clickData);
-    
             // Proceed with generating recommendations
             try {
                 showSparkles();

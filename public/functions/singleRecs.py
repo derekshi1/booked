@@ -172,6 +172,9 @@ async def find_best_matches(book, total_recommendations=7):
         additional_recommendations = [book for book in potential_matches if book['title'] not in recommended_titles]
         additional_recommendations.sort(key=lambda x: x['score'], reverse=True)
         recommendations.extend(additional_recommendations[:total_recommendations - len(recommendations)])    
+    if not book_recommendations:
+        fallback_books = await find_books_by_genres(all_genres, max_results=total_recommendations)
+        book_recommendations.extend(fallback_books[:total_recommendations])
 
     # Write debug information to stderr
     print(f"Recommendations found: {len(recommendations)}", file=sys.stderr)
