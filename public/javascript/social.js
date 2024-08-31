@@ -127,10 +127,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }, {});
 
         activitiesFeed.innerHTML = '';
+        const limit = 4; // Limit the number of activities shown
+
 
         // Iterate over users and render their activities
         Object.keys(activitiesByUser).forEach(username => {
             const userActivities = Object.values(activitiesByUser[username]).flat();
+            const limitedActivities = userActivities.slice(0, limit); // Limit to 4 activities
             const mostRecentActivity = userActivities[0];
         
             const activityElement = document.createElement('div');
@@ -197,7 +200,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     ` : ''}
         ${userActivities.length > 1 ? `
             <a href="#" class="text-blue-500 hover:underline hover:italic see-more" data-username="${username}">
-                See ${userActivities.length - 1} more actions...
+                See ${Math.min(userActivities.length - 1, 4)} more actions...
             </a>` : ''}
     </div>
             `;
@@ -219,8 +222,9 @@ document.addEventListener('DOMContentLoaded', () => {
         // Clear any previously added additional activities
         containerElement.querySelectorAll('.additional-activity').forEach(activityEl => activityEl.remove());
     
-        // Add up to 5 more activities
-        activities.slice(0, 5).forEach(activity => {
+        // Add up to 4 more activities
+        const limit=4;
+        activities.slice(0, limit).forEach(activity => {
             const additionalActivityElement = document.createElement('div');
             additionalActivityElement.classList.add('activity', 'p-2', 'bg-gray-50', 'rounded', 'shadow', 'mb-2', 'ml-4', 'additional-activity');
     
@@ -267,7 +271,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div class="flex justify-between items-end mt-2 relative">
                         <p class="time-ago text-gray-600 text-xs">${formatTimeAgo(activity.timestamp)}</p>
                         ${activity.action.includes('reviewed') ? `
-                        <a href="#" class="see-review-link hidden text-gray-500 hover:underline" 
+                        <a href="#" class="see-review-link text-gray-500 hover:underline" 
                             style="position: absolute; bottom: 20px; left: 0; font-size: 15px;" 
                             data-username="${activity.username}" 
                             data-isbn="${activity.isbn}">
@@ -282,13 +286,10 @@ document.addEventListener('DOMContentLoaded', () => {
             containerElement.appendChild(additionalActivityElement);
         });
     
-        const remainingActions = activities.length - 5;
+        const remainingActions = activities.length - 4;
     
-        if (remainingActions > 0) {
-            seeMoreLink.textContent = `See ${remainingActions} more actions...`;
-        } else {
-            seeMoreLink.textContent = 'See less actions';
-        }
+        seeMoreLink.textContent = 'See less actions';
+        
     
         // Update event listener for "See less"
         seeMoreLink.removeEventListener('click', handleSeeMoreClick);
@@ -307,8 +308,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const totalActivities = parseInt(containerElement.getAttribute('data-total-activities'), 10);
         
         // Calculate remaining actions (original total minus one for the most recent activity)
-        const remainingActions = totalActivities - 1;
-        
+        const remainingActions = Math.min(totalActivities - 1, 4); // Only show "See 4 more actions..."
+    
         seeMoreLink.textContent = `See ${remainingActions} more actions...`;
     
         // Reset event listener for "See more"
@@ -316,14 +317,25 @@ document.addEventListener('DOMContentLoaded', () => {
         seeMoreLink.addEventListener('click', handleSeeMoreClick);
     }
     
-    
     function handleSeeMoreClick(event) {
         event.preventDefault();
         const seeMoreLink = event.target;
         const username = seeMoreLink.getAttribute('data-username');
         const activities = activitiesByUser[username];
-        renderAdditionalActivities(activities.slice(1), seeMoreLink.closest('.activity'), seeMoreLink);
+        
+        const limit = 4; // Limit for additional activities
+    
+        // Display the additional activities
+        renderAdditionalActivities(activities.slice(1, limit + 1), seeMoreLink.closest('.activity'), seeMoreLink);
+    
+        // Change the link text to "See less actions"
+        seeMoreLink.textContent = 'See less actions';
+    
+        // Update event listener to handle "See less" click
+        seeMoreLink.removeEventListener('click', handleSeeMoreClick);
+        seeMoreLink.addEventListener('click', handleSeeLessClick);
     }
+    
     
     
     

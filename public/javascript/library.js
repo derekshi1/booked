@@ -10,27 +10,41 @@ document.addEventListener('DOMContentLoaded', async () => {
     let booksData = []; // Store fetched books data here
 
     let currentRating = 0;
+    let currentPage = 1; // Track the current page
+    const limit = 16; // Number of books per page
 
-    await fetchAndDisplayBooks();
-    
+
+
+
+    await fetchAndDisplayBooks('none', currentPage);
+
     sortOptions.addEventListener('change', async (event) => {
         const sortBy = event.target.value;
-        await fetchAndDisplayBooks(sortBy); // Fetch and display books based on selected sort option
+        currentPage = 1; // Reset to the first page on sort change
+        fetchAndDisplayBooks(sortBy, currentPage);
       });
 
-    async function fetchAndDisplayBooks(sortBy = 'none') {
-        try {
-            let url = `/api/library/${username}/books`;
-            if (sortBy !== 'none') {
-                url += `?sortBy=${sortBy}`;
-            }
     
+
+    async function fetchAndDisplayBooks(sortBy = 'none', page = 1) {
+        try {
+            console.log(`Fetching books for page ${page} with sortBy: ${sortBy}`);
+
+            let url = `/api/library/${username}/books?page=${page}&limit=${limit}`;
+            if (sortBy !== 'none') {
+                url += `&sortBy=${sortBy}`;
+            }
+            console.log(`API Request URL: ${url}`);
+
             const response = await fetch(url);
             const data = await response.json();
-    
+
             if (data.success && data.books.length > 0) {
+                console.log(`Fetched ${data.books.length} books for page ${page}`);
+
                 booksData = data.books; // Store the fetched books data
                 renderBooks(booksData, sortBy); // Pass sortBy to renderBooks
+                updatePaginationControls(data.currentPage, data.totalPages); // Update pagination controls
             } else {
                 addPlaceholderCards(libraryGrid, "Empty Book");
             }
@@ -39,11 +53,45 @@ document.addEventListener('DOMContentLoaded', async () => {
             document.getElementById('libraryGrid').innerHTML = '<p>Error loading library.</p>';
         }
     }
-    async function renderBooks(books, sortBy) {
+    function updatePaginationControls(currentPage, totalPages) {
+        console.log(`Updating pagination controls: currentPage = ${currentPage}, totalPages = ${totalPages}`);
+
+        const prevPageBtn = document.getElementById('prevPage');
+        const nextPageBtn = document.getElementById('nextPage');
+        const pageInfo = document.getElementById('pageInfo');
+    
+        pageInfo.textContent = `Page ${currentPage} of ${totalPages}`;
+    
+        prevPageBtn.disabled = currentPage === 1;
+        nextPageBtn.disabled = currentPage === totalPages;
+    
+        prevPageBtn.onclick = () => {
+            if (currentPage > 1) {
+                currentPage--;
+                fetchAndDisplayBooks('none', currentPage);
+            }
+        };
+    
+        nextPageBtn.onclick = () => {
+            if (currentPage < totalPages) {
+                currentPage++;
+                fetchAndDisplayBooks('none', currentPage);
+            }
+        };
+    }
+    
+    async function renderBooks(books, sortBy, page = 1, limit = 16) {
         const libraryGrid = document.getElementById('libraryGrid');
         libraryGrid.innerHTML = ''; // Clear the grid before rendering new content
     
-        books.forEach(book => {
+        // Calculate the start and end indices for the current page
+        const startIndex = (page - 1) * limit;
+        const endIndex = Math.min(startIndex + limit, books.length);
+    
+        // Slice the books array to only get the books for the current page
+        const paginatedBooks = books.slice(startIndex, endIndex);
+    
+        paginatedBooks.forEach(book => {
             const bookDiv = document.createElement('div');
             bookDiv.classList.add('library-card', 'relative', 'p-6', 'rounded-lg', 'shadow-lg', 'cursor-pointer', 'hover:shadow-2xl', 'transition', 'duration-300', 'ease-in-out');
             
@@ -53,7 +101,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             } else if (sortBy === 'rating') {
                 additionalInfo = `<p class="text-gray-500 text-sm">Rating: ${book.rating || 'N/A'}</p>`;
             }
-
+    
             bookDiv.innerHTML = `
                 <div class="relative group library-card" style="border: 4px solid ${getGradientColor(book.rating)};">
                     <a href="../html/book.html?isbn=${book.isbn}" class="block relative overflow-hidden rounded-lg shadow-lg hover:shadow-2xl transition duration-300 ease-in-out group">
@@ -68,19 +116,19 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <button class="comment-button ease-in-out-transition absolute top-0 right-0 mt-2 mr-2 text-xs bg-blue-500 text-white px-2 py-1 rounded" data-isbn="${book.isbn}" data-title="${book.title}"></button>
                 </div>
             `;
-
+    
             libraryGrid.appendChild(bookDiv);
         });
-
+    
         // Attach event listeners to comment buttons
         const commentButtons = document.querySelectorAll('.comment-button');
         commentButtons.forEach(button => {
             button.addEventListener('click', () => {
-                console.log(`Comment button clicked for ISBN: ${button.getAttribute('data-isbn')}`);
                 showReviewPopup(button.getAttribute('data-isbn'), button.getAttribute('data-title'));
             });
         });
     }
+    
 
     
       
@@ -90,10 +138,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // Fetch user library and display books
         try {
-            const response = await fetch(`/api/library/${username}`);
+            const page = 1; // Start with the first page
+            const limit = 16; // Number of books per page
+            const response = await fetch(`/api/library/${username}?page=${page}&limit=${limit}`);
             const data = await response.json();
             const libraryGrid = document.getElementById('libraryGrid');
             libraryGrid.className = 'library-container'; // Apply library-container class
+
             if (data.success && data.books.length > 0) {
                 data.books.forEach(book => {
                     const bookDiv = document.createElement('div');

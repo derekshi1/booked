@@ -674,6 +674,38 @@ main {
     transform: translateY(-3px); /* Slight lift on hover */
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Add a subtle shadow */
 }
+    .pagination-controls {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-top: 1rem;
+        padding: 0.5rem;
+        border-radius: 8px; /* Rounded corners for a smoother look */
+    }
 
+    .pagination-controls button {
+        background-color: #22543d; /* Dark green */
+        color: #ffffff; /* White text */
+        border: none; /* Remove default border */
+        padding: 0.25rem 0.5rem; /* Reduce padding for smaller buttons */
+        margin: 0 0.25rem; /* Reduce margin between buttons */
+        font-size: 0.875rem; /* Decrease font size for buttons */
+        border-radius: 4px; /* Slightly rounded buttons */
+        transition: background-color 0.3s ease; /* Smooth transition for hover effect */
+        cursor: pointer;
+    }
 
+    .pagination-controls button:disabled {
+        background-color: #718096; /* Lighter gray for disabled state */
+        cursor: not-allowed; /* Change cursor to indicate disabled state */
+    }
 
+    .pagination-controls button:hover:not(:disabled) {
+        background-color: #276749; /* Darker green on hover */
+    }
+
+    .pagination-controls span {
+        color: #ffffff; /* White text */
+        font-size: 0.875rem; /* Decrease font size for text */
+        margin: 0 0.5rem; /* Spacing between the text and buttons */
+    }

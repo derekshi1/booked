@@ -304,8 +304,13 @@ app.post('/api/library/remove', async (req, res) => {
 // Get books from user's library
 app.get('/api/library/:username', async (req, res) => {
   const { username } = req.params;
+  const { page = 1, limit = 16 } = req.query;
 
   try {
+    // Calculate the offset for pagination
+    const offset = (page - 1) * limit;
+
+    // Fetch the UserLibrary for the user
     let userLibrary = await UserLibrary.findOne({ username });
     if (!userLibrary) {
       // If no userLibrary found, create an empty one for the user
@@ -313,14 +318,26 @@ app.get('/api/library/:username', async (req, res) => {
       await userLibrary.save();
     }
 
+    // Fetch the paginated books from the userLibrary
+    const paginatedBooks = userLibrary.books.slice(offset, offset + limit);
+
+    // Calculate total pages based on the number of books in the user's library
     const totalBooks = userLibrary.books.length;
-    const totalPages = userLibrary.books.reduce((sum, book) => sum + book.pageCount, 0);
-    res.status(200).json({ success: true, books: userLibrary.books, totalBooks, totalPages });
+    const totalPages = Math.ceil(totalBooks / limit);
+
+    res.status(200).json({
+      success: true,
+      books: paginatedBooks,
+      totalBooks,
+      currentPage: Number(page),
+      totalPages
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });
+
 
 
 
@@ -536,7 +553,7 @@ app.post('/api/library/review', async (req, res) => {
 // Fetch a specific book's review and rating from user's library
 app.get('/api/library/:username/books', async (req, res) => {
   const { username } = req.params;
-  const { sortBy } = req.query; // Retrieve the sortBy query parameter
+  const { sortBy, page = 1, limit = 16 } = req.query;
 
   try {
     const userLibrary = await UserLibrary.findOne({ username });
@@ -549,21 +566,37 @@ app.get('/api/library/:username/books', async (req, res) => {
     // Sort the books based on the sortBy parameter
     if (sortBy === 'reviewDate') {
       books = books.sort((a, b) => {
-          const dateA = a.reviewDate ? new Date(a.reviewDate) : new Date(0); // Handle missing dates by treating them as very old
-          const dateB = b.reviewDate ? new Date(b.reviewDate) : new Date(0);
-          return dateB - dateA; // Sort in descending order
+        const dateA = a.reviewDate ? new Date(a.reviewDate) : new Date(0);
+        const dateB = b.reviewDate ? new Date(b.reviewDate) : new Date(0);
+        return dateB - dateA; // Sort in descending order
       });
-  } else if (sortBy === 'rating') {
+    } else if (sortBy === 'rating') {
       books = books.sort((a, b) => b.rating - a.rating); // Sort by rating in descending order
-  }
-  else if (sortBy == "none"){}
+    }
 
-    res.status(200).json({ success: true, books });
+    // Pagination logic
+    const startIndex = (page - 1) * limit;
+    const endIndex = startIndex + limit;
+    const paginatedBooks = books.slice(startIndex, endIndex);
+
+    // Total number of pages
+    const totalPages = Math.ceil(books.length / limit);
+
+    // Send the response only once
+    res.status(200).json({
+      success: true,
+      books: paginatedBooks,
+      currentPage: parseInt(page),
+      totalPages: totalPages,
+      totalBooks: books.length,
+    });
   } catch (error) {
     console.error(error);
+    // Send an error response if something goes wrong
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });
+
 
 // Add this new route to handle fetching a specific book's review by username and ISBN
 app.get('/api/library/review/:username/:isbn', async (req, res) => {
