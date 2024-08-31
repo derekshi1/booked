@@ -301,7 +301,6 @@ app.post('/api/library/remove', async (req, res) => {
 });
 
 
-// Get books from user's library
 app.get('/api/library/:username', async (req, res) => {
   const { username } = req.params;
   const { page = 1, limit = 16 } = req.query;
@@ -321,22 +320,29 @@ app.get('/api/library/:username', async (req, res) => {
     // Fetch the paginated books from the userLibrary
     const paginatedBooks = userLibrary.books.slice(offset, offset + limit);
 
-    // Calculate total pages based on the number of books in the user's library
+    // Calculate total pages across all books
+    const totalPages = userLibrary.books.reduce((sum, book) => sum + book.pageCount, 0);
+    
+    // Calculate the total number of books in the user's library
     const totalBooks = userLibrary.books.length;
-    const totalPages = Math.ceil(totalBooks / limit);
+
+    // Calculate the number of pagination pages based on the limit
+    const totalPaginationPages = Math.ceil(totalBooks / limit);
 
     res.status(200).json({
       success: true,
       books: paginatedBooks,
       totalBooks,
       currentPage: Number(page),
-      totalPages
+      totalPages,   // This represents the total pages across all books
+      totalPaginationPages // This represents the total pages for pagination
     });
   } catch (error) {
     console.error(error);
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });
+
 
 
 
@@ -1034,33 +1040,40 @@ app.post('/api/check-friendship-status', async (req, res) => {
   const { username, friendUsername } = req.body;
 
   try {
-      const user = await User.findOne({ username }).populate('friends').populate('friendRequests');
-      const friend = await User.findOne({ username: friendUsername });
+    const user = await User.findOne({ username }).populate('friends');
+    const friend = await User.findOne({ username: friendUsername });
 
-      if (!user || !friend) {
-          return res.status(404).json({ success: false, message: 'User or friend not found' });
-      }
+    if (!user || !friend) {
+      return res.status(404).json({ success: false, message: 'User or friend not found' });
+    }
 
-      // Check if the users are already friends
-      const isFriend = user.friends.some(f => f.username === friendUsername);
-      if (isFriend) {
-          return res.status(200).json({ success: true, status: 'friend' });
-      }
+    // Check if the users are already friends
+    const isFriend = user.friends.some(f => f.username === friendUsername);
+    if (isFriend) {
+      return res.status(200).json({ success: true, status: 'friend' });
+    }
 
-      // Check if there is a pending friend request
-      const isPending = await FriendRequest.findOne({ from: friend._id, to: user._id, status: 'pending' });
-      if (isPending) {
-          return res.status(200).json({ success: true, status: 'pending' });
-      }
+    // Check if there is a pending friend request from the logged-in user to the friend
+    const isPendingFromUser = await FriendRequest.findOne({ from: user._id, to: friend._id, status: 'pending' });
+    if (isPendingFromUser) {
+      return res.status(200).json({ success: true, status: 'pending' });
+    }
 
-      // If not friends and no pending request, return 'none'
-      return res.status(200).json({ success: true, status: 'none' });
+    // Check if there is a pending friend request from the friend to the logged-in user
+    const isPendingFromFriend = await FriendRequest.findOne({ from: friend._id, to: user._id, status: 'pending' });
+    if (isPendingFromFriend) {
+      return res.status(200).json({ success: true, status: 'pending' });
+    }
+
+    // If not friends and no pending request, return 'none'
+    return res.status(200).json({ success: true, status: 'none' });
 
   } catch (error) {
-      console.error('Error checking friendship status:', error);
-      res.status(500).json({ success: false, message: 'Internal server error' });
+    console.error('Error checking friendship status:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });
+
 
 
 app.listen(port, () => {

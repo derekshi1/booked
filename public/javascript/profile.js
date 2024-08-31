@@ -19,6 +19,78 @@ document.addEventListener('DOMContentLoaded', async () => {
         } else {
             // Hide the logout button if viewing someone else's profile
             document.getElementById('logoutButton').style.display = 'none';
+
+            // Check and display friendship status
+            try {
+                const response = await fetch('/api/check-friendship-status', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ username: loggedInUsername, friendUsername: username }),
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    const friendStatusSection = document.getElementById('friendStatusSection');
+
+                    if (data.status === 'friend') {
+                        friendStatusSection.innerHTML = `
+                            <span class="friend-status-badge bg-green-700 text-white py-1 px-2 rounded-full text-sm flex items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                </svg>
+                                Friends
+                            </span>`;
+                    } else if (data.status === 'pending') {
+                        friendStatusSection.innerHTML = `
+                            <span class="friend-status-badge bg-yellow-500 text-white py-1 px-2 rounded-full text-sm flex items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553 4.553M4 4l16 16" />
+                                </svg>
+                                Pending
+                            </span>`;
+                    } else {
+                        friendStatusSection.innerHTML = `
+                            <button id="addFriendButton" class="friend-status-badge bg-blue-700 text-white py-1 px-2 rounded-full text-sm flex items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                                </svg>
+                                Add Friend
+                            </button>
+                        `;
+
+
+                        // Handle add friend button click
+                        document.getElementById('addFriendButton').addEventListener('click', async () => {
+                            try {
+                                const addFriendResponse = await fetch('/api/add-friend', {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                    },
+                                    body: JSON.stringify({ username: loggedInUsername, friendUsername: username }),
+                                });
+
+                                const addFriendData = await addFriendResponse.json();
+                                if (addFriendData.success) {
+                                    friendStatusSection.innerHTML = `<p class="text-yellow-600">Friend request pending</p>`;
+                                } else {
+                                    alert('Failed to send friend request');
+                                }
+                            } catch (error) {
+                                console.error('Error sending friend request:', error);
+                                alert('Error sending friend request');
+                            }
+                        });
+                    }
+                } else {
+                    console.error('Failed to check friendship status:', data.message);
+                }
+            } catch (error) {
+                console.error('Error checking friendship status:', error);
+            }
         }
 
         try {
