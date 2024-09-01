@@ -8,7 +8,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (username) {
         document.getElementById('usernameDisplay').textContent = username;
-
+        const friendsLink = document.getElementById('friendsLink');
+        friendsLink.href = `../html/friends.html?username=${username}`;
         if (username === loggedInUsername) {
             // Show the logout button if it's the user's own profile
             document.getElementById('logoutButton').style.display = 'inline-block';
@@ -60,7 +61,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                                 Add Friend
                             </button>
                         `;
-
 
                         // Handle add friend button click
                         document.getElementById('addFriendButton').addEventListener('click', async () => {

@@ -1,0 +1,32 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"><html lang="en">
+<head>
+    <meta http-equiv="content-type" content="text/html; charset=utf-8"/>
+    <title>Friends List</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Indie+Flower&display=swap" rel="stylesheet">
+    <script defer src="../javascript/friends.js"></script>
+    <script defer src="../javascript/header.js"></script>
+    <link href="../css/styles.css" rel="stylesheet"> 
+
+</head>
+<body>
+    <header class="custom-header text-green-900 py-4">
+        <div class="container mx-auto flex items-center justify-between">
+            <div class="flex items-center" id="logoAndHome">
+                <!-- Logo and Home button will be populated by header.js -->
+            </div>
+            <div id="userSection" class="flex items-center space-x-4">
+                <!-- User Section will be populated by header.js -->
+            </div>
+        </div>
+    </header>
+    <main class="container mx-auto mt-8">
+        <h1 id="friendsTitle" class="text-3xl font-bold mb-4 text-white"></h1>
+        <div id="friendsListContainer" class="space-y-4">
+            <!-- Friends list will be dynamically inserted here -->
+        </div>
+    </main>
+</body>
+</html>

@@ -962,6 +962,24 @@ app.get('/api/number-of-friends/:username', async (req, res) => {
       res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });
+app.get('/api/friends/:username', async (req, res) => {
+  const { username } = req.params;
+
+  try {
+    // Find the user by username and populate the friends list
+    const user = await User.findOne({ username }).populate('friends');
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    res.status(200).json({ success: true, friends: user.friends });
+  } catch (error) {
+    console.error('Error fetching friends:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
 
 app.get('/api/friends-activities/:username', async (req, res) => {
   const { username } = req.params;
