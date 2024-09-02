@@ -7,6 +7,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const username = profileUsername || loggedInUsername;
 
     if (username) {
+        const booksLink = document.getElementById('booksLink');
+        booksLink.href = `../html/library.html?username=${username}`;
         document.getElementById('usernameDisplay').textContent = username;
         const friendsLink = document.getElementById('friendsLink');
         friendsLink.href = `../html/friends.html?username=${username}`;

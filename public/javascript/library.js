@@ -1,6 +1,7 @@
 document.addEventListener('DOMContentLoaded', async () => {
-    const username = localStorage.getItem('username');
-    const userSection = document.getElementById('userSection');
+    const urlParams = new URLSearchParams(window.location.search);
+    const profileUsername = urlParams.get('username'); // Get the username from the URL
+    const loggedInUsername = localStorage.getItem('username'); // Get the logged-in username
     const modal = document.getElementById('reviewModal');
     const closeModal = document.getElementById('closeModal');
     const ratingInput = document.getElementById('rating');
@@ -8,30 +9,44 @@ document.addEventListener('DOMContentLoaded', async () => {
     const saveReviewButton = document.getElementById('saveReview');
     const sortOptions = document.getElementById('sortOptions');
     let booksData = []; // Store fetched books data here
+    const sortLabel = document.getElementById('sortLabel'); // Reference to the sort label
 
     let currentRating = 0;
     let currentPage = 1; // Track the current page
     const limit = 16; // Number of books per page
+   
+    const username = profileUsername || loggedInUsername;
 
-
-
+    const isOwnLibrary = username === loggedInUsername;
+    const libraryTitle = document.getElementById('libraryTitle');
+    if (!isOwnLibrary) {
+        // Hide sort options and review modal for someone else's library
+        if (sortOptions) sortOptions.style.display = 'none';
+        if (saveReviewButton) saveReviewButton.style.display = 'none';
+        sortLabel.textContent = ""; // Hide the label if viewing someone else's library
+        if (sortOptions) sortOptions.style.display = 'none';
+        if (saveReviewButton) saveReviewButton.style.display = 'none';
+        libraryTitle.innerHTML = `<em>${username}'s</em>  Library`;
+    } else {
+        sortLabel.textContent = "Sort by:"; // Set the label text if viewing your own library
+        sortOptions.addEventListener('change', async (event) => {
+            const sortBy = event.target.value;
+            currentPage = 1;
+            await fetchAndDisplayBooks(sortBy, currentPage);
+        });
+    }
+   
 
     await fetchAndDisplayBooks('none', currentPage);
 
-    sortOptions.addEventListener('change', async (event) => {
-        const sortBy = event.target.value;
-        currentPage = 1; // Reset to the first page on sort change
-        fetchAndDisplayBooks(sortBy, currentPage);
-      });
 
     
 
     async function fetchAndDisplayBooks(sortBy = 'none', page = 1) {
         try {
-            console.log(`Fetching books for page ${page} with sortBy: ${sortBy}`);
 
             let url = `/api/library/${username}/books?page=${page}&limit=${limit}`;
-            if (sortBy !== 'none') {
+             if (sortBy !== 'none' && isOwnLibrary) {
                 url += `&sortBy=${sortBy}`;
             }
             console.log(`API Request URL: ${url}`);
@@ -96,9 +111,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             bookDiv.classList.add('library-card', 'relative', 'p-6', 'rounded-lg', 'shadow-lg', 'cursor-pointer', 'hover:shadow-2xl', 'transition', 'duration-300', 'ease-in-out');
             
             let additionalInfo = ''; // This will store either the review date or rating
-            if (sortBy === 'reviewDate') {
+            if (sortBy === 'reviewDate' && isOwnLibrary) {
                 additionalInfo = `<p class="text-gray-500 text-sm">Reviewed on: ${book.reviewDate ? new Date(book.reviewDate).toLocaleString() : 'No Review Date'}</p>`;
-            } else if (sortBy === 'rating') {
+            } else if (sortBy === 'rating' && isOwnLibrary) {
                 additionalInfo = `<p class="text-gray-500 text-sm">Rating: ${book.rating || 'N/A'}</p>`;
             }
     
@@ -112,8 +127,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                         </div>
                     </a>
                     ${additionalInfo} <!-- Display either review date or rating -->
-                    <button onclick="removeFromLibrary('${username}', '${book.isbn}')" class="absolute top-0 left-0 mt-2 ml-2 text-xs bg-red-700 text-white px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-in-out">Remove</button>
-                    <button class="comment-button ease-in-out-transition absolute top-0 right-0 mt-2 mr-2 text-xs bg-blue-500 text-white px-2 py-1 rounded" data-isbn="${book.isbn}" data-title="${book.title}"></button>
+                    ${isOwnLibrary || !isOwnLibrary ? `<button class="comment-button ease-in-out-transition absolute top-0 right-0 mt-2 mr-2 text-xs bg-blue-500 text-white px-2 py-1 rounded" data-isbn="${book.isbn}" data-title="${book.title}">Review</button>` : ''}
+                    ${isOwnLibrary ? `<button class="comment-button ease-in-out-transition absolute top-0 right-0 mt-2 mr-2 text-xs bg-blue-500 text-white px-2 py-1 rounded" data-isbn="${book.isbn}" data-title="${book.title}"></button>` : ''}
                 </div>
             `;
     
@@ -122,11 +137,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     
         // Attach event listeners to comment buttons
         const commentButtons = document.querySelectorAll('.comment-button');
-        commentButtons.forEach(button => {
-            button.addEventListener('click', () => {
-                showReviewPopup(button.getAttribute('data-isbn'), button.getAttribute('data-title'));
-            });
-        });
+    commentButtons.forEach(button => {
+        button.addEventListener('click', () => {
+        showReviewPopup(button.getAttribute('data-isbn'), button.getAttribute('data-title'), !isOwnLibrary);
+    });
+});
+
     }
     
 
@@ -158,19 +174,19 @@ document.addEventListener('DOMContentLoaded', async () => {
                                     <p class="text-gray-300">by ${book.authors}</p>
                                 </div>
                             </a>
-                            <button onclick="removeFromLibrary('${username}', '${book.isbn}')" class="absolute top-0 left-0 mt-2 ml-2 text-xs bg-red-700 text-white px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-in-out">Remove</button>
-                            <button class="comment-button ease-in-out-transition absolute top-0 right-0 mt-2 mr-2 text-xs bg-blue-500 text-white px-2 py-1 rounded" data-isbn="${book.isbn}" data-title="${book.title}"></button>
+                            ${isOwnLibrary ? `<button onclick="removeFromLibrary('${username}', '${book.isbn}')" class="absolute top-0 left-0 mt-2 ml-2 text-xs bg-red-700 text-white px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-in-out">Remove</button>` : ''}
+                            ${isOwnLibrary || !isOwnLibrary ? `<button class="comment-button ease-in-out-transition absolute top-0 right-0 mt-2 mr-2 text-xs bg-blue-500 text-white px-2 py-1 rounded" data-isbn="${book.isbn}" data-title="${book.title}"></button>` : ''}
                         </div>
                     `;
                     libraryGrid.appendChild(bookDiv);
                 });
                 // Attach event listeners to comment buttons
-                const commentButtons = document.querySelectorAll('.comment-button');
-                commentButtons.forEach(button => {
-                    button.addEventListener('click', () => {
-                        showReviewPopup(button.getAttribute('data-isbn'), button.getAttribute('data-title'));
-                    });
-                });
+            const commentButtons = document.querySelectorAll('.comment-button');
+            commentButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                showReviewPopup(button.getAttribute('data-isbn'), button.getAttribute('data-title'), !isOwnLibrary);
+            });
+        });
             } else {
                 addPlaceholderCards(libraryGrid, "Empty Book");
             }
@@ -202,12 +218,21 @@ document.addEventListener('DOMContentLoaded', async () => {
                     readingListGrid.appendChild(bookDiv);
                 });
                 // Attach event listeners to comment buttons
-                const commentButtons = document.querySelectorAll('.comment-button');
-                commentButtons.forEach(button => {
-                    button.addEventListener('click', () => {
-                        showReviewPopup(button.getAttribute('data-isbn'), button.getAttribute('data-title'));
+                if (isOwnLibrary) {
+                    const commentButtons = document.querySelectorAll('.comment-button');
+                    commentButtons.forEach(button => {
+                        button.addEventListener('click', () => {
+                            showReviewPopup(button.getAttribute('data-isbn'), button.getAttribute('data-title'));
+                        });
                     });
-                });
+                } else {
+                    const commentButtons = document.querySelectorAll('.comment-button');
+                    commentButtons.forEach(button => {
+                        button.addEventListener('click', () => {
+                            showReviewPopup(button.getAttribute('data-isbn'), button.getAttribute('data-title'), !isOwnLibrary);
+                        });
+                    }); 
+                }
             } else {
                 addPlaceholderCards(readingListGrid, "Empty Book");
             }
@@ -299,17 +324,20 @@ function addPlaceholderCards(container, message) {
 }
 
 // Function to show the review popup
-async function showReviewPopup(bookIsbn, bookTitle) {
-
+async function showReviewPopup(bookIsbn, bookTitle, isReadOnly = false) {
+    const urlParams = new URLSearchParams(window.location.search);
+    const profileUsername = urlParams.get('username');
     const modal = document.getElementById('reviewModal');
-    const username = localStorage.getItem('username');
+    const loggedInUsername = localStorage.getItem('username'); // Get the logged-in username
+
+    const username = profileUsername || loggedInUsername; // Use the profile username
     modal.dataset.isbn = bookIsbn; // Set the bookIsbn in the modal's dataset
     modal.querySelector('h2').innerHTML = `Review for <em>${bookTitle}</em>`;
+
 
     try {
         const response = await fetch(`/api/library/review/${username}/${bookIsbn}`);
         const data = await response.json();
-
 
         if (data.success) {
             document.getElementById('reviewText').value = data.review || '';
@@ -319,16 +347,24 @@ async function showReviewPopup(bookIsbn, bookTitle) {
 
             if (data.reviewDate) {
                 const reviewDate = new Date(data.reviewDate);
-                console.log('Parsed review date:', reviewDate); // Log the parsed date
                 const formattedDate = reviewDate.toLocaleString();
                 document.getElementById('reviewDate').textContent = `Reviewed on: ${formattedDate}`;
-                console.log('Formatted review date:', formattedDate); // Log the formatted date
             } else {
-                console.log('No review date available'); // Log if no date is found
                 document.getElementById('reviewDate').textContent = ''; // Clear if no date
             }
+
+            // Make fields read-only if viewing another user's review
+            if (isReadOnly) {
+                document.getElementById('reviewText').disabled = true;
+                document.getElementById('rating').disabled = true;
+                document.getElementById('saveReview').style.display = 'none'; // Hide the save button
+
+            } else {
+                document.getElementById('reviewText').disabled = false;
+                document.getElementById('rating').disabled = false;
+                document.getElementById('saveReview').style.display = 'inline-block'; // Show the save button
+            }
         } else {
-            console.log('Failed to fetch review successfully'); // Log if the success flag is false
             document.getElementById('reviewText').value = '';
             document.getElementById('rating').value = 50;
             document.getElementById('ratingValue').textContent = 50;
@@ -338,9 +374,9 @@ async function showReviewPopup(bookIsbn, bookTitle) {
     } catch (error) {
         console.error('Error fetching book review:', error);
         document.getElementById('reviewText').value = '';
-        document.getElementById('rating').value = 0;
-        document.getElementById('ratingValue').textContent = 0;
-        updateSliderBackground(document.getElementById('rating'), 0);
+        document.getElementById('rating').value = 50;
+        document.getElementById('ratingValue').textContent = 50;
+        updateSliderBackground(document.getElementById('rating'), null);
         document.getElementById('reviewDate').textContent = ''; // Clear if no date
     }
 
