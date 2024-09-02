@@ -709,5 +709,26 @@ main {
         font-size: 0.875rem; /* Decrease font size for text */
         margin: 0 0.5rem; /* Spacing between the text and buttons */
     }
+    /* General hover effect for the items */
+/* Apply hover effect on the parent to affect both elements */
+.stats-item:hover .stats-value,
+.stats-item:hover .stats-label {
+    color: #f0f0f0; /* Change text color on hover */
+    transition: color 0.3s ease-in-out; /* Smooth transition for color change */
+}
+
+/* Optional: Add a background change on hover */
+.stats-item:hover {
+    background-color: #333; /* Darken the background on hover */
+    border-radius: 8px; /* Optionally, add rounded corners */
+    transition: background-color 0.3s ease-in-out; /* Smooth transition for background color change */
+}
+
+/* Ensure the hover effect also applies to the link underline */
+.stats-item .stats-label:hover {
+    text-decoration: underline;
+}
+
+
 
     
