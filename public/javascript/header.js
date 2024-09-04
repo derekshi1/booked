@@ -4,14 +4,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const userSection = document.getElementById('userSection');
     const currentPath = window.location.pathname;
 
+    // Create and append footer
     const footer = document.createElement('footer');
-    footer.classList.add('bg-green-850', 'text-white', 'text-center', 'py-4', 'mt-8'); // Adjust styling as needed
+    footer.classList.add('sticky-footer', 'bg-green-850', 'text-white', 'text-center', 'py-4');
     footer.innerHTML = `
         <p>&copy; ${new Date().getFullYear()} <em>Booked</em>. All rights reserved.</p>
     `;
-
-    // Append the footer to the body
     document.body.appendChild(footer);
+
+    const header = document.querySelector('.custom-header');
+    let logoChanged = false;  // Track if the logo has already been changed
 
     // Create logo and home link elements
     const logoLink = document.createElement('a');
@@ -19,42 +21,32 @@ document.addEventListener('DOMContentLoaded', () => {
     const logo = document.createElement('img');
     logo.src = '../logo.jpg';
     logo.alt = 'Booked Logo';
-    logo.classList.add('w-50', 'h-20', 'mr-4');
+    logo.classList.add('w-50', 'h-20', 'mr-4', 'logo-transition');
     logoLink.appendChild(logo);
     
+    // Create and append navigation links
     const homeLink = document.createElement('a');
     homeLink.href = '../html/index.html';
-    homeLink.classList.add('ml-4', 'bg-green-900', 'text-white', 'px-4', 'py-2', 'rounded', 'mr-8'); // Added 'mr-8' for spacing
+    homeLink.classList.add('ml-4','font-bold', 'text-green-900', 'text-lg', 'px-4', 'py-2', 'rounded', 'mr-8');
     homeLink.textContent = 'Home';
 
-    // Create lists link element
     const listsLink = document.createElement('a');
     listsLink.href = '../html/lists.html';
-    listsLink.classList.add('ml-4', 'bg-green-900', 'text-white', 'px-4', 'py-2', 'rounded', 'mr-8');
+    listsLink.classList.add('ml-4', 'font-bold','text-green-900', 'text-lg', 'px-4', 'py-2', 'rounded', 'mr-8');
     listsLink.textContent = 'Lists';
 
     const socialLink = document.createElement('a');
     socialLink.href = '../html/social.html';
-    socialLink.classList.add('ml-4', 'bg-green-900', 'text-white', 'px-4', 'py-2', 'rounded', 'mr-8');
+    socialLink.classList.add('ml-4', 'font-bold','text-green-900', 'text-lg', 'px-4', 'py-2', 'rounded', 'mr-8');
     socialLink.textContent = 'Social';
 
-
-    // Append logo and home link to the container
-    logoAndHomeContainer.appendChild(logo);
+    // Append links to the container
+    logoAndHomeContainer.appendChild(logoLink);
     logoAndHomeContainer.appendChild(homeLink);
     logoAndHomeContainer.appendChild(listsLink);
     logoAndHomeContainer.appendChild(socialLink);
 
-
-    const greenButtons = document.querySelectorAll('.bg-green-900');
-    greenButtons.forEach(button => {
-        button.addEventListener('mouseover', () => {
-            button.classList.add('hover:bg-green-800', 'hover:text-gray-300');
-        });
-        button.addEventListener('mouseout', () => {
-            button.classList.remove('hover:bg-green-800', 'hover:text-gray-300');
-        });
-    });
+  
     userSection.innerHTML = `
         <div class="search-container relative">
             <img src="https://cdn-icons-png.flaticon.com/512/54/54481.png" alt="Search" class="search-icon w-6 h-6" onclick="expandSearch()">
@@ -62,13 +54,13 @@ document.addEventListener('DOMContentLoaded', () => {
             <img src="https://cdn-icons-png.flaticon.com/512/1828/1828778.png" alt="Close" class="close-icon w-6 h-6" onclick="collapseSearch()">
             <div id="suggestionsBox" class="suggestions"></div> <!-- Suggestions Box -->
         </div>
-        <a href="../html/library.html" class="ml-4 bg-green-900 text-white px-4 py-2 rounded library-link">Library</a>
+        <a href="../html/library.html" class="ml-4 font-bold text-green-900 text-lg px-4 py-2 rounded library-link">Library</a>
     `;
     if (username) {
         userSection.innerHTML += `
             <div class="flex flex-col items-center">
                 <img src="../profile.png" alt="Profile" class="w-6 h-6 mb-1 cursor-pointer" onclick="window.location.href='../html/profile.html'">
-                <span class="handwriting-font cursor-pointer" onclick="window.location.href='../html/profile.html'">${username}</span>
+                <span class="text-green-900 font-bold username" onclick="window.location.href='../html/profile.html'">${username}</span>
             </div>
         `;
     } else {
@@ -76,6 +68,54 @@ document.addEventListener('DOMContentLoaded', () => {
             <a href="../html/login.html" class="ml-4 bg-green-900 text-white px-4 py-2 rounded">Login</a>
         `;
     }
+
+    // Handle scrolling to change header background, logo, and link colors
+    window.addEventListener('scroll', () => {
+        // Select all the links you want to change the color of
+        const links = document.querySelectorAll('#logoAndHome a, #userSection a, .username');
+        const usernameElement = document.querySelector('.username');
+
+        if (usernameElement) {
+            usernameElement.style.color = window.scrollY > 50 ? 'white' : '';
+        }
+        if (window.scrollY > 50 && !logoChanged) {
+            header.style.backgroundColor = '#2d342d'; /* New background color */
+            
+            // Fade out the current logo
+            logo.style.opacity = '0';
+            
+            // After the fade-out transition is complete, change the src and fade back in
+            setTimeout(() => {
+                logo.src = '../dark-logo.jpeg'; /* New logo with correct background color */
+                logo.style.opacity = '1';
+            }, 1000); // Match this timeout to your transition duration (1s in this case)
+            logoChanged = true;  // Mark the logo as changed
+            
+            // Change all link colors to white
+            links.forEach(link => {
+                link.style.color = 'white';
+            });
+
+        } else if (window.scrollY <= 50 && logoChanged) {
+            header.style.backgroundColor = '#e9dcaf'; /* Initial background color */
+            
+            // Fade out the current logo
+            logo.style.opacity = '0';
+            
+            // After the fade-out transition is complete, change the src and fade back in
+            setTimeout(() => {
+                logo.src = '../logo.jpg'; /* Original logo */
+                logo.style.opacity = '1';
+            }, 1000); // Match this timeout to your transition duration (1s in this case)
+            logoChanged = false;  // Mark the logo as reverted
+            
+            // Change all link colors back to their original color
+            links.forEach(link => {
+                link.style.color = ''; // Remove the inline color style, reverting to original
+            });
+        }
+    });
+
     if (currentPath.includes('index.html')) {
         homeLink.classList.add('active-link');
     } else if (currentPath.includes('lists.html')) {

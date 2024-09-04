@@ -1,16 +1,32 @@
 /* styles.css */
 
 /* Global styles */
+header {
+    padding: 0 10px; /* Adjust padding to reduce the space on the left and right */
+    margin: 0; /* Ensure there is no margin around the header */
+    background-color: #2d342d; /* Example background color */
+    color: white; /* Example text color */
+}
 body {
     background-color: #2d342d; /* New background color for the body */
     color: #333;
     font-family: 'Times New Roman', serif;
+    padding-bottom: 50px; /* Adjust based on the height of your footer */
 }
 
 /* Header styles */
 .custom-header {
     background-color: #e9dcaf; /* Extracted color */
+    position: sticky; /* Make the header sticky */
+    top: 0; /* Stick the header to the top of the viewport */
+    z-index: 1000; /* Ensure it stays above other content */
+    width: 100%; /* Ensure it takes the full width */
+    transition: background-color 1.0s ease; /* Smooth transition for background color */
 }
+.logo-transition {
+    transition: all 1s ease; /* Applies to all properties, with a 1-second transition time */
+}
+
 
 .text-green-900 {
     color: #0b3d0b; /* Dark green text */
@@ -626,10 +642,11 @@ input[type=range]::-moz-range-thumb {
 
 /* Active link style */
 .active-link {
-    background-color: #2a3d1d; /* Darker green for hover */
-    color: #d1d5db; 
-    pointer-events: none; /* Disable click */
+    text-decoration: underline; /* Underline the text */
+    pointer-events: auto; /* Ensure the link is clickable */
+    background-color: transparent; /* Remove background color */
 }
+
 .img-container {
     width: 80px;
     height: 128px;
@@ -655,6 +672,7 @@ footer {
 }
 html, body {
     height: 100%;
+    margin: 0;
     display: flex;
     flex-direction: column;
 }
@@ -727,6 +745,18 @@ main {
 /* Ensure the hover effect also applies to the link underline */
 .stats-item .stats-label:hover {
     text-decoration: underline;
+}
+
+.sticky-footer {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background-color: #2d342d; /* Background color */
+    color: white; /* Text color */
+    text-align: center;
+    padding: 1rem;
+    z-index: 1000; /* Ensures the footer stays above other content */
 }
 
 
