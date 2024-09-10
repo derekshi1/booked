@@ -13,7 +13,7 @@
 
 </head>
 <body>
-    <header class="custom-header py-4">
+    <header class="custom-header text-green-900 py-4">
         <div class="container mx-auto flex items-center justify-between">
             <div class="flex items-center" id="logoAndHome">
                 <!-- Logo and Home button will be populated by header.js -->
@@ -56,6 +56,14 @@
             <h2>Review</h2>
             <p id="reviewDate" class="text-gray-500 text-sm"></p> <!-- This line displays the review date -->
             <textarea id="reviewText" placeholder="Add a review..."></textarea>
+            <div class="visibility-container mt-4">
+                <label for="visibility">Visibility:</label>
+                <select id="visibility" name="visibility">
+                    <option value="public">Public</option>
+                    <option value="friends">Friends</option>
+                    <option value="private">Private</option>
+                </select>
+            </div>
             <div class="rating-container">
                 <label for="rating">Rating:</label>
                 <input type="range" id="rating" name="rating" min="0" max="100">

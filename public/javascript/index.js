@@ -31,7 +31,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const countdownElement = document.getElementById('countdownTimer_rec'); // Moved here to ensure it's available in all functions
     const urlParams = new URLSearchParams(window.location.search);
     const bypassLimit = urlParams.get('bypassLimit') === 'true';
-
+    
 
     const startGenerateCountdown = (timeLeft) => {
         const countdownElement = document.getElementById('countdownTimer_rec'); // Use the new ID for countdown timer
@@ -206,6 +206,7 @@ document.addEventListener('DOMContentLoaded', () => {
             recommendationsContainer.appendChild(placeholderElement);
         }
     };
+    
     const renderOppositeRecommendations = (recommendations) => {
         oppRecommendationsContainer.innerHTML = '';
         recommendations.forEach(recommendation => {

@@ -25,7 +25,9 @@ const activitySchema = new mongoose.Schema({
   bookTitle: { type: String, required: true }, // Store the book title directly
   isbn: { type: String }, // Store the ISBN directly
   thumbnail: { type: String }, // Store the thumbnail URL directly
-  timestamp: { type: Date, default: Date.now }
+  timestamp: { type: Date, default: Date.now },
+  visibility: { type: String, enum: ['private', 'friends', 'public'], default: 'public' } // Add visibility field
+
 });
 
 const friendRequestSchema = new mongoose.Schema({
@@ -71,7 +73,8 @@ const userLibrarySchema = new mongoose.Schema({
     pageCount: Number,
     review: String,
     rating: Number,
-    reviewDate: Date// Ensure this field exists
+    reviewDate: Date, // Ensure this field exists
+    visibility: { type: String, enum: ['private', 'friends', 'public'], default: 'public' } // Add this line
   }],
   top5: [{
     isbn: String,
@@ -516,7 +519,7 @@ app.post('/api/library/top5/remove', async (req, res) => {
 
 // Save review for a book in user's library
 app.post('/api/library/review', async (req, res) => {
-  const { username, isbn, review, rating} = req.body;
+  const { username, isbn, review, rating, visibility = 'public' } = req.body; // Default visibility to 'public' if not provided
 
   try {
     const userLibrary = await UserLibrary.findOne({ username });
@@ -529,9 +532,11 @@ app.post('/api/library/review', async (req, res) => {
       return res.status(404).json({ success: false, message: 'Book not found in library' });
     }
 
+    // Save the review, rating, and visibility for the book in the user's library
     book.review = review;
     book.rating = rating;
-    book.reviewDate = new Date(); // Set the current date and time when the review is saved
+    book.reviewDate = new Date();
+    book.visibility = visibility; // Add the visibility to the book
 
     await userLibrary.save();
 
@@ -541,17 +546,18 @@ app.post('/api/library/review', async (req, res) => {
       const newActivity = new Activity({
         userId: user._id,
         action: 'reviewed',
-        bookTitle: book.title,  // Assuming book.title is available
+        bookTitle: book.title,
         isbn: book.isbn,
-        thumbnail: book.thumbnail,  // Assuming book.thumbnail is available
+        thumbnail: book.thumbnail,
         timestamp: new Date(),
+        visibility // Save visibility for the review in the activity schema
       });
       await newActivity.save();
     }
 
     res.status(200).json({ success: true, message: 'Review saved successfully' });
   } catch (error) {
-    console.error(error);
+    console.error('Error saving review:', error);
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });
@@ -559,7 +565,7 @@ app.post('/api/library/review', async (req, res) => {
 // Fetch a specific book's review and rating from user's library
 app.get('/api/library/:username/books', async (req, res) => {
   const { username } = req.params;
-  const { sortBy, page = 1, limit = 16 } = req.query;
+  const { sortBy, page = 1, limit = 16, loggedInUsername } = req.query; // Accept the loggedInUsername from the query
 
   try {
     const userLibrary = await UserLibrary.findOne({ username });
@@ -568,6 +574,20 @@ app.get('/api/library/:username/books', async (req, res) => {
     }
 
     let books = userLibrary.books;
+
+    // Filter the books based on visibility
+    books = books.filter(book => {
+      if (book.visibility === 'public') {
+        return true; // Public reviews are visible to everyone
+      }
+      if (book.visibility === 'private') {
+        return username === loggedInUsername; // Private reviews are only visible to the owner
+      }
+      if (book.visibility === 'friends') {
+        return checkFriendship(username, loggedInUsername); // Friends-only reviews are visible to friends
+      }
+      return false;
+    });
 
     // Sort the books based on the sortBy parameter
     if (sortBy === 'reviewDate') {
@@ -588,7 +608,7 @@ app.get('/api/library/:username/books', async (req, res) => {
     // Total number of pages
     const totalPages = Math.ceil(books.length / limit);
 
-    // Send the response only once
+    // Send the response
     res.status(200).json({
       success: true,
       books: paginatedBooks,
@@ -598,10 +618,31 @@ app.get('/api/library/:username/books', async (req, res) => {
     });
   } catch (error) {
     console.error(error);
-    // Send an error response if something goes wrong
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });
+
+// Helper function to check if the logged-in user is a friend of the user whose library is being viewed
+async function checkFriendship(username, loggedInUsername) {
+  if (!loggedInUsername) {
+    return false; // If no logged-in user, can't be friends
+  }
+
+  try {
+    const user = await User.findOne({ username }).populate('friends');
+    const loggedInUser = await User.findOne({ username: loggedInUsername });
+
+    if (!user || !loggedInUser) {
+      return false;
+    }
+
+    // Check if loggedInUser is in the user's friends list
+    return user.friends.some(friend => friend._id.equals(loggedInUser._id));
+  } catch (error) {
+    console.error('Error checking friendship:', error);
+    return false;
+  }
+}
 
 
 // Add this new route to handle fetching a specific book's review by username and ISBN
@@ -633,6 +674,8 @@ app.get('/api/library/review/:username/:isbn', async (req, res) => {
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });
+
+
 
 
 // PUT route to update a review for a book in user's library
@@ -1019,7 +1062,8 @@ app.get('/api/friends-activities/:username', async (req, res) => {
                       bookTitle: activity.bookTitle,
                       isbn: activity.isbn,
                       thumbnail: activity.thumbnail,
-                      timestamp: activity.timestamp
+                      timestamp: activity.timestamp,
+                      visibility: activity.visibility
                   });
               });
           }

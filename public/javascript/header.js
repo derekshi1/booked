@@ -6,7 +6,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Create and append footer
     const footer = document.createElement('footer');
-    footer.classList.add('sticky-footer', 'bg-green-850', 'text-white', 'text-center', 'py-4');
+    footer.classList.add('sticky-footer', 'bg-green-850', 'text-white', 'text-center', 'py-2');
     footer.innerHTML = `
         <p>&copy; ${new Date().getFullYear()} <em>Booked</em>. All rights reserved.</p>
     `;
@@ -65,7 +65,7 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
     } else {
         userSection.innerHTML += `
-            <a href="../html/login.html" class="ml-4 bg-green-900 text-white px-4 py-2 rounded">Login</a>
+            <a href="../html/login.html" class="ml-4 bg-green-900 text-black px-4 py-2 rounded">Login</a>
         `;
     }
 
@@ -88,7 +88,7 @@ document.addEventListener('DOMContentLoaded', () => {
             setTimeout(() => {
                 logo.src = '../dark-logo.jpeg'; /* New logo with correct background color */
                 logo.style.opacity = '1';
-            }, 1000); // Match this timeout to your transition duration (1s in this case)
+            }, 500); // Match this timeout to your transition duration (1s in this case)
             logoChanged = true;  // Mark the logo as changed
             
             // Change all link colors to white
@@ -106,7 +106,7 @@ document.addEventListener('DOMContentLoaded', () => {
             setTimeout(() => {
                 logo.src = '../logo.jpg'; /* Original logo */
                 logo.style.opacity = '1';
-            }, 1000); // Match this timeout to your transition duration (1s in this case)
+            }, 500); // Match this timeout to your transition duration (1s in this case)
             logoChanged = false;  // Mark the logo as reverted
             
             // Change all link colors back to their original color
@@ -209,8 +209,12 @@ function displaySuggestions(suggestions) {
 function expandSearch() {
     const searchInput = document.getElementById('titleInput');
     const closeIcon = document.querySelector('.close-icon');
+    const searchIcon = document.querySelector('.search-icon');  // Get the search icon element
+
     searchInput.classList.add('expanded');
     closeIcon.classList.add('visible');
+    searchIcon.classList.add('hidden');  // Hide the search icon
+
     searchInput.focus();
 }
 function closeModal() {
@@ -236,9 +240,12 @@ function collapseSearch() {
     const searchInput = document.getElementById('titleInput');
     const closeIcon = document.querySelector('.close-icon');
     searchInput.classList.remove('expanded');
+    const searchIcon = document.querySelector('.search-icon');  // Get the search icon element
     closeIcon.classList.remove('visible');
     searchInput.value = '';  // Clear the input field
     clearSuggestions(); // Hide the suggestions box
+    searchIcon.classList.remove('hidden');  // Show the search icon
+
 }
 function searchBookByTitle() {
     const title = document.getElementById('titleInput').value;

@@ -26,7 +26,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         sortLabel.textContent = ""; // Hide the label if viewing someone else's library
         if (sortOptions) sortOptions.style.display = 'none';
         if (saveReviewButton) saveReviewButton.style.display = 'none';
-        libraryTitle.innerHTML = `<em>${username}'s</em>  Library`;
+        libraryTitle.innerHTML = `<em>${username}'s Library</em>  `;
     } else {
         sortLabel.textContent = "Sort by:"; // Set the label text if viewing your own library
         sortOptions.addEventListener('change', async (event) => {
@@ -34,6 +34,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             currentPage = 1;
             await fetchAndDisplayBooks(sortBy, currentPage);
         });
+        libraryTitle.innerHTML = `<em>Your Library</em>  `;
+
     }
    
 
@@ -68,9 +70,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             document.getElementById('libraryGrid').innerHTML = '<p>Error loading library.</p>';
         }
     }
-    function updatePaginationControls(currentPage, totalPages) {
-        console.log(`Updating pagination controls: currentPage = ${currentPage}, totalPages = ${totalPages}`);
-
+    function updatePaginationControls(currentPage, totalPages) {    
         const prevPageBtn = document.getElementById('prevPage');
         const nextPageBtn = document.getElementById('nextPage');
         const pageInfo = document.getElementById('pageInfo');
@@ -82,23 +82,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     
         prevPageBtn.onclick = () => {
             if (currentPage > 1) {
-                currentPage--;
-                fetchAndDisplayBooks('none', currentPage);
+                fetchAndDisplayBooks('none', currentPage - 1);  // Move to the previous page
             }
         };
     
         nextPageBtn.onclick = () => {
             if (currentPage < totalPages) {
-                currentPage++;
-                fetchAndDisplayBooks('none', currentPage);
+                fetchAndDisplayBooks('none', currentPage + 1);  // Move to the next page
             }
         };
     }
     
+    
     async function renderBooks(books, sortBy, page = 1, limit = 16) {
         const libraryGrid = document.getElementById('libraryGrid');
         libraryGrid.innerHTML = ''; // Clear the grid before rendering new content
-    
+        libraryGrid.className = 'library-container'; // Apply library-container class
+
         // Calculate the start and end indices for the current page
         const startIndex = (page - 1) * limit;
         const endIndex = Math.min(startIndex + limit, books.length);
@@ -127,7 +127,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         </div>
                     </a>
                     ${additionalInfo} <!-- Display either review date or rating -->
-                    ${isOwnLibrary || !isOwnLibrary ? `<button class="comment-button ease-in-out-transition absolute top-0 right-0 mt-2 mr-2 text-xs bg-blue-500 text-white px-2 py-1 rounded" data-isbn="${book.isbn}" data-title="${book.title}">Review</button>` : ''}
+                    ${isOwnLibrary || !isOwnLibrary ? `<button class="comment-button ease-in-out-transition absolute top-0 right-0 mt-2 mr-2 text-xs bg-blue-500 text-white px-2 py-1 rounded" data-isbn="${book.isbn}" data-title="${book.title}"></button>` : ''}
                     ${isOwnLibrary ? `<button class="comment-button ease-in-out-transition absolute top-0 right-0 mt-2 mr-2 text-xs bg-blue-500 text-white px-2 py-1 rounded" data-isbn="${book.isbn}" data-title="${book.title}"></button>` : ''}
                 </div>
             `;
@@ -150,50 +150,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       
     if (username) {
         
-        clearBookCards();
-
-        // Fetch user library and display books
-        try {
-            const page = 1; // Start with the first page
-            const limit = 16; // Number of books per page
-            const response = await fetch(`/api/library/${username}?page=${page}&limit=${limit}`);
-            const data = await response.json();
-            const libraryGrid = document.getElementById('libraryGrid');
-            libraryGrid.className = 'library-container'; // Apply library-container class
-
-            if (data.success && data.books.length > 0) {
-                data.books.forEach(book => {
-                    const bookDiv = document.createElement('div');
-                    bookDiv.classList.add('library-card', 'relative', 'p-6', 'rounded-lg', 'shadow-lg', 'cursor-pointer', 'hover:shadow-2xl', 'transition', 'duration-300', 'ease-in-out');
-                    bookDiv.innerHTML = `
-                        <div class="relative group library-card" style="border: 4px solid ${getGradientColor(book.rating)};">
-                            <a href="../html/book.html?isbn=${book.isbn}" class="block relative overflow-hidden rounded-lg shadow-lg hover:shadow-2xl transition duration-300 ease-in-out group">
-                                <img src="${book.thumbnail}" alt="${book.title}" class="w-full h-full object-cover rounded-t-lg">
-                                <div class="absolute bottom-0 left-0 w-full p-4 bg-black bg-opacity-60 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-in-out">
-                                    <h2 class="text-lg font-bold">${book.title}</h2>
-                                    <p class="text-gray-300">by ${book.authors}</p>
-                                </div>
-                            </a>
-                            ${isOwnLibrary ? `<button onclick="removeFromLibrary('${username}', '${book.isbn}')" class="absolute top-0 left-0 mt-2 ml-2 text-xs bg-red-700 text-white px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-in-out">Remove</button>` : ''}
-                            ${isOwnLibrary || !isOwnLibrary ? `<button class="comment-button ease-in-out-transition absolute top-0 right-0 mt-2 mr-2 text-xs bg-blue-500 text-white px-2 py-1 rounded" data-isbn="${book.isbn}" data-title="${book.title}"></button>` : ''}
-                        </div>
-                    `;
-                    libraryGrid.appendChild(bookDiv);
-                });
-                // Attach event listeners to comment buttons
-            const commentButtons = document.querySelectorAll('.comment-button');
-            commentButtons.forEach(button => {
-            button.addEventListener('click', () => {
-                showReviewPopup(button.getAttribute('data-isbn'), button.getAttribute('data-title'), !isOwnLibrary);
-            });
-        });
-            } else {
-                addPlaceholderCards(libraryGrid, "Empty Book");
-            }
-        } catch (error) {
-            console.error('Error fetching user library:', error);
-            document.getElementById('libraryGrid').innerHTML = '<p>Error loading library.</p>';
-        }
+        
         try {
             const response = await fetch(`/api/library/readList/${username}`);
             const data = await response.json();
@@ -245,20 +202,20 @@ document.addEventListener('DOMContentLoaded', async () => {
         saveReviewButton.addEventListener('click', async () => {
             const reviewText = document.getElementById('reviewText').value;
             const rating = ratingInput.value;
+            const visibility = document.getElementById('visibility').value; // Get selected visibility
             const bookIsbn = modal.dataset.isbn;
             const username = localStorage.getItem('username');
             const reviewDate = new Date().toISOString(); // Get the current date and time in ISO format
-
-
+        
             try {
                 const response = await fetch('/api/library/review', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ username, isbn: bookIsbn, review: reviewText, rating, reviewDate }),
+                    body: JSON.stringify({ username, isbn: bookIsbn, review: reviewText, rating, reviewDate, visibility }), // Pass visibility
                 });
-
+        
                 if (response.ok) {
                     alert('Review saved successfully.');
                     window.location.href = '../html/library.html';
@@ -270,9 +227,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 console.error('Error saving review:', error);
                 alert('Error saving review.');
             }
-
+        
             modal.style.display = 'none';
-        } );
+        });        
     } else {
         addPlaceholderCards(libraryGrid, "Empty Book");
         addPlaceholderCards(readingListGrid, "Empty Book");

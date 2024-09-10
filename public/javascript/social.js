@@ -104,44 +104,44 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
     
-     const renderActivitiesFeed = (activities) => {
-        console.log('Activities to be rendered:', activities);  // Logging the activities
+    const renderActivitiesFeed = (activities) => {
+        console.log('Activities to be rendered:', activities);
     
         // Group activities by user and remove duplicates
         const seenActivities = new Set();
         const activitiesByUser = activities.reduce((acc, activity) => {
             const { username } = activity;
             const activityKey = `${activity.username}-${activity.action}-${activity.bookTitle}`;
-
+    
             if (!seenActivities.has(activityKey)) {
                 seenActivities.add(activityKey);
-
+    
                 if (!acc[username]) {
                     acc[username] = [];
                 }
-
+    
                 acc[username].push(activity);
             }
-
+    
             return acc;
         }, {});
-
+    
         activitiesFeed.innerHTML = '';
         const limit = 4; // Limit the number of activities shown
-
-
-        // Iterate over users and render their activities
-        Object.keys(activitiesByUser).forEach(username => {
+    
+        Object.keys(activitiesByUser).forEach(async (username) => {
             const userActivities = Object.values(activitiesByUser[username]).flat();
             const limitedActivities = userActivities.slice(0, limit); // Limit to 4 activities
             const mostRecentActivity = userActivities[0];
-        
+    
             const activityElement = document.createElement('div');
             activityElement.classList.add('activity', 'p-2', 'bg-gray-100', 'rounded', 'shadow', 'mb-2');
             activityElement.setAttribute('data-total-activities', userActivities.length);
-        
+    
             let activityContent;
-        
+            let canViewReview = false; // Initialize canViewReview for scope
+
+    
             if (mostRecentActivity.action.includes("became friends with")) {
                 // Activity related to friendship
                 activityContent = `
@@ -156,57 +156,104 @@ document.addEventListener('DOMContentLoaded', () => {
                             </a>
                         </div>
                     </div>
-
                 `;
             } else {
                 // Activity related to books
-                activityContent = `
-                    <div class="flex justify-between items-center">
-                        <div>
-                            <a href="../html/profile.html?username=${mostRecentActivity.username}" class="text-blue-500 hover:underline">
-                                <strong>${mostRecentActivity.username}</strong>
-                            </a> 
-                            ${mostRecentActivity.action} 
-                            <a href="../html/book.html?isbn=${mostRecentActivity.isbn}" class="text-gray-500 hover:text-gray-800 hover:font-bold">
-                                <em>${mostRecentActivity.bookTitle}</em>
+                let reviewVisibility = mostRecentActivity.visibility;
+                console.log(`Review visibility for activity: ${reviewVisibility}`);
+
+    
+                // Check visibility conditions
+                let canViewReview = false;
+    
+                if (reviewVisibility === 'public') {
+                    canViewReview = true; // Public reviews can be seen by everyone
+                } else if (reviewVisibility === 'friends') {
+                    // Check if the logged-in user is a friend
+                    const friendshipStatus = await checkFriendshipStatus(localStorage.getItem('username'), username);
+                    if (friendshipStatus === 'friend') {
+                        canViewReview = true;
+                    }
+                } else if (reviewVisibility === 'private') {
+                    // Private reviews can only be seen by the review author
+                    if (localStorage.getItem('username') === username) {
+                        canViewReview = true;
+                    }
+                }
+    
+                if (canViewReview) {
+                    activityContent = `
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <a href="../html/profile.html?username=${mostRecentActivity.username}" class="text-blue-500 hover:underline">
+                                    <strong>${mostRecentActivity.username}</strong>
+                                </a> 
+                                ${mostRecentActivity.action} 
+                                <a href="../html/book.html?isbn=${mostRecentActivity.isbn}" class="text-gray-500 hover:text-gray-800 hover:font-bold">
+                                    <em>${mostRecentActivity.bookTitle}</em>
+                                </a>
+                            </div>
+                            <div class="relative">
+                                <img src="${mostRecentActivity.thumbnail}" alt="${mostRecentActivity.bookTitle}" class="w-16 h-24 object-cover rounded ml-4">
+                            </div>
+                        </div>
+
+                        <div class="review-content hidden p-4 bg-gray-100" style="margin-top: -20px;">
+                            <p class="review-text text-sm">
+                                <strong>${mostRecentActivity.username}</strong> review: "${mostRecentActivity.review}"
+                            </p>
+                            <p class="rating-text text-sm">
+                               Rating: <strong>${mostRecentActivity.rating}/100</strong>
+                            </p>
+                        </div>
+                        <div class="flex justify-between items-end mt-2 relative">
+                            <p class="time-ago text-gray-600 text-xs">${formatTimeAgo(mostRecentActivity.timestamp)}</p>
+                            ${mostRecentActivity.action.includes('reviewed') ? `
+                            <a href="#" class="see-review-link text-gray-500 hover:underline" 
+                                style="position: absolute; bottom: 20px; left: 0; font-size: 15px;" 
+                                data-username="${mostRecentActivity.username}" 
+                                data-isbn="${mostRecentActivity.isbn}">
+                                see review...
                             </a>
+                            ` : ''}
+                        </div> 
+                    `;
+                } else {
+                    // If the user cannot view the review, show a message instead
+                    activityContent = `
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <a href="../html/profile.html?username=${mostRecentActivity.username}" class="text-blue-500 hover:underline">
+                                    <strong>${mostRecentActivity.username}</strong>
+                                </a> 
+                                privately reviewed 
+                                <a href="../html/book.html?isbn=${mostRecentActivity.isbn}" class="text-gray-500 hover:text-gray-800 hover:font-bold">
+                                    <em>${mostRecentActivity.bookTitle}</em>
+                                </a>
+                            </div>
                         </div>
-                        <div class="relative">
-                            <img src="${mostRecentActivity.thumbnail}" alt="${mostRecentActivity.bookTitle}" class="w-16 h-24 object-cover rounded ml-4">
-                        </div>
-                    </div>
-        
-                    <div class="review-content hidden p-4 bg-gray-100" style="margin-top: -20px;">
-                        <p class="review-text text-sm">
-                            <strong>${mostRecentActivity.username}</strong> review: "${mostRecentActivity.review}"
-                        </p>
-                        <p class="rating-text text-sm">
-                            Rating: <strong>${mostRecentActivity.rating}/100</strong>
-                        </p>
-                    </div>
-                `;
+                         <div class="flex justify-between items-end mt-2">
+                             <p class="time-ago text-gray-600 text-xs">${formatTimeAgo(mostRecentActivity.timestamp)}</p>
+                         </div>
+                    `;
+                }
             }
-        
+    
             activityElement.innerHTML = activityContent + `
                 <div class="flex justify-between items-end mt-2 relative">
-                    <p class="time-ago text-gray-600 text-xs">${formatTimeAgo(mostRecentActivity.timestamp)}</p>
-                    ${mostRecentActivity.action.includes('reviewed') ? `
-                    <a href="#" class="see-review-link text-gray-500 hover:underline" 
-                        style="position: absolute; bottom: 20px; left: 0; font-size: 15px;" 
-                        data-username="${mostRecentActivity.username}" 
-                        data-isbn="${mostRecentActivity.isbn}">
-                        see review...
-                    </a>
-                    ` : ''}
-        ${userActivities.length > 1 ? `
-            <a href="#" class="text-blue-500 hover:underline hover:italic see-more" data-username="${username}">
-                See ${Math.min(userActivities.length - 1, 4)} more actions...
-            </a>` : ''}
-    </div>
+        
+                    
+                    <div class="text-right ml-auto">
+                        ${userActivities.length > 1 ? `
+                        <a href="#" class="text-blue-500 hover:underline hover:italic see-more" data-username="${username}">
+                            See ${Math.min(userActivities.length - 1, 4)} more actions...
+                        </a>` : ''}
+                    </div>
+                </div>
             `;
-        
+    
             activitiesFeed.appendChild(activityElement);
-        
+    
             if (userActivities.length > 1) {
                 const seeMoreLink = activityElement.querySelector('.see-more');
                 seeMoreLink.addEventListener('click', (event) => {
@@ -215,20 +262,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             }
         });
-        
     };
     
-    const renderAdditionalActivities = (activities, containerElement, seeMoreLink) => {
+    
+    const renderAdditionalActivities = async (activities, containerElement, seeMoreLink) => {
         // Clear any previously added additional activities
         containerElement.querySelectorAll('.additional-activity').forEach(activityEl => activityEl.remove());
     
         // Add up to 4 more activities
-        const limit=4;
-        activities.slice(0, limit).forEach(activity => {
+        const limit = 4;
+        activities.slice(0, limit).forEach(async (activity) => {
             const additionalActivityElement = document.createElement('div');
             additionalActivityElement.classList.add('activity', 'p-2', 'bg-gray-50', 'rounded', 'shadow', 'mb-2', 'ml-4', 'additional-activity');
     
             let activityContent;
+            let canViewReview = false; // Initialize canViewReview for scope
     
             if (activity.action.includes("became friends with")) {
                 // Activity related to friendship
@@ -244,42 +292,81 @@ document.addEventListener('DOMContentLoaded', () => {
                         </a>
                     </div>
                     <p class="time-ago text-gray-600 text-xs">${formatTimeAgo(activity.timestamp)}</p>
-                     </div>
+                    </div>
                 `;
             } else {
                 // Activity related to books
-                activityContent = `
-                    <div class="flex justify-between items-center">
-                        <div>
-                            ${activity.action}  
-                            <a href="../html/book.html?isbn=${activity.isbn}" class="text-gray-500 hover:text-gray-800 hover:font-bold">
-                                <em>${activity.bookTitle}</em>
+                let reviewVisibility = activity.visibility;
+                console.log(`Review visibility for activity: ${reviewVisibility}`);
+    
+                // Check visibility conditions
+                if (reviewVisibility === 'public') {
+                    canViewReview = true; // Public reviews can be seen by everyone
+                } else if (reviewVisibility === 'friends') {
+                    // Check if the logged-in user is a friend
+                    const friendshipStatus = await checkFriendshipStatus(localStorage.getItem('username'), activity.username);
+                    if (friendshipStatus === 'friend') {
+                        canViewReview = true;
+                    }
+                } else if (reviewVisibility === 'private') {
+                    // Private reviews can only be seen by the review author
+                    if (localStorage.getItem('username') === activity.username) {
+                        canViewReview = true;
+                    }
+                }
+    
+                if (canViewReview) {
+                    activityContent = `
+                        <div class="flex justify-between items-center">
+                            <div>
+                                ${activity.action}  
+                                <a href="../html/book.html?isbn=${activity.isbn}" class="text-gray-500 hover:text-gray-800 hover:font-bold">
+                                    <em>${activity.bookTitle}</em>
+                                </a>
+                            </div>
+                            <div class="relative">
+                                <img src="${activity.thumbnail}" alt="${activity.bookTitle}" class="w-16 h-24 object-cover rounded ml-4">
+                            </div>
+                        </div>
+                        <div class="review-content hidden p-4 bg-gray-100" style="margin-top: -20px; rounded">
+                            <p class="review-text text-sm">
+                                <strong>${activity.username}</strong> review: "${activity.review}"
+                            </p>
+                            <p class="rating-text text-sm">
+                                Rating: <strong>${activity.rating}/100</strong>
+                            </p>
+                        </div>
+                        <div class="flex justify-between items-end mt-2 relative">
+                            <p class="time-ago text-gray-600 text-xs">${formatTimeAgo(activity.timestamp)}</p>
+                            ${activity.action.includes('reviewed') ? `
+                            <a href="#" class="see-review-link text-gray-500 hover:underline" 
+                                style="position: absolute; bottom: 20px; left: 0; font-size: 15px;" 
+                                data-username="${activity.username}" 
+                                data-isbn="${activity.isbn}">
+                                see review...
                             </a>
+                            ` : ''}
+                        </div> 
+                    `;
+                } else {
+                    // If the user cannot view the review, show a message instead
+                    activityContent = `
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <a href="../html/profile.html?username=${activity.username}" class="text-blue-500 hover:underline">
+                                    <strong>${activity.username}</strong>
+                                </a> 
+                                privately reviewed 
+                                <a href="../html/book.html?isbn=${activity.isbn}" class="text-gray-500 hover:text-gray-800 hover:font-bold">
+                                    <em>${activity.bookTitle}</em>
+                                </a>
+                            </div>
                         </div>
-                        <div class="relative">
-                            <img src="${activity.thumbnail}" alt="${activity.bookTitle}" class="w-16 h-24 object-cover rounded ml-4">
+                         <div class="flex justify-between items-end mt-2">
+                            <p class="time-ago text-gray-600 text-xs">${formatTimeAgo(mostRecentActivity.timestamp)}</p>
                         </div>
-                    </div>
-                    <div class="review-content hidden p-4 bg-gray-100" style="margin-top: -20px; rounded">
-                        <p class="review-text text-sm">
-                            <strong>${activity.username}</strong> review: "${activity.review}"
-                        </p>
-                        <p class="rating-text text-sm">
-                            Rating: <strong>${activity.rating}/100</strong>
-                        </p>
-                    </div>
-                    <div class="flex justify-between items-end mt-2 relative">
-                        <p class="time-ago text-gray-600 text-xs">${formatTimeAgo(activity.timestamp)}</p>
-                        ${activity.action.includes('reviewed') ? `
-                        <a href="#" class="see-review-link text-gray-500 hover:underline" 
-                            style="position: absolute; bottom: 20px; left: 0; font-size: 15px;" 
-                            data-username="${activity.username}" 
-                            data-isbn="${activity.isbn}">
-                            see review...
-                        </a>
-                        ` : ''}
-                    </div> 
-                `;
+                    `;
+                }
             }
     
             additionalActivityElement.innerHTML = activityContent;
@@ -289,12 +376,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const remainingActions = activities.length - 4;
     
         seeMoreLink.textContent = 'See less actions';
-        
     
         // Update event listener for "See less"
         seeMoreLink.removeEventListener('click', handleSeeMoreClick);
         seeMoreLink.addEventListener('click', handleSeeLessClick);
     };
+    
     
     function handleSeeLessClick(event) {
         event.preventDefault();

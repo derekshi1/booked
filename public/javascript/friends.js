@@ -38,17 +38,18 @@ document.addEventListener('DOMContentLoaded', async () => {
                             </div>
                         </div>
                         <div class="stats-container flex space-x-8">
-                            <div class="stats-item text-center">
-                            <p class="stats-value text-white font-bold" style="font-size: 30px;">${libraryData.totalBooks || 0}</p>
-                            <span class="stats-label text-gray-400" style="font-size: 14px;">Books</span>
-                        </div>
-                        <div class="stats-item text-center">
-                            <p class="stats-value text-white font-bold" style="font-size: 30px;">${libraryData.totalPages || 0}</p>
-                            <span class="stats-label text-gray-400" style="font-size: 14px;">Pages</span>
-                        </div>
-                        <div class="stats-item text-center">
-                            <p class="stats-value text-white font-bold" style="font-size: 30px;">${friendsCountData.numberOfFriends || 0}</p>
-                            <span class="stats-label text-gray-400" style="font-size: 14px;">Friends</span>
+                            <a href="../html/library.html?username=${friend.username}" class="stats-item text-center">
+                                <p class="stats-value text-white font-bold" style="font-size: 30px;">${libraryData.totalBooks || 0}</p>
+                                <span class="stats-label text-gray-400" style="font-size: 14px;">Books</span>
+                            </a>
+                             <div class="stats-item text-center">
+                                <p class="stats-value text-white font-bold" style="font-size: 30px;">${libraryData.totalPages || 0}</p>
+                                <span class="stats-label text-gray-400" style="font-size: 14px;">Pages</span>
+                            </div>
+                            <a href="../html/friends.html?username=${friend.username}" class="stats-item text-center">
+                                <p class="stats-value text-white font-bold" style="font-size: 30px;">${friendsCountData.numberOfFriends || 0}</p>
+                                <span class="stats-label text-gray-400" style="font-size: 14px;">Friends</span>
+                            </a>
                         </div>
 
                         </div>
