@@ -231,6 +231,9 @@ document.addEventListener('DOMContentLoaded', () => {
                                     <em>${mostRecentActivity.bookTitle}</em>
                                 </a>
                             </div>
+                            <div class="relative">
+                                <img src="${mostRecentActivity.thumbnail}" alt="${mostRecentActivity.bookTitle}" class="w-16 h-24 object-cover rounded ml-4">
+                            </div>
                         </div>
                          <div class="flex justify-between items-end mt-2">
                              <p class="time-ago text-gray-600 text-xs">${formatTimeAgo(mostRecentActivity.timestamp)}</p>
@@ -360,6 +363,9 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <a href="../html/book.html?isbn=${activity.isbn}" class="text-gray-500 hover:text-gray-800 hover:font-bold">
                                     <em>${activity.bookTitle}</em>
                                 </a>
+                            </div>
+                            <div class="relative">
+                                <img src="${mostRecentActivity.thumbnail}" alt="${mostRecentActivity.bookTitle}" class="w-16 h-24 object-cover rounded ml-4">
                             </div>
                         </div>
                          <div class="flex justify-between items-end mt-2">

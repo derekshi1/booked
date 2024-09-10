@@ -602,30 +602,35 @@ app.get('/api/library/:username/books', async (req, res) => {
 
     // Pagination logic
     const startIndex = (page - 1) * limit;
-    const endIndex = startIndex + limit;
-    const paginatedBooks = books.slice(startIndex, endIndex);
+    const paginatedBooks = books.slice(startIndex, startIndex + parseInt(limit));
+
+    console.log(`[FETCH LIBRARY] Paginating books from index ${startIndex} to ${startIndex + limit}`);
+    console.log(`[FETCH LIBRARY] Paginated books count: ${paginatedBooks.length}`);
+    console.log(`[BACKEND] Books for page ${page}:`, paginatedBooks);
 
     // Total number of pages
     const totalPages = Math.ceil(books.length / limit);
 
-    // Send the response
+    // Send the paginated books and total info back to the frontend
     res.status(200).json({
       success: true,
       books: paginatedBooks,
       currentPage: parseInt(page),
       totalPages: totalPages,
       totalBooks: books.length,
+      //visibility: book.visibility
     });
   } catch (error) {
-    console.error(error);
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });
-
 // Helper function to check if the logged-in user is a friend of the user whose library is being viewed
 async function checkFriendship(username, loggedInUsername) {
+  console.log(`[DEBUG] Checking friendship between ${username} and ${loggedInUsername}`);
+  
   if (!loggedInUsername) {
-    return false; // If no logged-in user, can't be friends
+    console.log(`[DEBUG] No logged-in user, cannot check friendship`);
+    return false;
   }
 
   try {
@@ -633,16 +638,19 @@ async function checkFriendship(username, loggedInUsername) {
     const loggedInUser = await User.findOne({ username: loggedInUsername });
 
     if (!user || !loggedInUser) {
+      console.log(`[DEBUG] User or logged-in user not found`);
       return false;
     }
 
-    // Check if loggedInUser is in the user's friends list
-    return user.friends.some(friend => friend._id.equals(loggedInUser._id));
+    const isFriend = user.friends.some(friend => friend._id.equals(loggedInUser._id));
+    console.log(`[DEBUG] Is friend: ${isFriend}`);
+    return isFriend;
   } catch (error) {
-    console.error('Error checking friendship:', error);
+    console.error(`[ERROR] Error checking friendship: ${error.message}`);
     return false;
   }
 }
+
 
 
 // Add this new route to handle fetching a specific book's review by username and ISBN
@@ -668,6 +676,7 @@ app.get('/api/library/review/:username/:isbn', async (req, res) => {
       review: book.review,
       rating: book.rating,
       reviewDate: book.reviewDate || null,
+      visibility: book.visibility || 'public'  // Include visibility
     });
   } catch (error) {
     console.error(error);
@@ -680,7 +689,7 @@ app.get('/api/library/review/:username/:isbn', async (req, res) => {
 
 // PUT route to update a review for a book in user's library
 app.put('/api/library/review', async (req, res) => {
-  const { username, isbn, review, rating, reviewDate } = req.body;
+  const { username, isbn, review, rating, visibility = 'public' } = req.body; // Default visibility to 'public' if not provided
 
   try {
     const userLibrary = await UserLibrary.findOne({ username });
