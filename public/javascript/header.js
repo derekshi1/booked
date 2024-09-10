@@ -68,6 +68,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <a href="../html/login.html" class="ml-4 bg-green-900 text-black px-4 py-2 rounded">Login</a>
         `;
     }
+    const searchIcon = document.querySelector('.search-icon');  // Get the search icon element
 
     // Handle scrolling to change header background, logo, and link colors
     window.addEventListener('scroll', () => {
@@ -80,7 +81,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         if (window.scrollY > 50 && !logoChanged) {
             header.style.backgroundColor = '#2d342d'; /* New background color */
-            
+            searchIcon.classList.add('search-icon-white'); // Add white color class
+
             // Fade out the current logo
             logo.style.opacity = '0';
             
@@ -101,7 +103,8 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // Fade out the current logo
             logo.style.opacity = '0';
-            
+            searchIcon.classList.remove('search-icon-white'); // Remove white color class
+
             // After the fade-out transition is complete, change the src and fade back in
             setTimeout(() => {
                 logo.src = '../logo.jpg'; /* Original logo */

@@ -159,7 +159,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
     
             recommendationElement.innerHTML = `
-                <div class="relative group">
+                <div class="relative group book-card">
                     <a href="../html/book.html?isbn=${recommendation.isbn[0]}" class="block relative overflow-hidden rounded-lg shadow-lg hover:shadow-2xl transition duration-300 ease-in-out group">
                         <img 
                             src="${thumbnail}?zoom=1" 
@@ -211,7 +211,7 @@ document.addEventListener('DOMContentLoaded', () => {
         oppRecommendationsContainer.innerHTML = '';
         recommendations.forEach(recommendation => {
             const recommendationElement = document.createElement('div');
-            recommendationElement.classList.add('recommendation-card', 'p-4', 'bg-gray-100', 'rounded', 'shadow');
+            recommendationElement.classList.add('recommendation-card', 'p-4', 'bg-gray-100', 'rounded', 'shadow', 'book-card');
     
             // Function to generate a random color for the fallback cover
             const generateRandomColor = () => {
@@ -504,7 +504,7 @@ const renderNYTimesBestSellers = (books) => {
     bestSellersContainer.innerHTML = '';
     books.forEach(book => {
         const bookElement = document.createElement('div');
-        bookElement.classList.add('nyt-card', 'p-4', 'bg-gray-100', 'rounded', 'shadow');
+        bookElement.classList.add('nyt-card', 'p-4', 'bg-gray-100', 'rounded', 'shadow', 'book-card');
         bookElement.innerHTML = `
             <div class="relative group">
                 <a href="../html/book.html?isbn=${book.isbn}" class="block relative overflow-hidden rounded-lg shadow-lg hover:shadow-2xl transition duration-300 ease-in-out group">

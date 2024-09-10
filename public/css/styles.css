@@ -101,6 +101,10 @@ body {
     cursor: pointer;
 }
 
+.search-icon-white {
+    filter: invert(100%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(200%) contrast(100%);
+}
+
 .search-input {
     display: none;
     width: 0;
@@ -323,6 +327,17 @@ body {
     flex-direction: row;
     overflow-x: auto;
     gap: 1rem; /* Adjust the gap as needed */
+}
+
+.book-card {
+    transition: transform 0.3s ease-in-out; /* Smooth transition for scaling */
+    transform: scale(1); /* Default size */
+}
+
+/* On hover, scale the book card up */
+.book-card:hover {
+    transform: scale(1.15); /* Slightly larger when hovered */
+    z-index: 1; /* Ensure the card stays above others when hovered */
 }
 
 .single-recommendation-card {
