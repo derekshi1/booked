@@ -1,4 +1,5 @@
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+
     const username = localStorage.getItem('username');
     const logoAndHomeContainer = document.getElementById('logoAndHome');
     const userSection = document.getElementById('userSection');
@@ -37,16 +38,36 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const socialLink = document.createElement('a');
     socialLink.href = '../html/social.html';
+    socialLink.id = 'socialTab'; 
     socialLink.classList.add('ml-4', 'font-bold','text-green-900', 'text-lg', 'px-4', 'py-2', 'rounded', 'mr-8');
     socialLink.textContent = 'Social';
+    let socialTabClicked = false;  // Track if the social tab was clicked
+    console.log('Social tab created:', socialLink); // Log creation of social tab
 
+
+    const notificationBadge = document.createElement('span');
+    notificationBadge.id = 'notificationBadge'; // Give it the ID for styling
+    notificationBadge.textContent = ''; // Set default content to an empty string
+    notificationBadge.style.display = 'none'; // Ensure it is hidden by default
+
+    socialLink.appendChild(notificationBadge); // Append to the social link
     // Append links to the container
     logoAndHomeContainer.appendChild(logoLink);
     logoAndHomeContainer.appendChild(homeLink);
     logoAndHomeContainer.appendChild(listsLink);
     logoAndHomeContainer.appendChild(socialLink);
+    console.log('Social tab appended to logoAndHomeContainer');
 
-  
+    await updateSocialTabNotification();
+
+    if (!currentPath.includes('social.html')) {
+        socialLink.addEventListener('click', () => {
+            console.log('Social tab clicked on a different page');
+            sessionStorage.setItem('socialTabClicked', 'true');  // Store click event in session storage
+        });
+    }
+
+   
     userSection.innerHTML = `
         <div class="search-container relative">
             <img src="https://cdn-icons-png.flaticon.com/512/54/54481.png" alt="Search" class="search-icon w-6 h-6" onclick="expandSearch()">
@@ -166,6 +187,53 @@ async function fetchSuggestions(query) {
         thumbnail: item.volumeInfo.imageLinks ? item.volumeInfo.imageLinks.thumbnail : 'https://via.placeholder.com/128x192?text=No+Image',
         isbn: item.volumeInfo.industryIdentifiers ? item.volumeInfo.industryIdentifiers[0].identifier : null
     }));
+}
+
+async function updateSocialTabNotification() {
+    try {
+        const username = localStorage.getItem('username');
+
+        const response = await fetch(`/api/activities/unread-count/${username}`);
+        const data = await response.json();
+
+        const notificationBadge = document.getElementById('notificationBadge');
+
+        if (data.success) {
+            const unreadCount = data.unreadCount;
+            console.log("Notification number:", unreadCount);
+
+            if (unreadCount > 0) {
+                // Show the notification badge with the unread count
+                notificationBadge.textContent = unreadCount;
+                notificationBadge.style.display = 'inline-block'; // Show the badge
+            } else {
+                // Hide the notification badge if there are no unread notifications
+                notificationBadge.style.display = 'none';  // Hide badge if there are no unread notifications
+            }
+        }
+    } catch (error) {
+        console.error('Error fetching unread notifications:', error);
+    }
+}
+
+
+  
+async function markAllActivitiesAsRead() {
+    try {
+        const username = localStorage.getItem('username');
+        if (!username) return;
+        console.log('markAllActivitiesAsRead called'); // Log when the function is called
+
+        const response = await fetch(`/api/activities/mark-read/${username}`, {
+            method: 'POST'
+        });
+
+        if (response.ok) {
+            console.log('All activities marked as read');
+        }
+    } catch (error) {
+        console.error('Error marking activities as read:', error);
+    }
 }
 
 function displaySuggestions(suggestions) {

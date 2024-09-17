@@ -16,7 +16,7 @@ const userSchema = new mongoose.Schema({
   password: { type: String, required: true },
   friends: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], default: [] },
   friendRequests: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'FriendRequest' }], default: [] },
-  profilePicture: { type: String, default: 'default-profile.png' } 
+  profilePicture: { type: String, default: 'default-profile.png' }
 });
 
 const activitySchema = new mongoose.Schema({
@@ -26,8 +26,8 @@ const activitySchema = new mongoose.Schema({
   isbn: { type: String }, // Store the ISBN directly
   thumbnail: { type: String }, // Store the thumbnail URL directly
   timestamp: { type: Date, default: Date.now },
-  visibility: { type: String, enum: ['private', 'friends', 'public'], default: 'public' } // Add visibility field
-
+  visibility: { type: String, enum: ['private', 'friends', 'public'], default: 'public' }, // Add visibility field
+  readBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }] // Array of users who have read this activity
 });
 
 const friendRequestSchema = new mongoose.Schema({
@@ -36,6 +36,7 @@ const friendRequestSchema = new mongoose.Schema({
   status: { type: String, enum: ['pending', 'accepted', 'rejected'], default: 'pending' },
   createdAt: { type: Date, default: Date.now }
 });
+
 
 // Models
 const User = mongoose.model('User', userSchema);
@@ -109,6 +110,63 @@ app.use(express.json());
 app.get('/', (req, res) => {
   res.sendFile(__dirname + '/public/html/index.html');
 });
+
+
+// Endpoint to get count of unread activities
+app.get('/api/activities/unread-count/:username', async (req, res) => {
+  const { username } = req.params;
+
+  try {
+    const user = await User.findOne({ username });
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    // Count all activities that are unread (isRead: false) for the user
+    const unreadCount = await Activity.countDocuments({
+      userId: { $in: user.friends },  // Only count activities from friends
+      readBy: { $ne: user._id }       // Exclude activities that the user has marked as read
+    });
+    res.status(200).json({ success: true, unreadCount });
+  } catch (error) {
+    console.error('Error fetching unread activities count:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
+// Mark all activities as read
+// Mark all activities as read
+app.post('/api/activities/mark-read/:username', async (req, res) => {
+  const { username } = req.params;
+
+  try {
+    // Find the user by their username
+    const user = await User.findOne({ username });
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    // Find unread activities (those not read by this specific user)
+    const unreadActivities = await Activity.find({ readBy: { $ne: user._id } });
+    console.log(`Marking ${unreadActivities.length} activities as read for user ${username}`);
+
+    // Mark these activities as read for the user by adding the user to the 'readBy' array
+    const updateResult = await Activity.updateMany(
+      { readBy: { $ne: user._id } },  // Ensure the user hasn't already read these activities
+      { $addToSet: { readBy: user._id } }  // Add the user's ID to the 'readBy' array
+    );
+
+    console.log(`Updated ${updateResult.nModified} activities to mark them as read for ${username}`);
+
+    res.status(200).json({ success: true, message: 'All activities marked as read for the user' });
+  } catch (error) {
+    console.error('Error marking activities as read:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
+
+
 
 // User Registration
 app.post('/api/auth/register', async (req, res) => {
@@ -550,7 +608,8 @@ app.post('/api/library/review', async (req, res) => {
         isbn: book.isbn,
         thumbnail: book.thumbnail,
         timestamp: new Date(),
-        visibility // Save visibility for the review in the activity schema
+        visibility, // Save visibility for the review in the activity schema
+        isRead: false
       });
       await newActivity.save();
     }
@@ -676,7 +735,8 @@ app.get('/api/library/review/:username/:isbn', async (req, res) => {
       review: book.review,
       rating: book.rating,
       reviewDate: book.reviewDate || null,
-      visibility: book.visibility || 'public'  // Include visibility
+      visibility: book.visibility || 'public',  // Include visibility,
+      isRead: false 
     });
   } catch (error) {
     console.error(error);
@@ -719,6 +779,7 @@ app.put('/api/library/review', async (req, res) => {
         thumbnail: book.thumbnail,  // Assuming book.thumbnail is available
         timestamp: new Date(),
         username: user.username,
+        isRead: false 
       });
       await newActivity.save();
     }
@@ -757,6 +818,7 @@ app.post('/api/library/readList/add', async (req, res) => {
       isbn: isbn, // The book's ISBN
       thumbnail: thumbnail, // The book's thumbnail
       timestamp: new Date(),
+      isRead: false 
     });
     await newActivity.save();
 
@@ -966,6 +1028,7 @@ app.post('/api/accept-friend', async (req, res) => {
       action: `became friends with`,
       bookTitle: friend.username,  // Using bookTitle as a placeholder for the friend's name
       timestamp: new Date(),
+      isRead: false 
     });
     await newFriendshipActivity.save();
 
@@ -974,6 +1037,7 @@ app.post('/api/accept-friend', async (req, res) => {
       action: `became friends with`,
       bookTitle: user.username,  // Using bookTitle as a placeholder for the friend's name
       timestamp: new Date(),
+      isRead: false 
     });
     await reciprocalFriendshipActivity.save();
 
@@ -1051,32 +1115,36 @@ app.get('/api/friends-activities/:username', async (req, res) => {
       const friendsActivities = [];
 
       for (const friend of user.friends) {
-          // Find the earliest "became friends" activity between the user and the friend
-          const friendshipActivity = await Activity.findOne({
-              userId: { $in: [user._id, friend._id] },
-              action: 'became friends with',
-              bookTitle: { $in: [user.username, friend.username] }
-          }).sort({ timestamp: 1 });  // Sort in ascending order to get the earliest
-
-          if (friendshipActivity) {
-              const activities = await Activity.find({
-                  userId: friend._id,
-                  timestamp: { $gte: friendshipActivity.timestamp }
-              }).sort({ timestamp: -1 });
-
-              activities.forEach(activity => {
-                  friendsActivities.push({
-                      username: friend.username,
-                      action: activity.action,
-                      bookTitle: activity.bookTitle,
-                      isbn: activity.isbn,
-                      thumbnail: activity.thumbnail,
-                      timestamp: activity.timestamp,
-                      visibility: activity.visibility
-                  });
-              });
+        // Find the earliest "became friends" activity between the user and the friend
+        const friendshipActivity = await Activity.findOne({
+            userId: { $in: [user._id, friend._id] },
+            action: 'became friends with',
+            bookTitle: { $in: [user.username, friend.username] }
+        }).sort({ timestamp: 1 });  // Sort in ascending order to get the earliest
+    
+        for (const friend of user.friends) {
+          const activities = await Activity.find({
+            userId: friend._id,
+            visibility: { $in: ['public', 'friends'] }  // Fetch only public or friends-only activities
+          }).sort({ timestamp: -1 });  // Sort by most recent first
+    
+          // Push the activities into the array and check if the user has read them
+          for (const activity of activities) {
+            friendsActivities.push({
+              username: friend.username,
+              action: activity.action,
+              bookTitle: activity.bookTitle,
+              isbn: activity.isbn,
+              thumbnail: activity.thumbnail,
+              timestamp: activity.timestamp,
+              visibility: activity.visibility,
+              isRead: activity.readBy.includes(user._id)  // Check if the logged-in user has read this activity
+            });
           }
-      }
+        }
+    
+    }
+    
 
       // Sort all activities by timestamp in descending order before sending the response
       friendsActivities.sort((a, b) => b.timestamp - a.timestamp);

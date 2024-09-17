@@ -128,7 +128,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     ${additionalInfo} <!-- Display either review date or rating -->
                     ${isOwnLibrary || !isOwnLibrary ? `<button class="comment-button ease-in-out-transition absolute top-0 right-0 mt-2 mr-2 text-xs bg-blue-500 text-white px-2 py-1 rounded" data-isbn="${book.isbn}" data-title="${book.title}"></button>` : ''}
                     ${isOwnLibrary ? `<button class="comment-button ease-in-out-transition absolute top-0 right-0 mt-2 mr-2 text-xs bg-blue-500 text-white px-2 py-1 rounded" data-isbn="${book.isbn}" data-title="${book.title}"></button>` : ''}
-                    <button onclick="removeFromReadingList('${username}', '${book.isbn}')" class="absolute top-0 left-0 mt-2 ml-2 text-xs bg-red-700 text-white px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-in-out">Remove</button>
+                    <button onclick="removeFromLibrary('${username}', '${book.isbn}')" class="absolute top-0 left-0 mt-2 ml-2 text-xs bg-red-700 text-white px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-in-out">Remove</button>
 
                 </div>
             `;
@@ -202,7 +202,7 @@ saveReviewButton.addEventListener('click', async () => {
                     const bookDiv = document.createElement('div');
                     bookDiv.classList.add('library-card', 'relative', 'p-6', 'rounded-lg', 'shadow-lg', 'cursor-pointer', 'hover:shadow-2xl', 'transition', 'duration-300', 'ease-in-out');
                     bookDiv.innerHTML = `
-                        <div class="relative group library-card" style="border: 4px solid ${getGradientColor(book.rating)};">
+                        <div class="relative group book-card library-card" style="border: 4px solid ${getGradientColor(book.rating)};">
                             <a href="../html/book.html?isbn=${book.isbn}" class="block relative overflow-hidden rounded-lg shadow-lg hover:shadow-2xl transition duration-300 ease-in-out group">
                                 <img src="${book.thumbnail}" alt="${book.title}" class="w-full h-64 object-cover rounded-t-lg">
                                 <div class="absolute bottom-0 left-0 w-full p-4 bg-black bg-opacity-60 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-in-out">

@@ -1,12 +1,113 @@
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => { 
     const searchFriendInput = document.getElementById('searchFriendInput');
     const searchFriendButton = document.getElementById('searchFriendButton');
     const searchResults = document.getElementById('searchResults');
     const activitiesFeed = document.getElementById('activitiesFeed');
     const clearSearchButton = document.getElementById('clearSearchButton');
     const username = localStorage.getItem('username');
-    console.log('DOM fully loaded and parsed');
-    console.log(`Current logged in username: ${username}`);
+
+
+
+    await updateSocialTabNotification();
+    const socialTabClicked = sessionStorage.getItem('socialTabClicked') === 'true';  // Check if tab was clicked
+
+    let socialLinkClickedAway = false;  // Flag to check if user clicked away
+
+    const socialLink = document.getElementById('socialTab');  // Get the social tab element
+
+    if (window.location.pathname.includes('social.html')) {
+        if (socialTabClicked) {
+            console.log('Social tab was clicked from another page, waiting for user to click away.');
+
+            // Add a listener to detect when the user clicks away from the social tab
+            document.addEventListener('click', async (event) => {
+                // Stop propagation to avoid interference from other click handlers
+                event.stopPropagation();
+    
+                // Ensure the user clicked outside the social tab and that it hasn't been triggered already
+                if (!socialLink.contains(event.target) && !socialLinkClickedAway) {
+                    console.log('User clicked away from the social tab. Marking activities as read.');
+    
+                    // Mark activities as read
+                    await markAllActivitiesAsRead();
+    
+                    // Update the notification badge
+                    await updateSocialTabNotification();
+    
+                    // Remove red outline from unread activities (example of red outline removal)
+                    const activityItems = document.querySelectorAll('.activity-item');  // Adjust the selector based on your structure
+                    activityItems.forEach(item => {
+                        item.classList.remove('unread');  // Assuming 'unread' class gives the red outline
+                    });
+    
+                    // Set flag to prevent multiple triggers
+                    socialLinkClickedAway = true;
+    
+                    // Clear the session storage flag
+                    sessionStorage.removeItem('socialTabClicked');
+                }
+            });
+    
+            // Stop the click on the social tab itself from propagating
+            socialLink.addEventListener('click', (event) => {
+                event.stopPropagation();  // Prevents the click event on socialLink from bubbling up
+            });
+        }
+    }
+    
+    async function updateSocialTabNotification() {
+        try {
+            const username = localStorage.getItem('username');
+            if (!username) return;
+    
+            const response = await fetch(`/api/activities/unread-count/${username}`);
+            const data = await response.json();
+    
+            const notificationBadge = document.getElementById('notificationBadge');
+    
+            if (data.success) {
+                const unreadCount = data.unreadCount;
+                console.log("Notification number:", unreadCount);
+    
+                if (unreadCount > 0) {
+                    // Show the notification badge with the unread count
+                    notificationBadge.textContent = unreadCount;
+                    notificationBadge.style.display = 'inline-block';  // Ensure badge is shown
+                } else {
+                    // Hide the notification badge if there are no unread notifications
+                    notificationBadge.style.display = 'none';  // Hide badge if there are no unread notifications
+                }
+            }
+        } catch (error) {
+            console.error('Error fetching unread notifications:', error);
+        }
+    }
+    
+    // Function to mark all activities as read
+    async function markAllActivitiesAsRead() {
+        try {
+            const username = localStorage.getItem('username');
+            if (!username) return;
+            console.log('markAllActivitiesAsRead called'); // Log when the function is called
+    
+            const response = await fetch(`/api/activities/mark-read/${username}`, {
+                method: 'POST'
+            });
+    
+            if (response.ok) {
+                console.log('All activities marked as read');
+            }
+        } catch (error) {
+            console.error('Error marking activities as read:', error);
+        }
+    }
+
+
+    
+    
+    
+    
+    
     const formatTimeAgo = (timestamp) => {
         const now = new Date();
         const activityTime = new Date(timestamp);
@@ -28,7 +129,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (minutes > 0) return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
         return `${seconds} second${seconds > 1 ? 's' : ''} ago`;
     };
-    
+
     const updateTimestamps = () => {
         const timeAgoElements = document.querySelectorAll('.time-ago');
         timeAgoElements.forEach(element => {
@@ -36,7 +137,7 @@ document.addEventListener('DOMContentLoaded', () => {
             element.textContent = formatTimeAgo(timestamp);
         });
     };
-    
+
     // Call updateTimestamps every hour
     setInterval(updateTimestamps, 3600000);
     const renderSearchResults = (results) => {
@@ -183,7 +284,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
                 if (canViewReview) {
                     activityContent = `
-                        <div class="flex justify-between items-center">
+                        <div class="activity flex justify-between items-center ${mostRecentActivity.isRead ? '' : 'unread'}">
                             <div>
                                 <a href="../html/profile.html?username=${mostRecentActivity.username}" class="text-blue-500 hover:underline">
                                     <strong>${mostRecentActivity.username}</strong>
@@ -197,7 +298,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <img src="${mostRecentActivity.thumbnail}" alt="${mostRecentActivity.bookTitle}" class="w-16 h-24 object-cover rounded ml-4">
                             </div>
                         </div>
-
+                
                         <div class="review-content hidden p-4 bg-gray-100" style="margin-top: -20px;">
                             <p class="review-text text-sm">
                                 <strong>${mostRecentActivity.username}</strong> review: "${mostRecentActivity.review}"
@@ -210,7 +311,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             <p class="time-ago text-gray-600 text-xs">${formatTimeAgo(mostRecentActivity.timestamp)}</p>
                             ${mostRecentActivity.action.includes('reviewed') ? `
                             <a href="#" class="see-review-link text-gray-500 hover:underline" 
-                                style="position: absolute; bottom: 20px; left: 0; font-size: 15px;" 
+                                style="position: absolute; bottom: 18px; left: 0; font-size: 15px;" 
                                 data-username="${mostRecentActivity.username}" 
                                 data-isbn="${mostRecentActivity.isbn}">
                                 see review...
@@ -221,7 +322,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else {
                     // If the user cannot view the review, show a message instead
                     activityContent = `
-                        <div class="flex justify-between items-center">
+                         <div class="activity flex justify-between items-center ${mostRecentActivity.isRead ? '' : 'unread'}">
                             <div>
                                 <a href="../html/profile.html?username=${mostRecentActivity.username}" class="text-blue-500 hover:underline">
                                     <strong>${mostRecentActivity.username}</strong>
@@ -240,6 +341,7 @@ document.addEventListener('DOMContentLoaded', () => {
                          </div>
                     `;
                 }
+                
             }
     
             activityElement.innerHTML = activityContent + `
@@ -320,7 +422,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
                 if (canViewReview) {
                     activityContent = `
-                        <div class="flex justify-between items-center">
+                        <div class="activity flex justify-between items-center ${activity.isRead ? '' : 'unread'}">
                             <div>
                                 ${activity.action}  
                                 <a href="../html/book.html?isbn=${activity.isbn}" class="text-gray-500 hover:text-gray-800 hover:font-bold">
@@ -354,22 +456,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else {
                     // If the user cannot view the review, show a message instead
                     activityContent = `
-                        <div class="flex justify-between items-center">
+                        <div class="activity flex justify-between items-center ${activity.isRead ? '' : 'unread'}">
                             <div>
-                                <a href="../html/profile.html?username=${activity.username}" class="text-blue-500 hover:underline">
-                                    <strong>${activity.username}</strong>
-                                </a> 
                                 privately reviewed 
                                 <a href="../html/book.html?isbn=${activity.isbn}" class="text-gray-500 hover:text-gray-800 hover:font-bold">
                                     <em>${activity.bookTitle}</em>
                                 </a>
                             </div>
                             <div class="relative">
-                                <img src="${mostRecentActivity.thumbnail}" alt="${mostRecentActivity.bookTitle}" class="w-16 h-24 object-cover rounded ml-4">
+                                <img src="${activity.thumbnail}" alt="${activity.bookTitle}" class="w-16 h-24 object-cover rounded ml-4">
                             </div>
                         </div>
                          <div class="flex justify-between items-end mt-2">
-                            <p class="time-ago text-gray-600 text-xs">${formatTimeAgo(mostRecentActivity.timestamp)}</p>
+                            <p class="time-ago text-gray-600 text-xs">${formatTimeAgo(activity.timestamp)}</p>
                         </div>
                     `;
                 }
@@ -387,7 +486,7 @@ document.addEventListener('DOMContentLoaded', () => {
         seeMoreLink.removeEventListener('click', handleSeeMoreClick);
         seeMoreLink.addEventListener('click', handleSeeLessClick);
     };
-    
+
     
     function handleSeeLessClick(event) {
         event.preventDefault();
@@ -512,7 +611,6 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const fetchActivities = async () => {
-        console.log(`Fetching activities for user: ${username}`);
         try {
             const response = await fetch(`/api/friends-activities/${username}`);
             if (!response.ok) {
@@ -522,6 +620,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await response.json();
             if (data.success) {
                 console.log('Activities fetched successfully', data.activities);
+                data.activities.forEach(activity => {
+                });
                 renderActivitiesFeed(data.activities); // This will now include the thumbnail and isbn
             } else {
                 console.error('Failed to fetch activities:', data.message);
