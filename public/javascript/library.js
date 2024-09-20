@@ -27,6 +27,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (sortOptions) sortOptions.style.display = 'none';
         if (saveReviewButton) saveReviewButton.style.display = 'none';
         libraryTitle.innerHTML = `<em>${username}'s Library</em>  `;
+        await fetchAndDisplayBooks(currentPage);
+
     } else {
         sortLabel.textContent = "Sort by:"; // Set the label text if viewing your own library
         sortOptions.addEventListener('change', async (event) => {
@@ -37,7 +39,21 @@ document.addEventListener('DOMContentLoaded', async () => {
         libraryTitle.innerHTML = `<em>Your Library</em>  `;
 
     }
-   
+    if (isOwnLibrary) {
+        const commentButtons = document.querySelectorAll('.comment-button');
+        commentButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                showReviewPopup(button.getAttribute('data-isbn'), button.getAttribute('data-title'));
+            });
+        });
+    } else {
+        const commentButtons = document.querySelectorAll('.comment-button');
+        commentButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                showReviewPopup(button.getAttribute('data-isbn'), button.getAttribute('data-title'), !isOwnLibrary);
+            });
+        }); 
+    }
 
     async function fetchAndDisplayBooks(sortBy = 'none', page = 1) {
         try {
@@ -128,8 +144,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                     ${additionalInfo} <!-- Display either review date or rating -->
                     ${isOwnLibrary || !isOwnLibrary ? `<button class="comment-button ease-in-out-transition absolute top-0 right-0 mt-2 mr-2 text-xs bg-blue-500 text-white px-2 py-1 rounded" data-isbn="${book.isbn}" data-title="${book.title}"></button>` : ''}
                     ${isOwnLibrary ? `<button class="comment-button ease-in-out-transition absolute top-0 right-0 mt-2 mr-2 text-xs bg-blue-500 text-white px-2 py-1 rounded" data-isbn="${book.isbn}" data-title="${book.title}"></button>` : ''}
-                    <button onclick="removeFromLibrary('${username}', '${book.isbn}')" class="absolute top-0 left-0 mt-2 ml-2 text-xs bg-red-700 text-white px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-in-out">Remove</button>
-
+                    ${username === loggedInUsername ? 
+                        `<button onclick="removeFromLibrary('${username}', '${book.isbn}')" class="absolute top-0 left-0 mt-2 ml-2 text-xs bg-red-700 text-white px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-in-out">Remove</button>` 
+                        : ''}
                 </div>
             `;
             console.log(`[RENDER BOOKS] Appending book  with ISBN: ${book.isbn}`);
@@ -158,7 +175,7 @@ saveReviewButton.addEventListener('click', async () => {
     
     // Close the modal immediately to improve user experience
     modal.style.display = 'none';
-    
+
     try {
         const response = await fetch('/api/library/review', {
             method: 'POST',
@@ -169,7 +186,16 @@ saveReviewButton.addEventListener('click', async () => {
         });
 
         if (response.ok) {
-            alert('Review saved successfully.');
+            const successMessage = document.createElement('div');
+            successMessage.classList.add('popup-message', 'bg-green-500', 'text-white', 'px-4', 'py-2', 'rounded', 'shadow-lg', 'fixed', 'bottom-4', 'right-4');
+            successMessage.textContent = 'Review saved successfully.';
+            document.body.appendChild(successMessage);
+
+            // Automatically remove the message after 3 seconds
+            setTimeout(() => {
+                successMessage.remove();
+            }, 3000); // 3000 ms = 3 seconds
+
             await fetchAndDisplayBooks('none', currentPage);  // Fetch the books for the current page
         } else {
             const error = await response.json();
@@ -183,6 +209,7 @@ saveReviewButton.addEventListener('click', async () => {
         saveReviewButton.disabled = false;
     }
 });
+
        
     }
     
@@ -193,47 +220,92 @@ saveReviewButton.addEventListener('click', async () => {
         
         
         try {
-            const response = await fetch(`/api/library/readList/${username}`);
-            const data = await response.json();
-            const readingListGrid = document.getElementById('readingListGrid');
-            readingListGrid.className = 'library-container'; // Apply library-container class
-            if (data.success && data.readList.length > 0) {
-                data.readList.forEach(book => {
-                    const bookDiv = document.createElement('div');
-                    bookDiv.classList.add('library-card', 'relative', 'p-6', 'rounded-lg', 'shadow-lg', 'cursor-pointer', 'hover:shadow-2xl', 'transition', 'duration-300', 'ease-in-out');
-                    bookDiv.innerHTML = `
-                        <div class="relative group book-card library-card" style="border: 4px solid ${getGradientColor(book.rating)};">
-                            <a href="../html/book.html?isbn=${book.isbn}" class="block relative overflow-hidden rounded-lg shadow-lg hover:shadow-2xl transition duration-300 ease-in-out group">
-                                <img src="${book.thumbnail}" alt="${book.title}" class="w-full h-64 object-cover rounded-t-lg">
-                                <div class="absolute bottom-0 left-0 w-full p-4 bg-black bg-opacity-60 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-in-out">
-                                    <h2 class="text-lg font-bold">${book.title}</h2>
-                                    <p class="text-gray-300">by ${book.authors}</p>
-                                </div>
-                            </a>
-                            <button onclick="removeFromReadingList('${username}', '${book.isbn}')" class="absolute top-0 left-0 mt-2 ml-2 text-xs bg-red-700 text-white px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-in-out">Remove</button>
-                        </div>
-                    `;
-                    readingListGrid.appendChild(bookDiv);
-                });
-                // Attach event listeners to comment buttons
-                if (isOwnLibrary) {
-                    const commentButtons = document.querySelectorAll('.comment-button');
-                    commentButtons.forEach(button => {
-                        button.addEventListener('click', () => {
-                            showReviewPopup(button.getAttribute('data-isbn'), button.getAttribute('data-title'));
-                        });
-                    });
-                } else {
-                    const commentButtons = document.querySelectorAll('.comment-button');
-                    commentButtons.forEach(button => {
-                        button.addEventListener('click', () => {
-                            showReviewPopup(button.getAttribute('data-isbn'), button.getAttribute('data-title'), !isOwnLibrary);
-                        });
-                    }); 
-                }
-            } else {
-                addPlaceholderCards(readingListGrid, "Empty Book");
+            let currentReadingPage = 1; // Track the current page for reading list
+
+async function fetchAndDisplayReadingList(page = 1) {
+    try {
+        let url = `/api/library/readList/${username}?page=${page}&limit=${limit}`;
+        console.log(`API Request URL for Reading List: ${url}`);
+
+        const response = await fetch(url);
+        const data = await response.json();
+        console.log(`[FETCH READING LIST] Response:`, data); // Log response from the server
+
+        if (data.success && data.readList.length > 0) {
+            console.log(`Fetched ${data.readList.length} books for reading list, page ${page}`);
+
+            renderReadingList(data.readList);
+            updateReadingPaginationControls(data.currentPage, data.totalPaginationPages); // Update pagination controls
+        } else {
+            addPlaceholderCards(readingListGrid, "Empty Book");
+        }
+    } catch (error) {
+        console.error('Error fetching reading list:', error);
+        document.getElementById('readingListGrid').innerHTML = '<p>Error loading reading list.</p>';
+    }
+}
+
+function updateReadingPaginationControls(currentPage, totalPages) {    
+    const prevPageBtn = document.getElementById('prevReadingPage');
+    const nextPageBtn = document.getElementById('nextReadingPage');
+    const pageInfo = document.getElementById('readingPageInfo');
+
+    // Ensure pagination elements exist before accessing them
+    if (pageInfo) {
+        console.log(`Updating pagination info: Page ${currentPage} of ${totalPages}`);
+        pageInfo.textContent = `Page ${currentPage} of ${totalPages}`; // Set correct currentPage and totalPages
+    }
+
+    if (prevPageBtn) {
+        prevPageBtn.disabled = currentPage === 1;
+        prevPageBtn.onclick = () => {
+            if (currentPage > 1) {
+                currentReadingPage = currentPage - 1;  // Update currentReadingPage
+                fetchAndDisplayReadingList(currentPage - 1);  // Move to the previous page
             }
+        };
+    }
+
+    if (nextPageBtn) {
+        nextPageBtn.disabled = currentPage === totalPages;
+        nextPageBtn.onclick = () => {
+            if (currentPage < totalPages) {
+                currentReadingPage = currentPage + 1;  // Update currentReadingPage
+                fetchAndDisplayReadingList(currentPage + 1);  // Move to the next page
+            }
+        };
+    }
+}
+
+
+async function renderReadingList(books) {
+    const readingListGrid = document.getElementById('readingListGrid');
+    readingListGrid.innerHTML = ''; // Clear the grid before rendering new content
+    readingListGrid.className = 'library-container'
+    books.forEach(book => {
+        const bookDiv = document.createElement('div');
+        bookDiv.classList.add('library-card', 'relative', 'p-6', 'rounded-lg', 'shadow-lg', 'cursor-pointer', 'hover:shadow-2xl', 'transition', 'duration-300', 'ease-in-out');
+        bookDiv.innerHTML = `
+            <div class="relative group book-card library-card" style="border: 4px solid ${getGradientColor(book.rating)};">
+                <a href="../html/book.html?isbn=${book.isbn}" class="block relative overflow-hidden rounded-lg shadow-lg hover:shadow-2xl transition duration-300 ease-in-out group">
+                    <img src="${book.thumbnail}" alt="${book.title}" class="w-full h-64 object-cover rounded-t-lg">
+                    <div class="absolute bottom-0 left-0 w-full p-4 bg-black bg-opacity-60 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-in-out">
+                        <h2 class="text-lg font-bold">${book.title}</h2>
+                        <p class="text-gray-300">by ${book.authors}</p>
+                    </div>
+                </a>
+                    ${username === loggedInUsername ? 
+                        `<button onclick="removeFromReadingList('${username}', '${book.isbn}')" class="absolute top-0 left-0 mt-2 ml-2 text-xs bg-red-700 text-white px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-in-out">Remove</button>` 
+                        : ''}           
+            </div>
+        `;
+        readingListGrid.appendChild(bookDiv);
+    });
+}
+
+// Call fetchAndDisplayReadingList to load the first page of the reading list
+fetchAndDisplayReadingList(currentReadingPage);
+
         } catch (error) {
             console.error('Error fetching user reading list:', error);
             document.getElementById('readingListGrid').innerHTML = '<p>Error loading reading list.</p>';

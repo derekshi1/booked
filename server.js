@@ -685,10 +685,8 @@ app.get('/api/library/:username/books', async (req, res) => {
 });
 // Helper function to check if the logged-in user is a friend of the user whose library is being viewed
 async function checkFriendship(username, loggedInUsername) {
-  console.log(`[DEBUG] Checking friendship between ${username} and ${loggedInUsername}`);
   
   if (!loggedInUsername) {
-    console.log(`[DEBUG] No logged-in user, cannot check friendship`);
     return false;
   }
 
@@ -697,15 +695,12 @@ async function checkFriendship(username, loggedInUsername) {
     const loggedInUser = await User.findOne({ username: loggedInUsername });
 
     if (!user || !loggedInUser) {
-      console.log(`[DEBUG] User or logged-in user not found`);
       return false;
     }
 
     const isFriend = user.friends.some(friend => friend._id.equals(loggedInUser._id));
-    console.log(`[DEBUG] Is friend: ${isFriend}`);
     return isFriend;
   } catch (error) {
-    console.error(`[ERROR] Error checking friendship: ${error.message}`);
     return false;
   }
 }
@@ -765,6 +760,7 @@ app.put('/api/library/review', async (req, res) => {
     book.review = review;
     book.rating = rating;
     book.reviewDate = reviewDate || new Date(); // Update the date to the provided or current date
+    book.visibility = visiblity;
 
     await userLibrary.save();
 
@@ -849,20 +845,43 @@ app.post('/api/library/readList/remove', async (req, res) => {
 });
 //get books in reading list
 app.get('/api/library/readList/:username', async (req, res) => {
-  const { username} = req.params;
+  const { username } = req.params;
+  const { page = 1, limit = 16 } = req.query; // Accept pagination parameters
 
   try {
-    const userLibrary = await UserLibrary.findOne({ username });
-    if (userLibrary) {
-      res.status(200).json({ success: true, readList: userLibrary.readList});
-    } else {
+    let userLibrary = await UserLibrary.findOne({ username });
+    
+    if (!userLibrary) {
+      // If no userLibrary found, create an empty one for the user
       userLibrary = new UserLibrary({ username, books: [], top5: [], readList: [] });
+      await userLibrary.save();
     }
+
+    // Calculate the offset for pagination
+    const offset = (page - 1) * limit;
+
+    // Fetch the paginated readList items
+    const paginatedReadList = userLibrary.readList.slice(offset, offset + limit);
+
+    // Calculate total number of readList items
+    const totalReadListItems = userLibrary.readList.length;
+
+    // Calculate the number of pagination pages based on the limit
+    const totalPaginationPages = Math.ceil(totalReadListItems / limit);
+
+    res.status(200).json({
+      success: true,
+      readList: paginatedReadList,
+      totalReadListItems,
+      currentPage: Number(page),
+      totalPaginationPages, // This represents the total pages for pagination
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });
+
 
 // Endpoint to generate book lists
 
@@ -1125,7 +1144,11 @@ app.get('/api/friends-activities/:username', async (req, res) => {
         for (const friend of user.friends) {
           const activities = await Activity.find({
             userId: friend._id,
-            visibility: { $in: ['public', 'friends'] }  // Fetch only public or friends-only activities
+            $or: [
+              { visibility: 'public' },  // Public activities
+              { visibility: 'friends' },  // Friends-only activities
+              { visibility: 'private'}  // Private activities, but only for the owner
+            ]          
           }).sort({ timestamp: -1 });  // Sort by most recent first
     
           // Push the activities into the array and check if the user has read them

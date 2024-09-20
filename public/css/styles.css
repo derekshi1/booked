@@ -782,6 +782,8 @@ main {
         margin-top: 1rem;
         padding: 0.5rem;
         border-radius: 8px; /* Rounded corners for a smoother look */
+        margin-bottom: 40px; /* Add space below the controls to avoid footer overlap */
+
     }
 
     .pagination-controls button {

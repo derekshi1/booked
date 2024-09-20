@@ -46,7 +46,14 @@
         
         <h1 class="text-3xl font-bold mb-6 text-white mt-12">Reading List</h1>
         <div id="readingListGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            <!-- Reading list book images will be dynamically inserted here -->
+            <!-- Book cards will be dynamically inserted here -->
+        </div>
+        
+        <!-- Pagination Controls -->
+        <div class="pagination-controls">
+            <button id="prevReadingPage" class="pagination-btn px-4 py-2 bg-blue-500 text-white rounded" disabled>&larr;</button>
+            <span id="readingPageInfo" class="mx-4 text-white">Page 2 of 2</span>
+            <button id="nextReadingPage" class="pagination-btn px-4 py-2 bg-blue-500 text-white rounded">&rarr;</button>
         </div>
     </main>
     

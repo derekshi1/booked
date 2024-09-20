@@ -135,7 +135,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     bookDiv.style.width = '200px';  // Set the desired width for the book card
                     bookDiv.style.height = '300px';
                     bookDiv.innerHTML = `
-                        <div class="relative group h-full">
+                        <div class="relative group h-full book-card">
                             <a href="../html/book.html?isbn=${book.isbn}" class="block relative overflow-hidden rounded-lg shadow-lg hover:shadow-2xl transition duration-300 ease-in-out group h-full">
                                 <img src="${book.thumbnail}" alt="${book.title}" class="w-full h-full object-cover rounded-t-lg">
                                 <div class="absolute bottom-0 left-0 w-full p-4 bg-black bg-opacity-60 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-in-out">
@@ -143,7 +143,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                                     <p class="text-gray-300">by ${book.authors}</p>
                                 </div>
                             </a>
-                            <button onclick="removeFromTop5('${username}', '${book.isbn}')" class="absolute top-0 left-0 mt-2 ml-2 text-xs bg-red-700 text-white px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-in-out">Remove</button>
+                            ${username === loggedInUsername ? `
+                                <button onclick="removeFromTop5('${username}', '${book.isbn}')" class="absolute top-0 left-0 mt-2 ml-2 text-xs bg-red-700 text-white px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-in-out">Remove</button>
+                            ` : ''}
                         </div>
                     `;
                     top5Grid.appendChild(bookDiv);
