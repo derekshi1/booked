@@ -8,7 +8,41 @@
     <script defer src="../javascript/book.js"></script>
     <script defer src="../javascript/header.js"></script>
     <script src="https://www.google.com/books/jsapi.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/color-thief/2.3.2/color-thief.umd.js"></script>
     <link href="../css/styles.css" rel="stylesheet"> 
+    <style>
+        /* Keep the book image and buttons fixed on the left */
+        #bookDetails {
+            display: flex;
+            flex-direction: row;
+            align-items: flex-start;
+            gap: 2rem;
+        }
+
+        #fixedBookDetails {
+            position: fixed;
+            top: 100px; /* Adjust the top position as needed */
+            left: 50px; /* Adjust the left position as needed */
+            width: 200px; /* Adjust the width as needed */
+        }
+        /* Adjust container for reviews */
+        #reviewsSection {
+            padding: 20px;
+        }
+
+        /* Adjust book information section */
+        #bookInfo {
+            padding: 20px;
+        }
+        #contentWrapper {
+            position: relative;
+            z-index: 1;
+        }
+        body, main, #contentWrapper {
+            filter: none;
+            opacity: 1;
+        }
+    </style>
     <script>
         google.books.load();
         google.books.setOnLoadCallback(function() {
@@ -27,13 +61,37 @@
             </div>
         </div>
     </header>
-    <main class="container mx-auto mt-8">
-        <div id="bookDetails" class="bg-white rounded p-8">
-            <!-- Book details will be dynamically inserted here -->
-        </div>
-        <div class="recommendations-wrapper relative w-full mt-8">
-            <div id="recommendationsContainer" class="recommendations-container">
-                <!-- Recommendations will be dynamically inserted here -->
+    <main class="container mx-auto mt-4">
+        <div id="bookDetails">
+            <!-- Left section: book cover and action buttons (Fixed Position) -->
+            <div id="fixedBookDetails">
+                <img id="bookCover" src="https://via.placeholder.com/128x192?text=No+Image" alt="Book Cover" class="w-48 h-80 object-cover">
+                <div class="mt-4 flex flex-col gap-2">
+                    <button id="addToLibraryButton" class="px-4 py-2 bg-blue-500 text-white rounded">Add to Library</button>
+                    <button id="addToTop5Button" class="px-4 py-2 bg-green-900 text-white rounded">Add to Top 5</button>
+                    <button id="addToReadingListButton" class="px-4 py-2 bg-blue-400 text-white rounded">Add to Reading List</button>
+                    <button id="previewButton" onclick="loadBook('isbn')" class="px-4 py-2 bg-green-500 text-white rounded">Preview</button>
+                </div>
+            </div>
+
+            <!-- Right section: book details and description -->
+            <div id="bookInfo" class="flex-1">
+                
+                <!-- Reviews section directly after book description -->
+                <div id="reviewsSection">
+                    <h3 class="text-2xl font-bold mb-4">Reviews</h3>
+                    <div id="reviewsContainer">
+                        <!-- Reviews will be dynamically inserted here -->
+                    </div>
+                </div>
+
+                <!-- Recommendations section -->
+                <div id="recommendations" class="mt-8">
+                    <h2 class="text-3xl font-bold mb-4">Similar Books</h2>
+                    <div class="single-recommendations-wrapper relative w-full mt-8 overflow-hidden">
+                        <div id="recommendationsContainer" class="single-recommendations-container"></div>
+                    </div>
+                </div>
             </div>
         </div>
     </main>
@@ -43,5 +101,6 @@
             <div id="viewerCanvas" class="w-full h-96"></div>
         </div>
     </div>
+
 </body>
 </html>

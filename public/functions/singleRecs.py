@@ -7,6 +7,7 @@ import time
 import asyncio
 import aiohttp
 import aiofiles
+from cachetools import TTLCache
 
 # Define the Google Books API URL
 GOOGLE_BOOKS_API_URL = "https://www.googleapis.com/books/v1/volumes"
@@ -14,7 +15,14 @@ API_KEY = 'AIzaSyCFDaqjpgA8K_NqqCw93xorS3zumc_52u8'
 # Load the pre-trained sentence transformer model
 model = SentenceTransformer('paraphrase-MiniLM-L6-v2')
 
+# Set up cache for book info (TTL 10 minutes)
+book_cache = TTLCache(maxsize=1000, ttl=600)
+
 async def get_book_info(isbn):
+    # Check if the book is already cached
+    if isbn in book_cache:
+        return book_cache[isbn]
+    
     params = {
         'q': f'isbn:{isbn}',
         'maxResults': 1,
@@ -29,7 +37,7 @@ async def get_book_info(isbn):
                     isbn_13 = next(
                         (identifier['identifier'] for identifier in book.get('industryIdentifiers', [])
                          if identifier['type'] == 'ISBN_13'), None)
-                    return {
+                    book_info = {
                         'title': book.get('title'),
                         'authors': book.get('authors', []),
                         'categories': book.get('categories', []),
@@ -42,13 +50,27 @@ async def get_book_info(isbn):
                         'averageRating': book.get('averageRating', 0),
                         'thumbnail': book.get('imageLinks', {}).get('thumbnail', 'https://via.placeholder.com/150')
                     }
+                    # Cache the result
+                    book_cache[isbn] = book_info
+                    return book_info
     return None
+
+# Cache encoded descriptions to avoid recomputation
+description_cache = TTLCache(maxsize=1000, ttl=600)
 
 def calculate_description_similarity(desc1, desc2):
     if not desc1 or not desc2:
         return 0
-    embeddings1 = model.encode(desc1, convert_to_tensor=True)
-    embeddings2 = model.encode(desc2, convert_to_tensor=True)
+    
+    # Cache embeddings to avoid re-encoding
+    if desc1 not in description_cache:
+        description_cache[desc1] = model.encode(desc1, convert_to_tensor=True)
+    if desc2 not in description_cache:
+        description_cache[desc2] = model.encode(desc2, convert_to_tensor=True)
+
+    embeddings1 = description_cache[desc1]
+    embeddings2 = description_cache[desc2]
+    
     similarity = util.pytorch_cos_sim(embeddings1, embeddings2)
     return similarity.item()
 
@@ -82,8 +104,6 @@ async def fetch_books_by_genre(session, genre, start_index, max_results):
         if response.status == 200:
             data = await response.json()
             if 'items' in data:
-                # Write debug information to stderr
-                print(f"Found {len(data['items'])} books in genre: {genre}", file=sys.stderr)
                 books = []
                 for item in data['items']:
                     volume_info = item.get('volumeInfo')
@@ -103,8 +123,6 @@ async def fetch_books_by_genre(session, genre, start_index, max_results):
                         'related_to': ''
                     })
                 return books
-    # Write debug information to stderr
-    print(f"No books found for genre: {genre}", file=sys.stderr)
     return []
 
 async def find_books_by_genres(genres, max_results=500):
@@ -121,64 +139,34 @@ async def find_books_by_genres(genres, max_results=500):
         results = await asyncio.gather(*tasks)
         for result in results:
             books.extend(result)
-
-    # Write debug information to stderr
-    print(f"Total books found: {len(books)}", file=sys.stderr)
     return books[:max_results]
 
 async def find_best_matches(book, total_recommendations=7):
-    recommendations_per_book = total_recommendations
-    extra_recommendations = 0
-
     all_genres = set(book['categories'])
-    potential_matches = await find_books_by_genres(all_genres, max_results=recommendations_per_book * 3)
+    potential_matches = await find_books_by_genres(all_genres, max_results=total_recommendations * 3)
 
     recommended_titles = set()
     book_recommendations = []
 
-    initial_compatibilities = []
-    for potential_book in potential_matches:
-        if potential_book['title'] not in recommended_titles:
-            initial_score = calculate_initial_compatibility(book, potential_book)
-            if initial_score > 0:
-                initial_compatibilities.append((potential_book, initial_score))
-    initial_compatibilities.sort(key=lambda x: x[1], reverse=True)
-    top_initial_matches = initial_compatibilities[:recommendations_per_book * 3]
-    refined_compatibilities = []
-    for match, score in top_initial_matches:
-        description_similarity = calculate_description_similarity(book.get('description', ''), match.get('description', ''))
-        final_score = score * 0.4 + description_similarity * 0.6
-        final_score = (final_score / 100) * 200
+    # Parallel initial compatibility checks
+    tasks = [asyncio.to_thread(calculate_initial_compatibility, book, potential_book) for potential_book in potential_matches]
+    initial_compatibilities = await asyncio.gather(*tasks)
 
-        match['score'] = final_score
-        match['related_to'] = book['title']
-        refined_compatibilities.append((match, final_score))
+    # Select top matches and compute refined similarity
+    top_initial_matches = sorted(zip(potential_matches, initial_compatibilities), key=lambda x: x[1], reverse=True)[:total_recommendations * 3]
+    
+    tasks = [asyncio.to_thread(calculate_description_similarity, book.get('description', ''), match.get('description', '')) for match, _ in top_initial_matches]
+    description_similarities = await asyncio.gather(*tasks)
+    
+    refined_compatibilities = [
+        (match, score * 0.4 + desc_sim * 0.6)
+        for (match, score), desc_sim in zip(top_initial_matches, description_similarities)
+    ]
 
     refined_compatibilities.sort(key=lambda x: x[1], reverse=True)
-    count_added = 0
-    for match in refined_compatibilities:
-        if match[0]['title'] not in recommended_titles:
-            recommended_titles.add(match[0]['title'])
-            book_recommendations.append(match[0])
-            count_added += 1
-            if count_added >= recommendations_per_book + (1 if extra_recommendations > 0 else 0):
-                break
-        if extra_recommendations > 0:
-            extra_recommendations -= 1
+    book_recommendations = [match for match, _ in refined_compatibilities[:total_recommendations]]
 
-    recommendations = book_recommendations[:total_recommendations]
-
-    if len(recommendations) < total_recommendations:
-        additional_recommendations = [book for book in potential_matches if book['title'] not in recommended_titles]
-        additional_recommendations.sort(key=lambda x: x['score'], reverse=True)
-        recommendations.extend(additional_recommendations[:total_recommendations - len(recommendations)])    
-    if not book_recommendations:
-        fallback_books = await find_books_by_genres(all_genres, max_results=total_recommendations)
-        book_recommendations.extend(fallback_books[:total_recommendations])
-
-    # Write debug information to stderr
-    print(f"Recommendations found: {len(recommendations)}", file=sys.stderr)
-    return recommendations
+    return book_recommendations
 
 if __name__ == "__main__":
     try:
@@ -188,7 +176,6 @@ if __name__ == "__main__":
             print("Error: Book not found", file=sys.stderr)
             sys.exit(1)
         recommendations = asyncio.run(find_best_matches(book_info))
-        # Only print the final JSON output
         print(json.dumps(recommendations, indent=4))
     except Exception as e:
         print(f"Error: {str(e)}", file=sys.stderr)

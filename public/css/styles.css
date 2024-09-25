@@ -6,6 +6,11 @@ header {
     margin: 0; /* Ensure there is no margin around the header */
     background-color: #2d342d; /* Example background color */
     color: white; /* Example text color */
+    position: fixed; /* Makes the header fixed to the top */
+    top: 0; /* Ensures the header stays at the top of the screen */
+    width: 100%; /* Ensures the header spans the full width of the viewport */
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2); /* Adds a shadow for a raised effect */
+    z-index: 999; /* Ensures the header stays on top of all content */
 }
 body {
     background-color: #2d342d; /* New background color for the body */
