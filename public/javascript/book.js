@@ -13,22 +13,21 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     async function fetchAndDisplayReviews(isbn) {
         try {
-            const response = await fetch(`/api/library/${username}/reviews?isbn=${isbn}&loggedInUsername=${loggedInUsername}`);
-            const data = await response.json();
-    
-            if (data.success) {
-                renderReviews(data.reviews);
-            } else {
-                console.error('Error fetching reviews:', data.message);
-                reviewsContainer.innerHTML = '<p>No reviews available.</p>';
-            }
-        } catch (error) {
-            console.error('Error fetching reviews:', error);
-            reviewsContainer.innerHTML = '<p>Error loading reviews.</p>';
-        }
-    }
+    const response = await fetch(`/api/library/${username}/review/${isbn}?loggedInUsername=${loggedInUsername}`);
+    const data = await response.json();
 
-function renderReviews(reviews) {
+    if (data.success) {
+      console.log('Review found:', data.review);
+      displayReview(data.review, data.rating);  // Function to display review in the UI
+    } else {
+      console.log('Error:', data.message);
+      displayNoReviewMessage(data.message);  // Display appropriate message (e.g., private review)
+    }
+  } catch (error) {
+    console.error('Error fetching review:', error);
+  }
+}
+async function displayReview(reviews) {
         reviewsContainer.innerHTML = ''; // Clear previous reviews if any
 
         // Separate friends-only reviews from public reviews
@@ -88,34 +87,31 @@ function renderReviews(reviews) {
                 const bookCoverImage = book.imageLinks ? book.imageLinks.thumbnail.replace('zoom=1', '') + '&zoom=1' : 'https://via.placeholder.com/128x192?text=No+Image';
                 document.getElementById('bookCover').src = bookCoverImage;
                 document.body.style.backgroundImage = `url(${bookCoverImage})`;
-                document.body.style.backgroundSize = "90% 100%";
+                document.body.style.backgroundSize = "70% 100%";
                 document.body.style.backgroundAttachment = "fixed"; // Keeps it fixed while scrolling
-                document.body.style.backgroundPosition = "center";
+                document.body.style.backgroundPosition = "center center"; // Center the image on both axes
                 document.body.style.backgroundRepeat = "no-repeat";
                 document.body.style.backgroundColor = '#2d342d'; // Dark green as fallbac
-                // Create a faded overlay effect with opacity and color blending
-                document.body.style.position = "relative";
+                document.body.style.backgroundFilter = "blur(5px)";
+                
 
-
+               
                 const overlay = document.createElement('div');
                 overlay.style.position = "fixed";
-
-                overlay.style.position = 'fixed';  // Ensures it's fixed to the viewport
-                overlay.style.top = '50%';  // Start positioning at 50% from top
-                overlay.style.left = '50%';  // Start positioning at 50% from left
-                overlay.style.width = '90vw';  // 90% of the viewport width
-                overlay.style.height = '100vh';  // 90% of the viewport height
-                overlay.style.transform = 'translate(-50%, -50%)';  // Centers the element by shifting it 50% back on both axes
-                overlay.style.backgroundColor = 'rgba(255, 255, 255, 0.7)';  
-                overlay.style.zIndex = '-1';  // Ensures it's above other elements
-
+                overlay.style.top = '50%'; 
+                overlay.style.left = '50%'; 
+                overlay.style.width = '70vw'; 
+                overlay.style.height = '100vh'; 
+                overlay.style.transform = 'translate(-50%, -50%)'; 
+                overlay.style.backgroundColor = 'rgba(255, 255, 255, 0.65)'; 
+                overlay.style.zIndex = '-1'; 
                 document.body.appendChild(overlay);
 
                 bookDetails.innerHTML = `
-                <div class="flex">
+                <div class="content-container flex">
                     <!-- Left section (fixed) -->
-                    <div class="w-1/4 fixed top-40 left-30 h-screen">
-                        <img src="${book.imageLinks ? book.imageLinks.thumbnail.replace('zoom=1', '') + '&zoom=1' : 'https://via.placeholder.com/128x192?text=No+Image'}" alt="${book.title}" class="w-60 h-96 object-cover mb-8">
+                    <div class="w-1/4 fixed top-40 left-60 h-screen">
+                        <img src="${book.imageLinks ? book.imageLinks.thumbnail.replace('zoom=1', '') + '&zoom=1' : 'https://via.placeholder.com/128x192?text=No+Image'}" alt="${book.title}" class="  book-card book-cover w-60 h-96 object-cover mb-8">
                         <button id="addToLibraryButton" class="mt-4 px-4 py-2 bg-blue-500 text-white rounded w-60">Add to Library</button>
                         <button id="addToTop5Button" class="mt-4 px-4 py-2 bg-green-900 text-white rounded w-60">Add to Top 5</button>
                         <button id="addToReadingListButton" class="mt-4 px-4 py-2 bg-blue-400 text-white rounded w-60">Add to Reading List</button>

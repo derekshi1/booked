@@ -77,8 +77,17 @@ def calculate_description_similarity(desc1, desc2):
 def calculate_initial_compatibility(book1, book2):
     if not book1 or not book2:
         return 0
-    common_categories = set(book1.get('categories', [])).intersection(set(book2.get('categories', [])))
-    category_similarity = len(common_categories) / (len(book1.get('categories', [])) + len(book2.get('categories', [])))
+    
+    # Check if categories are present in both books
+    book1_categories = book1.get('categories', [])
+    book2_categories = book2.get('categories', [])
+
+    if book1_categories and book2_categories:
+        common_categories = set(book1_categories).intersection(set(book2_categories))
+        category_similarity = len(common_categories) / (len(book1_categories) + len(book2_categories))
+    else:
+        category_similarity = 0
+
     pub_date_similarity = 0
     if book1.get('publishedDate') and book2.get('publishedDate'):
         try:
@@ -87,10 +96,16 @@ def calculate_initial_compatibility(book1, book2):
             pub_date_similarity = 1 - abs(year1 - year2) / max(year1, year2)
         except ValueError:
             pass
-    compatibility_score = (
-        0.8 * category_similarity +
-        0.2 * pub_date_similarity
-    )
+
+    # Adjust weights if no categories are present
+    if book1_categories and book2_categories:
+        compatibility_score = (
+            0.8 * category_similarity +
+            0.2 * pub_date_similarity
+        )
+    else:
+        compatibility_score = pub_date_similarity  # Only use publication date similarity
+
     return compatibility_score * 100
 
 async def fetch_books_by_genre(session, genre, start_index, max_results):
@@ -142,7 +157,7 @@ async def find_books_by_genres(genres, max_results=500):
     return books[:max_results]
 
 async def find_best_matches(book, total_recommendations=7):
-    all_genres = set(book['categories'])
+    all_genres = set(book.get('categories', []))
     potential_matches = await find_books_by_genres(all_genres, max_results=total_recommendations * 3)
 
     recommended_titles = set()
@@ -158,10 +173,17 @@ async def find_best_matches(book, total_recommendations=7):
     tasks = [asyncio.to_thread(calculate_description_similarity, book.get('description', ''), match.get('description', '')) for match, _ in top_initial_matches]
     description_similarities = await asyncio.gather(*tasks)
     
-    refined_compatibilities = [
-        (match, score * 0.4 + desc_sim * 0.6)
-        for (match, score), desc_sim in zip(top_initial_matches, description_similarities)
-    ]
+    # If no categories, use more weight for description similarity
+    if not book.get('categories', []):
+        refined_compatibilities = [
+            (match, score * 0.2 + desc_sim * 0.8)  # Increased weight for description similarity
+            for (match, score), desc_sim in zip(top_initial_matches, description_similarities)
+        ]
+    else:
+        refined_compatibilities = [
+            (match, score * 0.4 + desc_sim * 0.6)  # Normal weights
+            for (match, score), desc_sim in zip(top_initial_matches, description_similarities)
+        ]
 
     refined_compatibilities.sort(key=lambda x: x[1], reverse=True)
     book_recommendations = [match for match, _ in refined_compatibilities[:total_recommendations]]
