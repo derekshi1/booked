@@ -6,75 +6,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     const userSection = document.getElementById('userSection');
     const recommendationsContainer = document.getElementById('recommendationsContainer');
     const apiKey = 'AIzaSyCFDaqjpgA8K_NqqCw93xorS3zumc_52u8'
-    const reviewsTab = document.getElementById('reviewsTab');
     const reviewsSection = document.getElementById('reviewsSection');
     const reviewsContainer = document.getElementById('reviewsContainer');
     const loggedInUsername = localStorage.getItem('username'); // Add this line at the top
 
-    async function fetchAndDisplayReviews(isbn) {
-        try {
-    const response = await fetch(`/api/library/${username}/review/${isbn}?loggedInUsername=${loggedInUsername}`);
-    const data = await response.json();
-
-    if (data.success) {
-      console.log('Review found:', data.review);
-      displayReview(data.review, data.rating);  // Function to display review in the UI
-    } else {
-      console.log('Error:', data.message);
-      displayNoReviewMessage(data.message);  // Display appropriate message (e.g., private review)
-    }
-  } catch (error) {
-    console.error('Error fetching review:', error);
-  }
-}
-async function displayReview(reviews) {
-        reviewsContainer.innerHTML = ''; // Clear previous reviews if any
-
-        // Separate friends-only reviews from public reviews
-        const friendReviews = reviews.filter(review => review.visibility === 'friends');
-        const publicReviews = reviews.filter(review => review.visibility === 'public');
-
-        // Display friend reviews first, if any
-        if (friendReviews.length > 0) {
-            const friendsHeader = document.createElement('h4');
-            friendsHeader.classList.add('text-lg', 'font-bold', 'mb-2');
-            friendsHeader.textContent = 'Reviews from Friends';
-            reviewsContainer.appendChild(friendsHeader);
-
-            friendReviews.forEach(review => {
-                const reviewElement = createReviewElement(review, true);
-                reviewsContainer.appendChild(reviewElement);
-            });
-        }
-
-        // Display public reviews
-        if (publicReviews.length > 0) {
-            const publicHeader = document.createElement('h4');
-            publicHeader.classList.add('text-lg', 'font-bold', 'mt-4', 'mb-2');
-            publicHeader.textContent = 'Public Reviews';
-            reviewsContainer.appendChild(publicHeader);
-
-            publicReviews.forEach(review => {
-                const reviewElement = createReviewElement(review, false);
-                reviewsContainer.appendChild(reviewElement);
-            });
-        } else {
-            reviewsContainer.innerHTML += '<p>No public reviews available.</p>';
-        }
-    }
-    function createReviewElement(review, isFriend) {
-        const reviewDiv = document.createElement('div');
-        reviewDiv.classList.add('review', 'p-4', 'mb-4', 'border', 'rounded');
-        reviewDiv.classList.add(isFriend ? 'border-red-500' : 'border-gray-300');
-
-
-        reviewDiv.innerHTML = `
-            <p class="text-lg font-semibold">${review.username}</p>
-            <p class="text-sm text-gray-600">Rating: ${review.rating}/100</p>
-            <p class="text-base mt-2">${review.text}</p>
-        `;
-        return reviewDiv;
-    }
+    
 
     if (isbn) {
         try {
@@ -368,15 +304,110 @@ function addToLibrary(isbn) {
 
 
 
+async function fetchAndDisplayReviews(isbn) {
+    const loggedInUsername = localStorage.getItem('username'); // Add this line at the top
+    try {
+        const response = await fetch(`/api/reviews/books/${isbn}?loggedInUsername=${loggedInUsername}`);
+        const data = await response.json();
+
+        if (data.success && data.reviews.length > 0) {
+            console.log('Reviews found:', data.reviews);
+            displayReview(data.reviews);  // Display reviews in the UI
+        } else {
+            console.log('No reviews available or error:', data.message);
+            displayNoReviewMessage(data.message);  // Show a message when no reviews are found
+        }
+    } catch (error) {
+        console.error('Error fetching reviews:', error);
+    }
+}
+
+async function displayReview(reviews) {
+    console.log(reviews);
+
+    reviewsContainer.innerHTML = ''; // Clear previous reviews if any
+
+    // Separate friends-only reviews from public reviews
+    const friendReviews = reviews.filter(review => review.visibility === 'friends');
+    const publicReviews = reviews.filter(review => review.visibility === 'public');
+
+    // Display friend reviews first, if any
+    if (friendReviews.length > 0) {
+        const friendsHeader = document.createElement('h4');
+        friendsHeader.classList.add('text-lg', 'font-bold', 'mb-2');
+        friendsHeader.textContent = 'Reviews from Friends';
+        reviewsContainer.appendChild(friendsHeader);
+
+        friendReviews.forEach(review => {
+            const reviewElement = createReviewElement(review, true);
+            reviewsContainer.appendChild(reviewElement);
+        });
+    }
+
+    // Display public reviews
+    if (publicReviews.length > 0) {
+        const publicHeader = document.createElement('h4');
+        publicHeader.classList.add('text-lg', 'font-bold', 'mt-4', 'mb-2');
+        publicHeader.textContent = 'Public Reviews';
+        reviewsContainer.appendChild(publicHeader);
+
+        publicReviews.forEach(review => {
+            console.log('Rendering Public Review:', review);  // Log each public review
+            const reviewElement = createReviewElement(review, false);
+            reviewsContainer.appendChild(reviewElement);
+        });
+    } else {
+        reviewsContainer.innerHTML += '<p>No public reviews available.</p>';
+    }
+}
+function createReviewElement(review, isFriend) {
+    console.log('Creating Review Element:', review);  // Log the review object
+
+    const reviewDiv = document.createElement('div');
+    reviewDiv.classList.add('review', 'p-4', 'mb-4', 'border', 'rounded', 'bg-white', 'shadow-md');
+
+    // Add a background color and padding
+    reviewDiv.style.backgroundColor = '#ffffff'; // White background
+    reviewDiv.style.padding = '16px';
+    reviewDiv.style.borderRadius = '8px';
+    reviewDiv.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
+
+    // Badge for public or friends visibility
+    const visibilityBadge = isFriend 
+        ? `<span class="ml-2 inline-flex items-center px-3 py-0.5 rounded-full text-sm font-medium bg-green-600 text-white">
+                ✓ Friends
+           </span>`
+        : `<span class="ml-2 inline-flex items-center px-3 py-0.5 rounded-full text-sm font-medium bg-blue-600 text-white">
+                🌍 Public
+           </span>`;
+
+    reviewDiv.innerHTML = `
+    <div class="flex items-center">
+        <a href="../html/profile.html?username=${review.username}" class= "text-lg font-semibold" style="display: inline-flex; text-decoration: none; color: #333; padding: 2px 4px;"
+        onmouseover="this.style.textDecoration='underline'; this.style.color='#555';"
+       onmouseout="this.style.textDecoration='none'; this.style.color='#333';">
+${review.username}</a>  
+            ${visibilityBadge}
+    </div>
+
+        <p class="text-sm text-gray-600 mb-2">Rating: <strong>${review.rating}/100 </strong></p>
+        <p class="text-base mb-2"> ${review.review}</p>
+        <p class="text-sm text-gray-500">Reviewed on: ${new Date(review.reviewDate).toLocaleDateString()}</p>
+    `;
+    
+    return reviewDiv;
+}
+
+
 
 function renderRecommendations(recommendations) {
     const recommendationsContainer = document.getElementById('recommendationsContainer');
     recommendationsContainer.innerHTML = ''; // Clear previous recommendations if any
 
-    recommendations.slice(0, 7).forEach(book => {
+    recommendations.slice(0, 5).forEach(book => {
         const bookElement = document.createElement('div');
-        bookElement.classList.add('single-recommendation-card', 'relative', 'p-6', 'rounded-lg', 'shadow-lg', 'cursor-pointer', 'hover:shadow-2xl', 'transition', 'duration-300', 'ease-in-out');
-        bookElement.style.width = '14%'; // Adjust this width to fit 7 books in the container
+        bookElement.classList.add('single-recommendation-card', 'book-card', 'relative', 'p-6', 'rounded-lg', 'shadow-lg', 'cursor-pointer', 'hover:shadow-2xl', 'transition', 'duration-300', 'ease-in-out');
+        bookElement.style.width = '18.5%'; // Adjust this width to fit 7 books in the container
         bookElement.innerHTML = `
             <a href="../html/book.html?isbn=${book.isbn}" class="block relative overflow-hidden rounded-lg shadow-lg hover:shadow-2xl transition duration-300 ease-in-out group">
                 <img src="${book.thumbnail}" alt="${book.title}" class="w-full h-64 object-cover rounded-t-lg">

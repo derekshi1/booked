@@ -886,6 +886,72 @@ app.get('/api/library/readList/:username', async (req, res) => {
 });
 
 
+app.get('/api/reviews/books/:isbn', async (req, res) => {
+  const { isbn } = req.params;
+  const { loggedInUsername } = req.query;
+
+  try {
+    // Find all user libraries that contain the book with the specified ISBN
+    const userLibraries = await UserLibrary.find({ "books.isbn": isbn });
+
+    if (!userLibraries || userLibraries.length === 0) {
+      return res.status(404).json({ success: false, message: 'No reviews found for this book' });
+    }
+
+    let reviews = [];
+
+    for (const library of userLibraries) {
+      const book = library.books.find(book => book.isbn === isbn);
+
+      if (book) {
+        // Always include the loggedInUsername's reviews, regardless of visibility
+        if (library.username === loggedInUsername) {
+          reviews.push({
+            username: library.username,
+            review: book.review,
+            rating: book.rating,
+            reviewDate: book.reviewDate,
+            visibility: book.visibility, // Keep track of visibility
+          });
+        } else {
+          // Check visibility and include the review based on visibility for other users
+          if (book.visibility === 'public') {
+            reviews.push({
+              username: library.username,
+              review: book.review,
+              rating: book.rating,
+              reviewDate: book.reviewDate,
+              visibility: book.visibility,
+            });
+          } else if (book.visibility === 'friends') {
+            const isFriend = await checkFriendship(library.username, loggedInUsername);
+            if (isFriend) {
+              reviews.push({
+                username: library.username,
+                review: book.review,
+                rating: book.rating,
+                reviewDate: book.reviewDate,
+                visibility: book.visibility,
+              });
+            }
+          }
+        }
+      }
+    }
+
+    // Return reviews
+    if (reviews.length > 0) {
+      res.status(200).json({ success: true, reviews });
+    } else {
+      res.status(200).json({ success: true, reviews: [], message: 'No reviews available for this book' });
+    }
+  } catch (error) {
+    console.error('Error fetching reviews for book:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
+
 // Endpoint to generate book lists
 
 app.post('/api/generate-lists', (req, res) => {

@@ -76,7 +76,13 @@
 
             <!-- Right section: book details and description -->
             <div id="bookInfo" class="flex-1">
-                
+                    <!-- Recommendations section -->
+                    <div id="recommendations" class="mt-8">
+                        <h2 class="text-3xl font-bold mb-4">Similar Books</h2>
+                        <div class="single-recommendations-wrapper relative w-full mt-8 overflow-hidden">
+                            <div id="recommendationsContainer" class="single-recommendations-container"></div>
+                        </div>
+                    </div>
                 <!-- Reviews section directly after book description -->
                 <div id="reviewsSection">
                     <h3 class="text-2xl font-bold mb-4">Reviews</h3>
@@ -85,13 +91,7 @@
                     </div>
                 </div>
 
-                <!-- Recommendations section -->
-                <div id="recommendations" class="mt-8">
-                    <h2 class="text-3xl font-bold mb-4">Similar Books</h2>
-                    <div class="single-recommendations-wrapper relative w-full mt-8 overflow-hidden">
-                        <div id="recommendationsContainer" class="single-recommendations-container"></div>
-                    </div>
-                </div>
+            
             </div>
         </div>
     </main>
