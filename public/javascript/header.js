@@ -101,7 +101,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             usernameElement.style.color = window.scrollY > 50 ? 'white' : '';
         }
         if (window.scrollY > 50 && !logoChanged) {
-            header.style.backgroundColor = '#2d342d'; /* New background color */
+            header.style.backgroundColor = 'rgba(45, 52, 45, 0.8)'; // New background with slight transparency (90%)
             searchIcon.classList.add('search-icon-white'); // Add white color class
 
             // Fade out the current logo
@@ -120,7 +120,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
 
         } else if (window.scrollY <= 50 && logoChanged) {
-            header.style.backgroundColor = '#e9dcaf'; /* Initial background color */
+            header.style.backgroundColor = 'rgba(233, 220, 175, 1)'; // Initial background color without transparency
             
             // Fade out the current logo
             logo.style.opacity = '0';

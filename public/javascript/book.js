@@ -55,7 +55,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     </div>
 
                     <!-- Right section (scrollable) -->
-                    <div class="w-3/4 ml-8" style="margin-left: 320px;">
+                    <div class="w-3/4 ml-8" style="margin-left: 300px;">
                         <h1 class="text-4xl font-bold mb-3">${book.title}</h1>
                         <h2 class="text-xl mb-3">by ${book.authors ? book.authors.join(', ') : 'Unknown'}</h2>
                         <p class="text-base mb-2"><strong>Categories:</strong> ${book.categories ? book.categories.join(', ') : 'None'}</p>
@@ -67,6 +67,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <div id="recommendations" class="mt-8">
                             <h2 class="text-3xl font-bold mb-4">Similar Books</h2>
                             <div class="single-recommendations-wrapper relative w-full mt-8 overflow-hidden">
+                                <div id="loadingVisual" class="loading-balls-container">
+                                    <div class="ball"></div>
+                                    <div class="ball"></div>
+                                    <div class="ball"></div>
+                                </div>
+
                                 <div id="recommendationsContainer" class="single-recommendations-container"></div>
                             </div>
                         </div>
@@ -88,6 +94,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 fetchAndDisplayReviews(isbn);
 
                 fetchRecommendations(isbn);
+
             } else {
                 bookDetails.innerHTML = '<p style="color: white;">Book not found.</p>';
             }
@@ -102,6 +109,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 async function fetchRecommendations(isbn) {
     try {
+        document.getElementById('loadingVisual').classList.remove('hidden');
+
         const response = await fetch(`/api/book-recommendations?isbn=${encodeURIComponent(isbn)}`);
         const data = await response.json();
 
@@ -112,7 +121,12 @@ async function fetchRecommendations(isbn) {
         }
     } catch (error) {
         console.error('Error fetching recommendations:', error);
-    }
+    }finally {
+        // Hide the loading visual once the recommendations are loaded
+        const loadingVisual = document.getElementById('loadingVisual');
+        if (loadingVisual) {
+            loadingVisual.classList.add('hidden');
+        }    }
 }
 
 // Modal handling
@@ -365,12 +379,16 @@ function createReviewElement(review, isFriend) {
 
     const reviewDiv = document.createElement('div');
     reviewDiv.classList.add('review', 'p-4', 'mb-4', 'border', 'rounded', 'bg-white', 'shadow-md');
+    const gradientColor = getGradientColor(review.rating);
+    reviewDiv.style.boxShadow = `0 0 10px 3px ${gradientColor}`; // Glowing effect
 
+
+    // Apply the gradient color to the review's border
+    reviewDiv.style.border = `2px solid ${gradientColor}`;
     // Add a background color and padding
     reviewDiv.style.backgroundColor = '#ffffff'; // White background
     reviewDiv.style.padding = '16px';
     reviewDiv.style.borderRadius = '8px';
-    reviewDiv.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
 
     // Badge for public or friends visibility
     const visibilityBadge = isFriend 
@@ -391,8 +409,8 @@ ${review.username}</a>
     </div>
 
         <p class="text-sm text-gray-600 mb-2">Rating: <strong>${review.rating}/100 </strong></p>
-        <p class="text-base mb-2"> ${review.review}</p>
-        <p class="text-sm text-gray-500">Reviewed on: ${new Date(review.reviewDate).toLocaleDateString()}</p>
+        <p class="text-base mb-2 ml-2"> ${review.review}</p>
+        <p class="text-xs text-gray-500">Reviewed on: ${new Date(review.reviewDate).toLocaleDateString()}</p>
     `;
     
     return reviewDiv;
@@ -421,4 +439,32 @@ function renderRecommendations(recommendations) {
         recommendationsContainer.appendChild(bookElement);
     });
 }
+function getGradientColor(value) {
+    // Define the dark pastel colors for green and red with more aesthetic adjustment
+    const darkPastelGreen = [32, 154, 32]; // RGB for dark pastel green
+    const darkPastelYellow = [255, 193, 37];
+    const darkPastelRed = [102, 0, 0]; // RGB for dark pastel red
 
+    let r, g, b;
+    /* add in case i want default border to be white if no rating
+    if (value === undefined || value === null) {
+        // Default to white if there is no rating
+        return `rgb(255, 255, 255)`;
+    }
+    */
+    if (value <= 50) {
+        // Interpolate between red and yellow
+        const factor = value / 50;
+        r = darkPastelRed[0] + ((darkPastelYellow[0] - darkPastelRed[0]) * factor);
+        g = darkPastelRed[1] + ((darkPastelYellow[1] - darkPastelRed[1]) * factor);
+        b = darkPastelRed[2] + ((darkPastelYellow[2] - darkPastelRed[2]) * factor);
+    } else {
+        // Interpolate between yellow and green
+        const factor = (value - 50) / 50;
+        r = darkPastelYellow[0] + ((darkPastelGreen[0] - darkPastelYellow[0]) * factor);
+        g = darkPastelYellow[1] + ((darkPastelGreen[1] - darkPastelYellow[1]) * factor);
+        b = darkPastelYellow[2] + ((darkPastelGreen[2] - darkPastelYellow[2]) * factor);
+    }
+
+    return `rgb(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)})`;
+}

@@ -187,7 +187,7 @@ saveReviewButton.addEventListener('click', async () => {
 
         if (response.ok) {
             const successMessage = document.createElement('div');
-            successMessage.classList.add('popup-message', 'bg-green-500', 'text-white', 'px-4', 'py-2', 'rounded', 'shadow-lg', 'fixed', 'bottom-4', 'right-4');
+            successMessage.classList.add('popup-message', 'bg-green-500', 'text-white', 'px-4', 'py-2', 'rounded', 'shadow-lg', 'fixed', 'bottom-8', 'right-4');
             successMessage.textContent = 'Review saved successfully.';
             document.body.appendChild(successMessage);
 

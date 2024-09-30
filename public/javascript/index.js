@@ -340,7 +340,7 @@ document.addEventListener('DOMContentLoaded', () => {
     fetchAndDisplayOppositeRecommendations();
 
     if (username) {
-        const savedRecommendationsKey = `recommendations_${username}`;
+        const savedRecommendationsKey = `${username}_recommendations`;
         const savedRecommendations = localStorage.getItem(savedRecommendationsKey);
         if (savedRecommendations) {
             const parsedRecommendations = JSON.parse(savedRecommendations);
