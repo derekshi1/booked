@@ -913,3 +913,79 @@ body, main {
 .hidden {
     display: none;
 }
+.add-button-container {
+    position: relative;
+}
+
+.add-button {
+    position: relative;
+    width: 48px;
+    height: 48px;
+    background-color: #38a169; /* Dark green */
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: background-color 0.3s ease;
+}
+
+.add-button:hover {
+    background-color: #2f855a; /* Darker green on hover */
+}
+
+.icon-container .line {
+    background-color: white;
+    height: 2px;
+    border-radius: 1px;
+}
+
+.plus-icon {
+    width: 16px;
+    height: 16px;
+    background-color: white;
+    color: #38a169;
+    font-size: 12px;
+    line-height: 16px;
+    text-align: center;
+    border-radius: 50%;
+    position: absolute;
+    top: 0;
+    right: 0;
+}
+
+.dropdown-menu {
+    display: none; /* Ensure dropdown is hidden by default */
+    background-color: white;
+    border-radius: 6px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    margin-top: 10px;
+    width: 160px;
+    z-index: 1000;
+}
+
+.dropdown-menu ul {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+}
+
+.dropdown-menu ul li {
+    padding: 8px;
+    transition: background-color 0.2s;
+}
+
+.dropdown-menu ul li:hover {
+    background-color: #f7fafc;
+}
+
+.dropdown-menu button {
+    width: 100%;
+    text-align: left;
+    padding: 8px;
+    color: #2d3748;
+    font-size: 14px;
+    transition: background-color 0.2s;
+}

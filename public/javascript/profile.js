@@ -77,8 +77,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                                 const addFriendData = await addFriendResponse.json();
                                 if (addFriendData.success) {
-                                    friendStatusSection.innerHTML = `<p class="text-yellow-600">Friend request pending</p>`;
-                                } else {
+                                    friendStatusSection.innerHTML = `
+                                    <span class="friend-status-badge bg-yellow-500 text-white py-1 px-2 rounded-full text-sm flex items-center">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553 4.553M4 4l16 16" />
+                                        </svg>
+                                        Pending
+                                    </span>`;                                } else {
                                     alert('Failed to send friend request');
                                 }
                             } catch (error) {

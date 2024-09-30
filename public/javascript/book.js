@@ -9,8 +9,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const reviewsSection = document.getElementById('reviewsSection');
     const reviewsContainer = document.getElementById('reviewsContainer');
     const loggedInUsername = localStorage.getItem('username'); // Add this line at the top
-
-    
+   
 
     if (isbn) {
         try {
@@ -48,11 +47,32 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <!-- Left section (fixed) -->
                     <div class="w-1/4 fixed top-40 left-60 h-screen">
                         <img src="${book.imageLinks ? book.imageLinks.thumbnail.replace('zoom=1', '') + '&zoom=1' : 'https://via.placeholder.com/128x192?text=No+Image'}" alt="${book.title}" class="  book-card book-cover w-60 h-96 object-cover mb-8">
-                        <button id="addToLibraryButton" class="mt-4 px-4 py-2 bg-blue-500 text-white rounded w-60">Add to Library</button>
-                        <button id="addToTop5Button" class="mt-4 px-4 py-2 bg-green-900 text-white rounded w-60">Add to Top 5</button>
-                        <button id="addToReadingListButton" class="mt-4 px-4 py-2 bg-blue-400 text-white rounded w-60">Add to Reading List</button>
-                        <button onclick="loadBook('${isbn}')" class="mt-4 px-4 py-2 bg-green-500 text-white rounded w-60">Preview</button>
+                         <div class="mt-4 flex flex-col gap-2">
+                   <div class="add-button-container relative">
+                        <button id="addButton" class="add-button relative flex items-center justify-center w-12 h-12 bg-green-600 text-white rounded-full shadow-md">
+                            <div class="icon-container absolute left-3.5 flex flex-col space-y-1">
+                                <div class="line w-5 h-0.5 bg-white"></div>
+                                <div class="line w-5 h-0.5 bg-white"></div>
+                                <div class="line w-5 h-0.5 bg-white"></div>
+                            </div>
+                            <div class="plus-icon absolute top-0 right-0 w-3 h-3 rounded-full bg-white text-green-600 text-xs flex items-center justify-center">
+                                +
+                            </div>
+                        </button>
+                    
+                        <!-- Dropdown menu -->
+                        <div id="dropdownMenu" class="dropdown-menu hidden absolute top-full left-0 mt-2 w-40 bg-white rounded-md shadow-lg z-1000">
+                            <ul class="menu-list">
+                                <li><button id="addToLibraryButton" class="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100">Add to Library</button></li>
+                                <li><button id="addToReadingListButton" class="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100">Add to Reading List</button></li>
+                                <li><button id="addToTop5Button" class="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100">Add to Top 5</button></li>
+                            </ul>
+                        </div>
                     </div>
+                    <button id="previewButton" onclick="loadBook('${isbn}')" class="mt-4 px-4 py-2 bg-green-500 text-white rounded w-60">Preview</button>
+                </div>
+                    </div>
+
 
                     <!-- Right section (scrollable) -->
                     <div class="w-3/4 ml-8" style="margin-left: 300px;">
@@ -85,12 +105,49 @@ document.addEventListener('DOMContentLoaded', async () => {
                     </div>
                 </div>
             `;
+            const addButton = document.getElementById('addButton');
+            const addToReadingListButton = document.getElementById('addToReadingListButton');
+            const addToLibraryButton = document.getElementById('addToLibraryButton');
+            const addToTop5Button = document.getElementById('addToTop5Button');
+            const dropdownMenu = document.getElementById('dropdownMenu');
+           
+        
+            addButton.addEventListener('click', () => {
+                console.log('addButton clicked!');
+
+                dropdownMenu.classList.toggle('hidden');
+                dropdownMenu.style.display = 'block';
 
 
-                document.getElementById('addToLibraryButton').addEventListener('click', () => addToLibrary(isbn));
-                document.getElementById('addToTop5Button').addEventListener('click', () => addToTop5(isbn));
-                document.getElementById('addToReadingListButton').addEventListener('click', () => addToReadingList(isbn));
-                
+            });
+        
+            // Add functionality for each option
+            addToLibraryButton.addEventListener('click', () => {
+                addToLibrary(isbn);
+                dropdownMenu.classList.add('hidden'); // Hide menu after action
+            });
+        
+            addToReadingListButton.addEventListener('click', () => {
+                addToReadingList(isbn);
+                dropdownMenu.classList.add('hidden'); // Hide menu after action
+            });
+        
+            addToTop5Button.addEventListener('click', () => {
+                addToTop5(isbn);
+                dropdownMenu.classList.add('hidden'); // Hide menu after action
+            });
+            window.addEventListener('click', (event) => {
+                if (!addButton.contains(event.target) && !dropdownMenu.contains(event.target)) {
+                    dropdownMenu.style.display = 'none';
+                }
+            });
+            dropdownMenu.addEventListener('click', (event) => {
+                event.stopPropagation();
+            });
+        
+
+
+            
                 fetchAndDisplayReviews(isbn);
 
                 fetchRecommendations(isbn);
