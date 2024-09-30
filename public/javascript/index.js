@@ -73,6 +73,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const timeUntilReset = limitResetTime - (now - clickData.lastReset);
             startGenerateCountdown(timeUntilReset);
             generateButton.disabled = true; // Disable the button if the limit has been reached
+            generateButton.classList.remove('glow-button');
+
         }
     };
     // Check if the reset time has passed
@@ -362,7 +364,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
     
             const now = Date.now();
-    
+            generateButton.classList.remove('glow-button');
+
             if (now - clickData.lastReset >= limitResetTime) {
                 clickData.count = 0;
                 clickData.lastReset = now;
@@ -373,6 +376,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (clickData.count >= clickLimit) {
                     const timeUntilReset = limitResetTime - (now - clickData.lastReset);
                     startGenerateCountdown(timeUntilReset);
+                    generateButton.classList.remove('glow-button');
+
                     console.log('Click limit reached. Please wait until the countdown ends.');
                     return;
                 }

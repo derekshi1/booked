@@ -105,9 +105,7 @@ body {
     cursor: pointer;
     transition: background-color 0.3s;
 }
-.button:hover {
-    background-color: #065b0b; /* Slightly darker green on hover */
-}
+
 
 /* Search bar styles */
 .search-container {
@@ -682,11 +680,7 @@ input[type=range]::-moz-range-thumb {
     gap: 1rem; /* Adjust gap as needed */
 }
 
-/* Hover effect for green buttons */
-.bg-green-900:hover {
-    background-color: #2a3d1d; /* Darker green for hover */
-    color: #d1d5db; /* Change text color to gray-300 */
-}
+
 a:hover {
     text-decoration: underline; /* Add underline on hover */
     text-decoration-thickness: 1px; /* Make the underline light or thin */
@@ -918,7 +912,6 @@ body, main {
 }
 
 .add-button {
-    position: relative;
     width: 48px;
     height: 48px;
     background-color: #38a169; /* Dark green */
@@ -935,6 +928,7 @@ body, main {
 .add-button:hover {
     background-color: #2f855a; /* Darker green on hover */
 }
+
 
 .icon-container .line {
     background-color: white;
@@ -988,4 +982,24 @@ body, main {
     color: #2d3748;
     font-size: 14px;
     transition: background-color 0.2s;
+}
+
+@keyframes pulsateGlow {
+    0% {
+        box-shadow: 0 0 10px 2px rgba(56, 161, 105, 0.5), 0 0 20px rgba(56, 161, 105, 0.3);
+    }
+    50% {
+        box-shadow: 0 0 20px 5px rgba(72, 187, 120, 0.7), 0 0 22px rgba(72, 187, 120, 0.5);
+    }
+    100% {
+        box-shadow: 0 0 10px 2px rgba(56, 161, 105, 0.5), 0 0 20px rgba(56, 161, 105, 0.3);
+    }
+}
+
+.glow-button {
+    animation: pulsateGlow 1.8s infinite;
+}
+.glow-button:hover {
+    animation: none; /* Stop pulsating */
+    box-shadow: 0 0 20px 5px rgba(72, 187, 120, 0.7), 0 0 22px rgba(72, 187, 120, 0.5); /* Apply steady glow */
 }
