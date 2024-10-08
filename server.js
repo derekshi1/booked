@@ -1218,7 +1218,7 @@ app.get('/api/friends-activities/:username', async (req, res) => {
               { visibility: 'friends' },  // Friends-only activities
               { visibility: 'private'}  // Private activities, but only for the owner
             ]          
-          }).sort({ timestamp: -1 });  // Sort by most recent first
+          }).sort({ timestamp: -1 });  // Sort by most recent first 
     
           // Push the activities into the array and check if the user has read them
           for (const activity of activities) {

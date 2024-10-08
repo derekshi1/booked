@@ -207,7 +207,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     const renderActivitiesFeed = (activities) => {
         console.log('Activities to be rendered:', activities);
-    
+       
         // Group activities by user and remove duplicates
         const seenActivities = new Set();
         const activitiesByUser = activities.reduce((acc, activity) => {
@@ -235,6 +235,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const limitedActivities = userActivities.slice(0, limit); // Limit to 4 activities
             const mostRecentActivity = userActivities[0];
     
+
             const activityElement = document.createElement('div');
             activityElement.classList.add('activity', 'p-2', 'bg-gray-100', 'rounded', 'shadow', 'mb-2');
             activityElement.setAttribute('data-total-activities', userActivities.length);

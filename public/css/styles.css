@@ -344,6 +344,8 @@ body {
     flex-direction: row;
     overflow-x: auto;
     gap: 1rem; /* Adjust the gap as needed */
+    overflow-y: hidden; 
+
 }
 
 .book-card {
@@ -1002,4 +1004,11 @@ body, main {
 .glow-button:hover {
     animation: none; /* Stop pulsating */
     box-shadow: 0 0 20px 5px rgba(72, 187, 120, 0.7), 0 0 22px rgba(72, 187, 120, 0.5); /* Apply steady glow */
+}
+.card {
+    background-color: #f9fafb;
+    border-radius: 10px;
+    padding: 1rem;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    max-width: 260px;
 }

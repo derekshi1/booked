@@ -70,9 +70,9 @@ document.addEventListener('DOMContentLoaded', async () => {
    
     userSection.innerHTML = `
         <div class="search-container relative">
-            <img src="https://cdn-icons-png.flaticon.com/512/54/54481.png" alt="Search" class="search-icon w-6 h-6" onclick="expandSearch()">
-            <input type="text" id="titleInput" placeholder="Search for books" class="search-input" onblur="collapseSearch()" onkeydown="handleSearch(event)">
-            <img src="https://cdn-icons-png.flaticon.com/512/1828/1828778.png" alt="Close" class="close-icon w-6 h-6" onclick="collapseSearch()">
+            <img src="https://cdn-icons-png.flaticon.com/512/54/54481.png" alt="Search" class="search-icon w-6 h-6" id="expandSearchIcon">
+            <input type="text" id="titleInput" placeholder="Search for books" class="search-input">
+            <img src="https://cdn-icons-png.flaticon.com/512/1828/1828778.png" alt="Close" class="close-icon w-6 h-6" id="closeSearchIcon">
             <div id="suggestionsBox" class="suggestions"></div> <!-- Suggestions Box -->
         </div>
         <a href="../html/library.html" class="ml-4 font-bold text-green-900 text-lg px-4 py-2 rounded library-link">Library</a>
@@ -90,6 +90,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         `;
     }
     const searchIcon = document.querySelector('.search-icon');  // Get the search icon element
+    const searchInput = document.getElementById('titleInput');
+    const closeIcon = document.getElementById('closeSearchIcon');
+
+    const expandSearchIcon = document.getElementById('expandSearchIcon');
+    expandSearchIcon.addEventListener('click', expandSearch);
+    closeIcon.addEventListener('click', collapseSearch);
 
     // Handle scrolling to change header background, logo, and link colors
     window.addEventListener('scroll', () => {
@@ -151,11 +157,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // Attach event listeners to the search input and close icon
-    const searchInput = document.getElementById('titleInput');
-    const closeIcon = document.querySelector('.close-icon');
     if (searchInput) {
         searchInput.addEventListener('input', handleInput);
-        searchInput.addEventListener('blur', collapseSearch);
         searchInput.addEventListener('keydown', handleSearch);
     } else {
         console.error("Search input element not found");
@@ -217,27 +220,10 @@ async function updateSocialTabNotification() {
 }
 
 
-  
-async function markAllActivitiesAsRead() {
-    try {
-        const username = localStorage.getItem('username');
-        if (!username) return;
-        console.log('markAllActivitiesAsRead called'); // Log when the function is called
-
-        const response = await fetch(`/api/activities/mark-read/${username}`, {
-            method: 'POST'
-        });
-
-        if (response.ok) {
-            console.log('All activities marked as read');
-        }
-    } catch (error) {
-        console.error('Error marking activities as read:', error);
-    }
-}
-
 function displaySuggestions(suggestions) {
+    
     const suggestionsBox = document.getElementById('suggestionsBox');
+
     if (suggestionsBox) {
         console.log('Displaying suggestions:', suggestions); // Debug log
         suggestionsBox.innerHTML = '';
@@ -247,21 +233,26 @@ function displaySuggestions(suggestions) {
                 const suggestionItem = document.createElement('div');
                 suggestionItem.classList.add('suggestion-item', 'flex', 'items-center', 'cursor-pointer', 'hover:bg-gray-200', 'p-2');
                 suggestionItem.innerHTML = `
-                    <div class="flex items-center">
-                        <a href="../html/book.html?isbn=${suggestion.isbn}" class="block relative overflow-hidden rounded-lg shadow-lg hover:shadow-2xl transition duration-300 ease-in-out group">
-                            <img src="${suggestion.thumbnail}" alt="${suggestion.title}" class="w-8 h-12 mr-2 rounded">
-                            <span>${suggestion.title} by ${suggestion.authors}</span>
-                        </a>
-
-                    </div>
+                    <div class="flex items-center suggestion-link" data-isbn="${suggestion.isbn}">
+                            <a href="../html/book.html?isbn=${suggestion.isbn}" class="block relative overflow-hidden rounded-lg shadow-lg hover:shadow-2xl transition duration-300 ease-in-out group">
+                                <img src="${suggestion.thumbnail}" alt="${suggestion.title}" class="w-8 h-12 mr-2 rounded">
+                                <span>${suggestion.title} by ${suggestion.authors}</span>
+                            </a>
+                        </div>
                 `;
+                suggestionItem.addEventListener('click', (e) => {
+                    preventCollapse = true;
+                    e.stopPropagation(); // Prevents any parent handlers from interfering
+                    console.log('Suggestion clicked:', suggestion.title);
+                    window.location.href = `../html/book.html?isbn=${suggestion.isbn}`;
+                });             
                 suggestionsBox.appendChild(suggestionItem);
             });
 
             const showAllLink = document.createElement('div');
             showAllLink.classList.add('suggestion-item', 'flex', 'items-center', 'justify-center', 'cursor-pointer', 'hover:bg-gray-200', 'p-2');
             showAllLink.innerHTML = `<span>Show all results for "${document.getElementById('titleInput').value}"</span>`;
-            showAllLink.addEventListener('click', () => {
+            showAllLink.addEventListener('click', (e) => {
                 e.stopPropagation();
                 e.preventDefault();
                 console.log('Show all results clicked'); // Debug log
@@ -307,7 +298,23 @@ function handleSearch(event) {
         event.preventDefault();
     }
 }
+
+let preventCollapse = false;  // Flag to prevent collapse
+
+// Add a mousedown event listener to the suggestions box
+const suggestionsBox = document.getElementById('suggestionsBox');
+if (suggestionsBox) {
+    suggestionsBox.addEventListener('mousedown', () => {
+        preventCollapse = true;  // Set the flag when the user clicks inside the suggestions box
+    });
+}
+
+
 function collapseSearch() {
+    if (preventCollapse) {
+        preventCollapse = false;  // Reset the flag
+        return;  // Do not collapse the search if a suggestion is clicked
+    }
     const searchInput = document.getElementById('titleInput');
     const closeIcon = document.querySelector('.close-icon');
     searchInput.classList.remove('expanded');
@@ -340,3 +347,5 @@ function clearSuggestions() {
         console.error("Suggestions box element not found");
     }
 }
+
+

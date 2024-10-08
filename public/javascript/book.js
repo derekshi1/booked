@@ -27,7 +27,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 document.body.style.backgroundPosition = "center center"; // Center the image on both axes
                 document.body.style.backgroundRepeat = "no-repeat";
                 document.body.style.backgroundColor = '#2d342d'; // Dark green as fallbac
-                document.body.style.backgroundFilter = "blur(5px)";
                 
 
                
@@ -47,7 +46,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     <!-- Left section (fixed) -->
     <div class="w-1/4 fixed top-40 left-60 h-screen">
         <div class="relative"> 
-            <img src="${book.imageLinks ? book.imageLinks.thumbnail.replace('zoom=1', '') + '&zoom=1' : 'https://via.placeholder.com/128x192?text=No+Image'}" alt="${book.title}" class="book-card book-cover w-60 h-96 object-cover mb-8">
+            <img src="${book.imageLinks ? book.imageLinks.thumbnail.replace('zoom=1', '') + '&zoom=1' : 'https://via.placeholder.com/128x192?text=No+Image'}" alt="${book.title}" class="book-card card book-cover w-60 h-96 object-cover mb-8">
         </div>
 
         <!-- Button section: Preview and Add Buttons side by side -->
