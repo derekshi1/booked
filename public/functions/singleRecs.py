@@ -1,12 +1,9 @@
 import sys
 import json
-import requests
 from sentence_transformers import SentenceTransformer, util
 import random
-import time
 import asyncio
 import aiohttp
-import aiofiles
 from cachetools import TTLCache
 
 # Define the Google Books API URL

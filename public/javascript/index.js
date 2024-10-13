@@ -68,12 +68,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const updateRecommendationStatus = (clickData) => {
         const remainingRecs = clickLimit - clickData.count;
         if (remainingRecs > 0) {
+            generateButton.classList.remove('glow-effect'); // Remove the glow effect if it's still active
+            generateButton.disabled = false; // Disable the button if the limit has been reached
             countdownElement.textContent = `${remainingRecs} recommendation generations left`;
         } else {
             const timeUntilReset = limitResetTime - (now - clickData.lastReset);
             startGenerateCountdown(timeUntilReset);
             generateButton.disabled = true; // Disable the button if the limit has been reached
             generateButton.classList.remove('glow-button');
+            generateButton.classList.add('glow-effect'); // Add the steady glow effect
 
         }
     };
@@ -358,9 +361,10 @@ document.addEventListener('DOMContentLoaded', () => {
     
 
         generateButton.addEventListener('click', async () => {
-            if (!username) {
-                console.log('No username found in localStorage.');
-                return;
+            if (!generateButton.classList.contains('racing-glow')) {
+                generateButton.classList.add('racing-glow'); // Add the racing border animation
+                generateButton.textContent = 'Generating Recommendations...';
+
             }
     
             const now = Date.now();
@@ -387,7 +391,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             // Proceed with generating recommendations
             try {
-                showSparkles();
+                //showSparkles();
                 const response = await fetch(`/api/recommendations/${username}`);
                 const data = await response.json();
     
@@ -404,6 +408,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.error('Error fetching recommendations:', error);
             } finally {
                 hideSparkles();
+                generateButton.classList.remove('racing-glow'); // Remove the racing border animation
+                generateButton.classList.add('glow-button');
+                generateButton.textContent = 'Generate Recommendations'; // Reset the text
+
+
             }
         });
 }      else{

@@ -1001,6 +1001,9 @@ body, main {
 .glow-button {
     animation: pulsateGlow 1.8s infinite;
 }
+.glow-effect {
+    animation: glow 1.5s infinite alternate;
+}
 .glow-button:hover {
     animation: none; /* Stop pulsating */
     box-shadow: 0 0 20px 5px rgba(72, 187, 120, 0.7), 0 0 22px rgba(72, 187, 120, 0.5); /* Apply steady glow */
@@ -1011,4 +1014,30 @@ body, main {
     padding: 1rem;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
     max-width: 260px;
+}
+/* Keyframes for moving the background gradient */
+/* Keyframes for the racing box shadow */
+@keyframes racing-glow {
+    0% {
+        box-shadow: 0 0 5px 2px #e47575, 0 0 10px 4px #7dd37d, 0 0 15px 6px #6d6deb;
+    }
+    25% {
+        box-shadow: 0 0 5px 2px #7dd37d, 0 0 10px 4px #6d6deb, 0 0 15px 6px #eeee80;
+    }
+    50% {
+        box-shadow: 0 0 5px 2px #6d6deb, 0 0 10px 4px #eeee80, 0 0 15px 6px #f19ef1;
+    }
+    75% {
+        box-shadow: 0 0 5px 2px #eeee80, 0 0 10px 4px #f19ef1, 0 0 15px 6px #e47575;
+    }
+    100% {
+        box-shadow: 0 0 5px 2px #f19ef1, 0 0 10px 4px #e47575, 0 0 15px 6px #7dd37d;
+    }
+}
+
+
+/* Glowing effect class */
+.racing-glow {
+    animation: racing-glow 2s linear infinite;
+    
 }

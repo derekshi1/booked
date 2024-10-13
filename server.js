@@ -903,7 +903,7 @@ app.get('/api/reviews/books/:isbn', async (req, res) => {
     for (const library of userLibraries) {
       const book = library.books.find(book => book.isbn === isbn);
 
-      if (book) {
+      if (book && book.review) {
         // Always include the loggedInUsername's reviews, regardless of visibility
         if (library.username === loggedInUsername) {
           reviews.push({

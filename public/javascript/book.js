@@ -170,7 +170,22 @@ document.addEventListener('DOMContentLoaded', async () => {
         bookDetails.innerHTML = '<p>ISBN not provided.</p>';
     }
 });
+async function displayNoReviewMessage() {
+    const reviewContainer = document.getElementById('reviewsContainer'); // Assuming there's a container for reviews
 
+    // Clear any existing content in the review container
+    reviewContainer.innerHTML = '';
+
+    // Create a message element
+    const noReviewsMessage = document.createElement('div');
+    noReviewsMessage.classList.add('no-reviews-message', 'text-left', 'text-gray-500', 'p-4');
+    noReviewsMessage.innerHTML = `
+        <p>Be the first to review this book!</p>
+    `;
+
+    // Append the message to the review container
+    reviewContainer.appendChild(noReviewsMessage);
+}
 async function fetchRecommendations(isbn) {
     try {
         document.getElementById('loadingVisual').classList.remove('hidden');

@@ -372,6 +372,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     
     const renderAdditionalActivities = async (activities, containerElement, seeMoreLink) => {
+        // Sort activities by timestamp in descending order (most recent first)
+        activities.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    
         // Clear any previously added additional activities
         containerElement.querySelectorAll('.additional-activity').forEach(activityEl => activityEl.remove());
     
@@ -470,7 +473,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         </div>
                          <div class="flex justify-between items-end mt-2">
                             <p class="time-ago text-gray-600 text-xs">${formatTimeAgo(activity.timestamp)}</p>
-                        </div>
+                         </div>
                     `;
                 }
             }
@@ -479,14 +482,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             containerElement.appendChild(additionalActivityElement);
         });
     
-        const remainingActions = activities.length - 4;
-    
-        seeMoreLink.textContent = 'See less actions';
+        seeMoreLink.textContent = 'See less actions...';
     
         // Update event listener for "See less"
         seeMoreLink.removeEventListener('click', handleSeeMoreClick);
         seeMoreLink.addEventListener('click', handleSeeLessClick);
     };
+    
 
     
     function handleSeeLessClick(event) {
