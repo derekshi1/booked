@@ -12,7 +12,24 @@ const mongoUri = 'mongodb+srv://derekshi:Rsds0601@library.k27zbxq.mongodb.net/?r
 mongoose.connect(mongoUri, { useNewUrlParser: true, useUnifiedTopology: true })
   .then(() => console.log('MongoDB connected successfully'))
   .catch(err => console.error('MongoDB connection error:', err));
-
+  mongoose.connection.on('connected', () => {
+    console.log('MongoDB connected successfully');
+  });
+  
+  // Connection error
+  mongoose.connection.on('error', (err) => {
+    console.error('MongoDB connection error:', err);
+  });
+  
+  // Connection disconnected
+  mongoose.connection.on('disconnected', () => {
+    console.log('MongoDB disconnected');
+  });
+  
+  // Reconnected
+  mongoose.connection.on('reconnected', () => {
+    console.log('MongoDB reconnected');
+  });
 // Mongoose Schema and Model for Users
 const userSchema = new mongoose.Schema({
   username: { type: String, required: true, unique: true },
@@ -1219,21 +1236,59 @@ app.get('/api/friends-activities/:username', async (req, res) => {
               { visibility: 'private'}  // Private activities, but only for the owner
             ]          
           }).sort({ timestamp: -1 });  // Sort by most recent first 
-    
+
+          // Group activities by book title
+          const groupedActivities = activities.reduce((acc, activity) => {
+            const key = activity.bookTitle;  // Use book title as the grouping key
+
+            if (!acc[key]) {
+              acc[key] = [];
+            }
+
+            acc[key].push(activity);
+            return acc;
+          }, {});
+
           // Push the activities into the array and check if the user has read them
-          for (const activity of activities) {
+           for (const bookTitle in groupedActivities) {
+        const bookActivities = groupedActivities[bookTitle];
+
+        const addedActivity = bookActivities.find(activity => activity.action === 'added to library');
+        const reviewedActivity = bookActivities.find(activity => activity.action === 'reviewed');
+
+        if (addedActivity && reviewedActivity) {
+          // Merge activities: prioritize review details but include both actions
+          friendsActivities.push({
+            username: friend.username,
+            action: 'added to library and reviewed',
+            bookTitle: addedActivity.bookTitle,
+            isbn: addedActivity.isbn,
+            thumbnail: addedActivity.thumbnail,
+            review: reviewedActivity.review, // Include the review from the review action
+            rating: reviewedActivity.rating, // Include rating
+            timestamp: reviewedActivity.timestamp, // Use the timestamp of the review (most recent action)
+            visibility: reviewedActivity.visibility,
+            isRead: reviewedActivity.readBy.includes(user._id) // Check if the logged-in user has read this activity
+          });
+        } else {
+          // If there's no review or added separately, just push individual activities
+          bookActivities.forEach(activity => {
             friendsActivities.push({
               username: friend.username,
               action: activity.action,
               bookTitle: activity.bookTitle,
               isbn: activity.isbn,
               thumbnail: activity.thumbnail,
+              review: activity.review || null,  // Include the review if available
+              rating: activity.rating || null,  // Include rating if available
               timestamp: activity.timestamp,
               visibility: activity.visibility,
-              isRead: activity.readBy.includes(user._id)  // Check if the logged-in user has read this activity
+              isRead: activity.readBy.includes(user._id) // Check if the logged-in user has read this activity
             });
-          }
+          });
         }
+      }
+    }
     
     }
     
