@@ -52,6 +52,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const seconds = Math.floor((timeRemaining % (1000 * 60)) / 1000);
     
             countdownElement.textContent = `Next recommendations in ${hours}h ${minutes}m ${seconds}s`;
+            countdownElement.style.fontStyle = 'italic';
         };
     
         const generateCountdownInterval = setInterval(updateCountdown, 1000); // Declare generateCountdownInterval after updateCountdown
@@ -333,6 +334,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
     
             countdownElement.textContent = `New recommendations in ${hours}h ${minutes}m ${seconds}s`;
+            countdownElement.style.fontStyle = 'italic';
+
         };
     
         const countdownInterval = setInterval(updateCountdown, 1000); // Declare countdownInterval after updateCountdown
@@ -366,7 +369,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 generateButton.textContent = 'Generating Recommendations...';
 
             }
-    
+            generateButton.disabled = true;
             const now = Date.now();
             generateButton.classList.remove('glow-button');
 

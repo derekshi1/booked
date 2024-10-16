@@ -134,7 +134,7 @@ body {
 
 .search-input.expanded {
     display: block;
-    width: 200px;
+    width: 20vw; /* Expand width to 60% of the viewport when active */
 }
 
 .close-icon {
@@ -758,7 +758,7 @@ body, main {
 }
 
 .activity.unread {
-    animation: highlightUnread 1s ease-in-out;
+    animation: highlightUnread 3s ease-in-out; /* Increased duration to 3 seconds for a slower fade */
 }
 /* Hover effect for the activity container */
 .activity:hover {
@@ -1040,4 +1040,13 @@ body, main {
 .racing-glow {
     animation: racing-glow 2s linear infinite;
     
+}
+
+#logoAndHome {
+    display: flex;
+    justify-content: space-between; /* This will space the items evenly */
+    align-items: left; /* Aligns the items vertically in the center */
+    width: 60%; /* Ensures the container takes up the full viewport width */
+    padding: 0 20px; /* Optional: Adds some padding on the sides */
+    box-sizing: border-box; /* Ensures padding is included in the width */
 }

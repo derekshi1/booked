@@ -12,9 +12,6 @@ const mongoUri = 'mongodb+srv://derekshi:Rsds0601@library.k27zbxq.mongodb.net/?r
 mongoose.connect(mongoUri, { useNewUrlParser: true, useUnifiedTopology: true })
   .then(() => console.log('MongoDB connected successfully'))
   .catch(err => console.error('MongoDB connection error:', err));
-  mongoose.connection.on('connected', () => {
-    console.log('MongoDB connected successfully');
-  });
   
   // Connection error
   mongoose.connection.on('error', (err) => {
@@ -29,7 +26,7 @@ mongoose.connect(mongoUri, { useNewUrlParser: true, useUnifiedTopology: true })
   // Reconnected
   mongoose.connection.on('reconnected', () => {
     console.log('MongoDB reconnected');
-  });
+  })
 // Mongoose Schema and Model for Users
 const userSchema = new mongoose.Schema({
   username: { type: String, required: true, unique: true },
@@ -597,7 +594,7 @@ app.post('/api/library/top5/remove', async (req, res) => {
 
 // Save review for a book in user's library
 app.post('/api/library/review', async (req, res) => {
-  const { username, isbn, review, rating, visibility = 'public' } = req.body; // Default visibility to 'public' if not provided
+  const { username, isbn, review, rating, visibility = 'public' } = req.body;
 
   try {
     const userLibrary = await UserLibrary.findOne({ username });
@@ -618,20 +615,45 @@ app.post('/api/library/review', async (req, res) => {
 
     await userLibrary.save();
 
-    // Log review as an activity
+    // Log review as an activity, but first check for duplicates
     const user = await User.findOne({ username });
     if (user) {
-      const newActivity = new Activity({
+      // Find all "reviewed" activities for this user and book
+      const reviewActivities = await Activity.find({
         userId: user._id,
         action: 'reviewed',
-        bookTitle: book.title,
         isbn: book.isbn,
-        thumbnail: book.thumbnail,
-        timestamp: new Date(),
-        visibility, // Save visibility for the review in the activity schema
-        isRead: false
-      });
-      await newActivity.save();
+      }).sort({ timestamp: -1 }); // Sort by timestamp (newest first)
+
+      if (reviewActivities.length > 0) {
+        // Keep the most recent activity and remove the older duplicates
+        const [mostRecentActivity, ...duplicateActivities] = reviewActivities;
+
+        if (duplicateActivities.length > 0) {
+          await Activity.deleteMany({ _id: { $in: duplicateActivities.map(activity => activity._id) } });
+          console.log(`Removed ${duplicateActivities.length} duplicate activities for user ${username} and book ${isbn}`);
+        }
+
+        // Update the most recent activity with the new review details
+        mostRecentActivity.timestamp = new Date(); // Update timestamp to the latest review time
+        mostRecentActivity.review = review; // Ensure review text is updated
+        mostRecentActivity.rating = rating; // Update rating if applicable
+        mostRecentActivity.visibility = visibility; // Update visibility if changed
+        await mostRecentActivity.save();
+      } else {
+        // If no existing activity, create a new one
+        const newActivity = new Activity({
+          userId: user._id,
+          action: 'reviewed',
+          bookTitle: book.title,
+          isbn: book.isbn,
+          thumbnail: book.thumbnail,
+          timestamp: new Date(),
+          visibility,
+          isRead: false,
+        });
+        await newActivity.save();
+      }
     }
 
     res.status(200).json({ success: true, message: 'Review saved successfully' });
@@ -640,6 +662,7 @@ app.post('/api/library/review', async (req, res) => {
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });
+
 
 // Fetch a specific book's review and rating from user's library
 app.get('/api/library/:username/books', async (req, res) => {
