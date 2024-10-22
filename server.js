@@ -17,7 +17,7 @@ mongoose.connect(mongoUri, { useNewUrlParser: true, useUnifiedTopology: true })
   mongoose.connection.on('error', (err) => {
     console.error('MongoDB connection error:', err);
   });
-  
+
   // Connection disconnected
   mongoose.connection.on('disconnected', () => {
     console.log('MongoDB disconnected');
