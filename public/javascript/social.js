@@ -247,7 +247,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (mostRecentActivity.action.includes("became friends with")) {
                 // Activity related to friendship
                 activityContent = `
-                    <div class="flex justify-between items-center">
+                <div class="flex justify-between items-center ${isUnread ? 'unread' : ''}">
                         <div>
                             <a href="../html/profile.html?username=${mostRecentActivity.username}" class="text-blue-500 hover:underline hover:font-bold">
                                 <strong>${mostRecentActivity.username}</strong>
@@ -390,7 +390,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (activity.action.includes("became friends with")) {
                 // Activity related to friendship
                 activityContent = `
-                    <div class="flex justify-between items-center">
+                        <div class="activity flex justify-between items-center ${activity.isRead ? '' : 'unread'}">
                     <div>
                         <a href="../html/profile.html?username=${activity.username}" class="text-blue-500 hover:underline hover:font-bold">
                             <strong>${activity.username}</strong>

@@ -186,12 +186,7 @@ saveReviewButton.addEventListener('click', async () => {
         });
 
         if (response.ok) {
-            document.body.appendChild(successMessage);
-
-            // Automatically remove the message after 3 seconds
-            setTimeout(() => {
-                successMessage.remove();
-            }, 3000); // 3000 ms = 3 seconds
+ 
 
             await fetchAndDisplayBooks('none', currentPage);  // Fetch the books for the current page
         } else {

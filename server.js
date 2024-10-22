@@ -8,25 +8,18 @@ const port = 8080;
 
 
 // MongoDB Connection
-const mongoUri = 'mongodb+srv://derekshi:Rsds0601@library.k27zbxq.mongodb.net/?retryWrites=true&w=majority&appName=library';
-mongoose.connect(mongoUri, { useNewUrlParser: true, useUnifiedTopology: true })
-  .then(() => console.log('MongoDB connected successfully'))
-  .catch(err => console.error('MongoDB connection error:', err));
-  
-  // Connection error
-  mongoose.connection.on('error', (err) => {
-    console.error('MongoDB connection error:', err);
-  });
+require('dotenv').config();
 
-  // Connection disconnected
-  mongoose.connection.on('disconnected', () => {
-    console.log('MongoDB disconnected');
-  });
-  
-  // Reconnected
-  mongoose.connection.on('reconnected', () => {
-    console.log('MongoDB reconnected');
-  })
+const mongoUri = process.env.MONGODB_URI;
+
+mongoose.connect(mongoUri, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+}).then(() => {
+    console.log('MongoDB connected successfully');
+}).catch(err => {
+    console.error('MongoDB connection error:', err);
+});
 // Mongoose Schema and Model for Users
 const userSchema = new mongoose.Schema({
   username: { type: String, required: true, unique: true },
@@ -394,6 +387,7 @@ app.get('/api/library/:username', async (req, res) => {
       userLibrary = new UserLibrary({ username, books: [], readList: [], top5: [] });
       await userLibrary.save();
     }
+    console.log('User Library Books:', userLibrary.books);
 
     // Fetch the paginated books from the userLibrary
     const paginatedBooks = userLibrary.books.slice(offset, offset + limit);

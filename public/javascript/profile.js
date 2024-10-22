@@ -119,6 +119,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (data.success) {
                 document.getElementById('bookCount').textContent = `${data.totalBooks}`;
                 document.getElementById('pageCount').textContent = `${data.totalPages}`;
+                console.log('Library data:', data);
+
             } else {
                 console.error('Failed to fetch library details:', data.message);
             }
