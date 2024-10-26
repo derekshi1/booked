@@ -21,17 +21,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             // Add a listener to detect when the user clicks away from the social tab
             document.addEventListener('click', async (event) => {
-                // Stop propagation to avoid interference from other click handlers
                 event.stopPropagation();
     
                 // Ensure the user clicked outside the social tab and that it hasn't been triggered already
                 if (!socialLink.contains(event.target) && !socialLinkClickedAway) {
                     console.log('User clicked away from the social tab. Marking activities as read.');
     
-                    // Mark activities as read
                     await markAllActivitiesAsRead();
-    
-                    // Update the notification badge
                     await updateSocialTabNotification();
     
                     // Remove red outline from unread activities (example of red outline removal)
@@ -48,7 +44,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             });
     
-            // Stop the click on the social tab itself from propagating
             socialLink.addEventListener('click', (event) => {
                 event.stopPropagation();  // Prevents the click event on socialLink from bubbling up
             });
@@ -247,7 +242,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (mostRecentActivity.action.includes("became friends with")) {
                 // Activity related to friendship
                 activityContent = `
-                <div class="flex justify-between items-center ${isUnread ? 'unread' : ''}">
+                <div class="flex justify-between items-center ${mostRecentActivity.isRead ? '' : 'unread'}">
                         <div>
                             <a href="../html/profile.html?username=${mostRecentActivity.username}" class="text-blue-500 hover:underline hover:font-bold">
                                 <strong>${mostRecentActivity.username}</strong>
@@ -412,7 +407,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (reviewVisibility === 'public') {
                     canViewReview = true; // Public reviews can be seen by everyone
                 } else if (reviewVisibility === 'friends') {
-                    // Check if the logged-in user is a friend
                     const friendshipStatus = await checkFriendshipStatus(localStorage.getItem('username'), activity.username);
                     if (friendshipStatus === 'friend') {
                         canViewReview = true;

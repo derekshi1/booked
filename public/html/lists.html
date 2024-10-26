@@ -48,5 +48,43 @@
         </div>
         <div id="aiSuggestionsBox" class="mt-4 text-white grid-container"></div>
     </main>
+    <button id="createListButton" class="btn-primary text-xl text-white">Create New List</button>
+<!-- Create List Modal -->
+<div id="createListModal" class="list-modal hidden">
+    <div class="modal-content">
+        <h2 class= "text-2xl">New List</h2>
+        <div>
+            <label for="listNameInput">Name</label>
+            <input type="text" id="listNameInput" placeholder="Enter list name" />
+        </div>
+        <div>
+            <label for="tagsInput">Tags</label>
+            <input type="text" id="tagsInput" placeholder="eg. top 10" />
+        </div>
+        <div>
+            <label for="visibilitySelect">Who can view?</label>
+            <select id="visibilitySelect">
+                <option value="public">Public list</option>
+                <option value="private">Private list</option>
+                <option value="friends">Friends only</option>
+            </select>
+        </div>
+        <div>
+            <label for="descriptionInput">Description</label>
+            <textarea id="descriptionInput" placeholder="Description"></textarea>
+        </div>
+        <div>
+            <label for="titleInput">Add a Book</label>
+            <input type="text" id="titleInput" placeholder="Enter name of book..." onkeydown="handleSearch(event)" />
+            <div id="listSuggestionsBox" class="suggestions-box hidden"></div>
+        </div>
+        <div class="modal-actions">
+            <button id="cancelButton" class="btn-secondary">Cancel</button>
+            <button id="confirmCreateButton" class="btn-primary">Save</button>
+        </div>
+    </div>
+</div>
+
+    
 </body>
 </html>
