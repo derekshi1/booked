@@ -222,9 +222,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             return acc;
         }, {});
 
-
-        const f = 5;
-
     
         activitiesFeed.innerHTML = '';
         const limit = 4; // Limit the number of activities shown
