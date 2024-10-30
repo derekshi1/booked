@@ -28,3 +28,7 @@ document.getElementById('registerForm').addEventListener('submit', async (e) => 
         messageEl.textContent = error;
     }
 });
+
+
+
+
