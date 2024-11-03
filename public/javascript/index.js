@@ -10,7 +10,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const loadingSpinner = document.getElementById('loadingSpinner'); // Ensure this element exists
     const sparkleContainer = document.getElementById('sparkleContainer');
     const bestSellersContainer = document.getElementById('bestSellersContainer');
-
+    
+    const comRecommendationsContainer = document.getElementById('comRecommendationsContainer');
+    
     const oppRecommendationsContainer = document.getElementById('oppRecommendationsContainer');
     const scrollLeft_OppRec = document.getElementById('scrollLeft_OppRec');
     const scrollRight_OppRec = document.getElementById('scrollRight_OppRec');
@@ -213,6 +215,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
     
+
+
     const renderOppositeRecommendations = (recommendations) => {
         oppRecommendationsContainer.innerHTML = '';
         recommendations.forEach(recommendation => {
@@ -536,5 +540,112 @@ const renderNYTimesBestSellers = (books) => {
         bestSellersContainer.appendChild(bookElement);
     });
 };
+
+
+
+
+const renderComRecs = (recommendation) => {
+    comRecommendationsContainer.innerHTML = '';
+    recommendation.forEach(book => {
+        const bookElement = document.createElement('div');
+        bookElement.classList.add('recommendation-card', 'p-4', 'bg-gray-100', 'rounded', 'shadow', 'book-card');
+        bookElement.innerHTML = `
+            <div class="relative group">
+                <a href="../html/book.html?isbn=${book.isbn}" class="block relative overflow-hidden rounded-lg shadow-lg hover:shadow-2xl transition duration-300 ease-in-out group">
+                    <img src="${book.thumbnail}" alt="${book.title}" class="w-30 h-30 object-cover">
+                    <div class="absolute bottom-0 left-0 w-full p-4 bg-black bg-opacity-60 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-in-out">
+                        <h2 class="text-lg font-bold">${book.title}</h2>
+                        <p class="text-gray-300">by ${book.authors}</p>
+                    </div>
+                </a>
+            </div>
+        `;
+        comRecommendationsContainer.appendChild(bookElement);
+    });
+};
+
+
+
+
+
+if (username) {
+    const savedRecommendationsKey = `${username}_recommendations`;
+    const savedRecommendations = localStorage.getItem(savedRecommendationsKey);
+    if (savedRecommendations) {
+        const parsedRecommendations = JSON.parse(savedRecommendations);
+        if (parsedRecommendations && parsedRecommendations.length > 0) {
+            renderComRecs(parsedRecommendations);
+        }
+        else {
+            renderPlaceholderRecommendations();
+        }
+    } else {
+        renderPlaceholderRecommendations();
+    }
+
+
+    generateButton.addEventListener('click', async () => {
+        if (!generateButton.classList.contains('racing-glow')) {
+            generateButton.classList.add('racing-glow'); // Add the racing border animation
+            generateButton.textContent = 'Generating Recommendations...';
+
+        }
+        generateButton.disabled = true;
+        const now = Date.now();
+        generateButton.classList.remove('glow-button');
+
+        if (now - clickData.lastReset >= limitResetTime) {
+            clickData.count = 0;
+            clickData.lastReset = now;
+            updateClickData(clickData);
+        }
+
+        if (!bypassLimit) {
+            if (clickData.count >= clickLimit) {
+                const timeUntilReset = limitResetTime - (now - clickData.lastReset);
+                startGenerateCountdown(timeUntilReset);
+                generateButton.classList.remove('glow-button');
+
+                console.log('Click limit reached. Please wait until the countdown ends.');
+                return;
+            }
+            clickData.count += 1;
+            updateClickData(clickData);
+            updateRecommendationStatus(clickData);
+        }
+        // Proceed with generating recommendations
+        try {
+            //showSparkles();
+            const response = await fetch(`/api/recommendations/${username}`);
+            const data = await response.json();
+
+            console.log('Recommendations response:', data);
+
+            if (data.success && data.recommendations.length > 0) {
+                localStorage.setItem(`${username}_recommendations`, JSON.stringify(data.recommendations));
+                renderComRecs(data.recommendations);
+            } else {
+                console.error('No comedy recommendations found or failed to fetch comedy recommendations:', data.message);
+            }
+        } catch (error) {
+            renderPlaceholderRecommendations();
+            console.error('Error fetching recommendations:', error);
+        } finally {
+            hideSparkles();
+            generateButton.classList.remove('racing-glow'); // Remove the racing border animation
+            generateButton.classList.add('glow-button');
+            generateButton.textContent = 'Generate Recommendations'; // Reset the text
+
+
+        }
+    });
+}      else{
+renderPlaceholderRecommendations();
+}
+
+
+
+
+
 
 });
