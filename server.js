@@ -486,9 +486,8 @@ app.get('/api/recommendations/:username', async (req, res) => {
 
       // Spawn Python process with both library and username as arguments
       const pythonProcess = spawn(pythonCommand, [
-          'public/functions/NetflixRecommendations.py', 
-          JSON.stringify(library), 
-          JSON.stringify(username)
+          'public/functions/recommendations.py', 
+          JSON.stringify(library)
       ]);
 
       let recommendations = '';
