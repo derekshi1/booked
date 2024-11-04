@@ -1,7 +1,7 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const { spawn } = require('child_process');
-
+const pythonCommand = process.platform === 'win32' ? 'python' : 'python3';
 
 const app = express();
 const port = 8080;
@@ -485,7 +485,7 @@ app.get('/api/recommendations/:username', async (req, res) => {
       }
 
       // Spawn Python process with both library and username as arguments
-      const pythonProcess = spawn('python3', [
+      const pythonProcess = spawn(pythonCommand, [
           'public/functions/NetflixRecommendations.py', 
           JSON.stringify(library), 
           JSON.stringify(username)
@@ -531,7 +531,7 @@ app.get('/api/book-recommendations', async (req, res) => {
   }
 
   try {
-    const pythonProcess = spawn('python3', ['public/functions/singleRecs.py', isbn]);
+    const pythonProcess = spawn(pythonCommand, ['public/functions/singleRecs.py', isbn]);
 
     let recommendations = '';
     pythonProcess.stdout.on('data', (data) => {
@@ -1052,7 +1052,7 @@ app.post('/api/generate-lists', (req, res) => {
     return res.status(400).json({ error: 'No query provided' });
   }
 
-  const pythonProcess = spawn('python3', ['public/functions/listgeneration.py', query]);
+  const pythonProcess = spawn(pythonCommand, ['public/functions/listgeneration.py', query]);
 
   let list = '';
   pythonProcess.stdout.on('data', (data) => {
@@ -1094,7 +1094,7 @@ app.get('/api/opposite-recommendations/:username', async (req, res) => {
       return res.status(200).json({ success: true, recommendations: [] });
     }
 
-    const pythonProcess = spawn('python3', ['public/functions/oppositerecommendations.py', JSON.stringify(library)]);
+    const pythonProcess = spawn(pythonCommand, ['public/functions/oppositerecommendations.py', JSON.stringify(library)]);
 
     let recommendations = '';
     pythonProcess.stdout.on('data', (data) => {
