@@ -6,8 +6,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const clearSearchButton = document.getElementById('clearSearchButton');
     const username = localStorage.getItem('username');
 
-
-
     await updateSocialTabNotification();
     const socialTabClicked = sessionStorage.getItem('socialTabClicked') === 'true';  // Check if tab was clicked
 
@@ -77,7 +75,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             console.error('Error fetching unread notifications:', error);
         }
     }
-    
+
     // Function to mark all activities as read
     async function markAllActivitiesAsRead() {
         try {
@@ -97,10 +95,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-
-    
-    
-    
     
     
     const formatTimeAgo = (timestamp) => {
