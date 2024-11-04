@@ -1,6 +1,16 @@
 document.addEventListener('DOMContentLoaded', () => {
     console.log('DOM fully loaded and parsed');
     const searchInput = document.getElementById('aiSearchInput');
+    const createListModal = document.getElementById('createListModal');
+    const step1 = document.getElementById('step1');
+    const step2 = document.getElementById('step2');
+    const username = localStorage.getItem('username');
+    // Buttons
+    const createListButton = document.getElementById('createListButton');
+    const cancelButton = document.getElementById('cancelButton');
+    const nextButton = document.getElementById('nextButton');
+    const backButton = document.getElementById('backButton');
+    const createListFinalButton = document.getElementById('createListFinalButton');
 
     if (searchInput) {
         console.log('Search input found');
@@ -13,15 +23,38 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
         console.error('Search input not found');
     }
-    document.getElementById('createListButton').addEventListener('click', () => {
-        document.getElementById('createListModal').classList.remove('hidden');
+    createListButton.addEventListener('click', () => {
+        createListModal.classList.remove('hidden');
+        step1.classList.remove('hidden');
+        step2.classList.add('hidden');
     });
-    
-    document.getElementById('cancelButton').addEventListener('click', () => {
-        document.getElementById('createListModal').classList.add('hidden');
+    cancelButton.addEventListener('click', () => {
+        createListModal.classList.add('hidden');
     });
-    
-    // Attach input event listener to the title input field
+    nextButton.addEventListener('click', () => {
+        const listName = document.getElementById('listName').value;
+        const tags = document.getElementById('tags').value;
+        const visibility = document.getElementById('visibility').value;
+        const description = document.getElementById('description').value;
+
+        if (!listName || !tags || !visibility || !description) {
+            alert("Please fill out all fields.");
+            return;
+        }
+
+        // Store these values if you need to send them later
+        localStorage.setItem("listName", listName);
+        localStorage.setItem("tags", tags);
+        localStorage.setItem("visibility", visibility);
+        localStorage.setItem("description", description);
+
+        step1.classList.add('hidden');
+        step2.classList.remove('hidden');
+    });
+    backButton.addEventListener('click', () => {
+        step2.classList.add('hidden');
+        step1.classList.remove('hidden');
+    });
 document.getElementById('titleInput').addEventListener('input', handleInput);
 
 async function handleInput(event) {
@@ -48,32 +81,22 @@ function displaySuggestions(suggestions) {
                 suggestionItem.classList.add('suggestion-item', 'flex', 'items-center', 'cursor-pointer', 'hover:bg-gray-200', 'p-2');
                 suggestionItem.innerHTML = `
                     <div class="flex items-center suggestion-link" data-isbn="${suggestion.isbn}">
-                            <a href="../html/book.html?isbn=${suggestion.isbn}" class="block relative overflow-hidden rounded-lg shadow-lg hover:shadow-2xl transition duration-300 ease-in-out group">
-                                <img src="${suggestion.thumbnail}" alt="${suggestion.title}" class="w-8 h-12 mr-2 rounded">
-                                <span>${suggestion.title} by ${suggestion.authors}</span>
-                            </a>
-                        </div>
+                        <img src="${suggestion.thumbnail}" alt="${suggestion.title}" class="w-8 h-12 mr-2 rounded">
+                        <span>${suggestion.title} by ${suggestion.authors}</span>
+                    </div>
+
                 `;
+                suggestionsBox.appendChild(suggestionItem);
+
                 suggestionItem.addEventListener('click', (e) => {
                     preventCollapse = true;
-                    e.stopPropagation(); // Prevents any parent handlers from interfering
                     console.log('Suggestion clicked:', suggestion.title);
-                    window.location.href = `../html/book.html?isbn=${suggestion.isbn}`;
+                    addBookToList(suggestion); 
+                    clearSuggestions();
                 });             
-                suggestionsBox.appendChild(suggestionItem);
             });
 
-            const showAllLink = document.createElement('div');
-            showAllLink.classList.add('suggestion-item', 'flex', 'items-center', 'justify-center', 'cursor-pointer', 'hover:bg-gray-200', 'p-2');
-            showAllLink.innerHTML = `<span>Show all results for "${document.getElementById('titleInput').value}"</span>`;
-            showAllLink.addEventListener('click', (e) => {
-                e.stopPropagation();
-                e.preventDefault();
-                console.log('Show all results clicked'); // Debug log
-                searchBookByTitle();
-                clearSuggestions(); // Hide the suggestions box when 'Show all results' is clicked
-            });
-            suggestionsBox.appendChild(showAllLink);
+
         } else {
             clearSuggestions();
         }
@@ -82,13 +105,33 @@ function displaySuggestions(suggestions) {
     }
 }
 
+function addBookToList(book) {
+    const selectedBooksContainer = document.getElementById('selectedBooksContainer');
+    const selectedBooksHeader = document.getElementById('selectedBooksHeader');
+    const bookItem = document.createElement('div');
+
+    selectedBooksContainer.classList.remove('hidden');
+    selectedBooksHeader.classList.remove('hidden');
+    bookItem.classList.add('flex', 'items-center', 'p-2', 'bg-white', 'shadow', 'rounded', 'mb-2');
+
+    bookItem.innerHTML = `
+        <img src="${book.thumbnail}" alt="${book.title}" class="w-10 h-14 mr-3 rounded">
+        <div>
+            <p class="font-semibold">${book.title}</p>
+            <p class="text-sm text-gray-600">by ${book.authors}</p>
+        </div>
+    `;
+
+    // Append the book item to the selected books container
+    selectedBooksContainer.appendChild(bookItem);
+}
+
 function clearSuggestions() {
-    const suggestionsBox = document.getElementById('suggestionsBox');
+    const suggestionsBox = document.getElementById('listSuggestionsBox');
     suggestionsBox.innerHTML = ''; // Clear suggestions
     suggestionsBox.style.display = 'none'; // Hide suggestions box
 }
 
-// Placeholder for the fetchSuggestions function that retrieves book suggestions based on the query
 async function fetchSuggestions(query) {
         const apiKey = 'AIzaSyCFDaqjpgA8K_NqqCw93xorS3zumc_52u8'
         const response = await fetch(`https://www.googleapis.com/books/v1/volumes?q=intitle:${query}&key=${apiKey}`);
@@ -102,12 +145,43 @@ async function fetchSuggestions(query) {
 
 }
 
-function addToList(book) {
-    // Logic to add the book to the user's list (e.g., save it in an array or display in UI)
-    console.log('Added to list:', book.title);
-    // Update the display area for added books here if necessary
-}
-    
+createListFinalButton.addEventListener('click', async () => {
+    const listName = localStorage.getItem("listName");
+    const tags = JSON.parse(localStorage.getItem("tags"));
+    const visibility = localStorage.getItem("visibility");
+    const description = localStorage.getItem("description");
+
+    const listData = {
+        listName,
+        tags,
+        visibility,
+        description,
+        books: selectedBooks
+    };
+
+    try {
+        const response = await fetch(`/api/users/${username}/lists`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(listData)
+        });
+
+        const data = await response.json();
+        if (data.success) {
+            alert("List created successfully!");
+            document.getElementById('createListModal').classList.add('hidden');
+        } else {
+            console.error('Error in response:', data.message);
+            alert("Failed to create list. Please try again.");
+        }
+    } catch (error) {
+        console.error('Error creating list:', error);
+        alert("An error occurred while creating the list. Please try again.");
+    }
+});
+
     
 });
 
