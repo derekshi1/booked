@@ -15,6 +15,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const socialLink = document.getElementById('socialTab');  // Get the social tab element
 
+    const friendsButton = document.getElementById("friendsSection");
+
+    // Add a click event listener to the button
+    friendsButton.addEventListener("click", function() {
+        // Redirect to friends.html with the username as a query parameter
+        window.location.href = `friends.html?username=${encodeURIComponent(username)}`;
+    });
+
     if (window.location.pathname.includes('social.html')) {
         if (socialTabClicked) {
             console.log('Social tab was clicked from another page, waiting for user to click away.');
