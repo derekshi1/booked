@@ -2,7 +2,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const urlParams = new URLSearchParams(window.location.search);
     const username = urlParams.get('username');
     const friendsTitle = document.getElementById('friendsTitle');
-    friendsTitle.innerHTML = `<em>${username}</em>  friends!`;
+    friendsTitle.innerHTML = `Friends`;
     const friendsListContainer = document.getElementById('friendsListContainer');
 
     try {
@@ -25,7 +25,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 // Build the friend card with the format you provided
                 const friendCard = document.createElement('div');
                 friendCard.classList.add('bg-gray-800', 'p-4', 'rounded-lg', 'shadow-md', 'flex', 'justify-between', 'items-center', 'mb-2');
-                friendCard.style.width = '800px'; // Set a specific width
+                friendCard.style.width = '600px'; // Set a specific width
                 friendCard.style.height = '100px'; // Set a specific height
 
                 friendCard.innerHTML = `
