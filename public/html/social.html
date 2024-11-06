@@ -36,9 +36,21 @@
 
             <!-- Search bar in subheader -->
             <div class="flex items-center">
-                <input type="text" id="searchFriendInput" placeholder="Search for friends by username" class="w-full p-2 rounded-l mb-2">
                 <button id="clearSearchButton" class="p-2 bg-red-500 text-white rounded-l mb-2" style= "display: none;">&times;</button>
-                <button id="searchFriendButton" class="p-2 bg-green-900 text-white rounded-r mb-2">Search</button>
+<!-- Search bar in subheader -->
+                <div class="flex items-center relative">
+                    <!-- Search Icon on the left -->
+                    <img src="https://cdn-icons-png.flaticon.com/512/54/54481.png" alt="Search" class="absolute left-3 w-5 h-5" id="expandSearchIcon">
+
+                    <!-- Search Input Field -->
+                    <input type="text" id="searchFriendInput" placeholder="Search for friends by username" 
+                        class="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-green-700">
+
+                    <!-- Close Icon on the right -->
+                    <button id="clearSearchButton" class="absolute right-3 p-1 bg-red-500 text-white rounded-full hidden">
+                        &times;
+                    </button>
+                </div>
             </div>
         </div>
     </div>

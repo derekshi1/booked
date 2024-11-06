@@ -5,7 +5,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     const activitiesFeed = document.getElementById('activitiesFeed');
     const clearSearchButton = document.getElementById('clearSearchButton');
     const username = localStorage.getItem('username');
+    const searchInput = document.getElementById('searchFriendInput');
+    const clearButton = document.getElementById('clearSearchButton');
 
+    searchInput.addEventListener('input', () => {
+        clearButton.style.display = searchInput.value ? 'block' : 'none';
+    });
+
+    clearButton.addEventListener('click', () => {
+        searchInput.value = '';
+        clearButton.style.display = 'none';
+    });
     await updateSocialTabNotification();
     const socialTabClicked = sessionStorage.getItem('socialTabClicked') === 'true';  // Check if tab was clicked
 
@@ -656,7 +666,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             friendRequestsContainer.innerHTML = '<p class="text-gray-300 text-center">No friend requests :(</p>';
             return;
         }
-    
+        const titleElement = document.createElement('h2');
+        titleElement.classList.add('text-2xl', 'text-white', 'font-bold', 'mb-4');
+        titleElement.textContent = 'Your Friend Requests';
+        friendRequestsContainer.appendChild(titleElement)
         requests.forEach(request => {
             const requestElement = document.createElement('div');
             requestElement.classList.add('request', 'p-4', 'bg-gray-100', 'rounded', 'shadow', 'mb-2');
@@ -707,7 +720,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     };
     
-    searchFriendButton.addEventListener('click', searchFriends);
 
     // Initial fetch of friends' activities and friend requests
     fetchActivities();
