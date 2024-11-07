@@ -194,12 +194,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     } else {
         window.location.href = '../html/login.html';
     }
-});
-
-document.addEventListener('DOMContentLoaded', async () => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const profileUsername = urlParams.get('username'); // Get the username from the URL
-    const loggedInUsername = localStorage.getItem('username'); // Get the logged-in username
 
     // New function to fetch and display genres
     async function pieChart() {
@@ -251,6 +245,75 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Call the pieChart function
     pieChart();
+
+
+    async function fetchUserReviews(username) {
+        try {
+          const response = await fetch(`/api/library/review?username=${username}`);
+          if (!response.ok) {
+            throw new Error('Failed to fetch user reviews');
+          }
+          const data = await response.json();
+          console.log(data.reviews)
+          return data.reviews || []; // Assuming the API returns an array of reviews
+        } catch (error) {
+          console.error('Error fetching reviews:', error);
+          return [];
+        }
+      }
+  
+      // Function to prepare histogram data
+      function prepareHistogramData(reviews) {
+        // Initialize bins for ranges: 0-19, 20-39, 40-59, 60-79, 80-100
+        const bins = [0, 0, 0, 0, 0];
+      
+        // Count the occurrences of each rating and place them in the appropriate bin
+        reviews.forEach(review => {
+          const rating = review.rating;
+          if (rating >= 0 && rating < 20) {
+            bins[0]++;
+          } else if (rating >= 20 && rating < 40) {
+            bins[1]++;
+          } else if (rating >= 40 && rating < 60) {
+            bins[2]++;
+          } else if (rating >= 60 && rating < 80) {
+            bins[3]++;
+          } else if (rating >= 80 && rating <= 100) {
+            bins[4]++;
+          }
+        });
+      
+        return bins;
+      }
+      
+      // Function to render the histogram using Chart.js
+      function renderHistogram(bins) {
+        const ctx = document.getElementById('ratingsHistogram').getContext('2d');
+        new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: ['0-19', '20-39', '40-59', '60-79', '80-100'],
+            datasets: [{
+              label: 'Number of Reviews',
+              data: bins,
+              backgroundColor: 'rgba(75, 192, 192, 0.6)',
+              borderColor: 'rgba(75, 192, 192, 1)',
+              borderWidth: 1
+            }]
+          },
+          options: {
+            scales: {
+              y: {
+                beginAtZero: true
+              }
+            }
+          }
+        });
+      }
+      
+      const reviews = await fetchUserReviews(username);
+      const bins = prepareHistogramData(reviews);
+      renderHistogram(bins);
 });
 
 

@@ -58,11 +58,20 @@
                 </div>
             </div>
             
-            <!-- Stats Placeholder on the Right -->
-            <div class="stats-placeholder bg-gray-800 p-6 rounded-lg shadow-md flex-grow h-96 flex items-center justify-center text-white">
-                <!-- Future Stats Section -->
-                <h2 class="text-2xl font-bold text-white mb-4 mr-24">Book Genres Summary</h2>
-                <canvas id="categoryChart" class="border border-gray-300 rounded-lg w-full h-full max-w-md" width="400" height="400"></canvas>
+            <div class="stats-placeholder bg-gray-800 p-6 rounded-lg shadow-md flex-grow h-96 flex flex-col items-center justify-center text-white">
+                <div class="flex justify-between w-full h-full">
+                    <!-- Book Genres Summary (Pie Chart) -->
+                    <div class="w-1/2 pr-4">
+                        <h2 class="text-2xl font-bold text-white mb-4">Book Genres Summary</h2>
+                        <canvas id="categoryChart" class="border border-gray-300 rounded-lg w-full h-full max-w-md"></canvas>
+                    </div>
+
+                    <!-- Histogram for Review Ratings -->
+                    <div class="w-1/2 pl-4">
+                        <h2 class="text-2xl font-bold text-white mb-4">Review Ratings Histogram</h2>
+                        <canvas id="ratingsHistogram" class="border border-gray-300 rounded-lg w-full h-full max-w-md"></canvas>
+                    </div>
+                </div>
             </div>
         </div>
         
