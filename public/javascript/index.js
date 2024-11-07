@@ -30,7 +30,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const clickData = getClickData();
     const countdownElement = document.getElementById('countdownTimer_rec'); // Moved here to ensure it's available in all functions
     const urlParams = new URLSearchParams(window.location.search);
-    const bypassLimit = urlParams.get('bypassLimit') === 'true';
+    const bypassLimit = urlParams.get('bypassLimit') === 'True';
     
 
     const startGenerateCountdown = (timeLeft) => {

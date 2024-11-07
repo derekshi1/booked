@@ -389,6 +389,19 @@ app.get('/api/library/:username', async (req, res) => {
     }
     console.log('User Library Books:', userLibrary.books);
 
+    //Category Counts
+    const categoryCounts = userLibrary.books.reduce((acc, book) => {
+      acc[book.categories] = (acc[book.categories] || 0) + 1;
+      return acc;
+    }, {});
+    
+    if (categoryCounts.hasOwnProperty("")) {
+      categoryCounts["other"] = (categoryCounts["Other"] || 0) + categoryCounts[""];
+      delete categoryCounts[""];
+    }
+
+    console.log('Category Counts:', categoryCounts);
+
     // Fetch the paginated books from the userLibrary
     const paginatedBooks = userLibrary.books.slice(offset, offset + limit);
 
@@ -407,7 +420,8 @@ app.get('/api/library/:username', async (req, res) => {
       totalBooks,
       currentPage: Number(page),
       totalPages,   // This represents the total pages across all books
-      totalPaginationPages // This represents the total pages for pagination
+      totalPaginationPages, // This represents the total pages for pagination
+      categoryCounts //for category pie chart
     });
   } catch (error) {
     console.error(error);

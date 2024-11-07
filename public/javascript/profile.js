@@ -196,6 +196,65 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 });
 
+document.addEventListener('DOMContentLoaded', async () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const profileUsername = urlParams.get('username'); // Get the username from the URL
+    const loggedInUsername = localStorage.getItem('username'); // Get the logged-in username
+
+    // New function to fetch and display genres
+    async function pieChart() {
+        try {
+            const username = profileUsername || loggedInUsername;
+            const response = await fetch(`/api/library/${username}`);
+            const data = await response.json();
+        
+            if (data.success) {
+                const categoryCounts = data.categoryCounts;
+
+                // Prep the data for the chart
+                const labels = Object.keys(categoryCounts);
+                const values = Object.values(categoryCounts);
+
+                const ctx = document.getElementById('categoryChart').getContext('2d');
+                new Chart(ctx, {
+                    type: 'pie',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Books by Category',
+                            data: values,
+                            backgroundColor: [
+                                '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40'
+                            ]
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: {
+                                position: 'top',                       
+                            },
+                            title: {
+                                display: true,
+                                text: 'Distribution of Books by Category'
+                            }
+                        }
+                    }
+                });
+            } else {
+                console.error('Failed to fetch category counts:', data.message);
+            }
+        } catch (error) {
+            console.error('Error fetching data:', error);
+        }
+    }
+
+    // Call the pieChart function
+    pieChart();
+});
+
+
+
 async function removeFromTop5(username, isbn) {
     try {
         const response = await fetch('/api/library/top5/remove', {
