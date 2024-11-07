@@ -249,39 +249,44 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     async function fetchUserReviews(username) {
         try {
-          const response = await fetch(`/api/library/review?username=${username}`);
+          // Make a GET request to fetch the ratings
+          const response = await fetch(`/api/library/${username}/ratings`);
           if (!response.ok) {
-            throw new Error('Failed to fetch user reviews');
+            throw new Error('Failed to fetch user ratings');
           }
+      
           const data = await response.json();
-          console.log(data.reviews)
-          return data.reviews || []; // Assuming the API returns an array of reviews
+          const ratings = data.ratings || [];
+          console.log("Fetched Ratings:", ratings);
+          return ratings;
         } catch (error) {
-          console.error('Error fetching reviews:', error);
+          console.error('Error fetching ratings:', error);
           return [];
         }
       }
+      
+
+      
   
       // Function to prepare histogram data
-      function prepareHistogramData(reviews) {
+      function prepareHistogramData(ratings) {
         // Initialize bins for ranges: 0-19, 20-39, 40-59, 60-79, 80-100
         const bins = [0, 0, 0, 0, 0];
       
         // Count the occurrences of each rating and place them in the appropriate bin
-        reviews.forEach(review => {
-          const rating = review.rating;
-          if (rating >= 0 && rating < 20) {
-            bins[0]++;
-          } else if (rating >= 20 && rating < 40) {
-            bins[1]++;
-          } else if (rating >= 40 && rating < 60) {
-            bins[2]++;
-          } else if (rating >= 60 && rating < 80) {
-            bins[3]++;
-          } else if (rating >= 80 && rating <= 100) {
-            bins[4]++;
-          }
-        });
+        ratings.forEach(rating => {
+            if (rating >= 0 && rating < 20) {
+              bins[0]++;
+            } else if (rating >= 20 && rating < 40) {
+              bins[1]++;
+            } else if (rating >= 40 && rating < 60) {
+              bins[2]++;
+            } else if (rating >= 60 && rating < 80) {
+              bins[3]++;
+            } else if (rating >= 80 && rating <= 100) {
+              bins[4]++;
+            }
+          });
       
         return bins;
       }

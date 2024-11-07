@@ -727,6 +727,29 @@ app.post('/api/library/review', async (req, res) => {
   }
 });
 
+app.get('/api/library/:username/ratings', async (req, res) => {
+  const { username } = req.params;
+
+  try {
+    const userLibrary = await UserLibrary.findOne({ username });
+    if (!userLibrary) {
+      return res.status(404).json({ success: false, message: 'No library found for user' });
+    }
+
+    // Extract only the ratings from the user's books
+    const ratings = userLibrary.books
+      .map(book => book.rating) // Access each book's rating
+      .filter(rating => rating != null); // Filter out null or undefined ratings
+
+    res.status(200).json({
+      success: true,
+      ratings: ratings,
+      totalRatings: ratings.length
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
 
 // Fetch a specific book's review and rating from user's library
 app.get('/api/library/:username/books', async (req, res) => {
