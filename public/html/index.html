@@ -11,6 +11,21 @@
     <script defer src="../javascript/header.js"></script>
     <script defer src="../javascript/index.js"></script>
     <link href="../css/styles.css" rel="stylesheet"> 
+    <style>
+        body {
+            height: 3000px; /* Page height */
+            background-color: #242446;
+            margin: 0;
+        }
+        .content {
+            padding: 50px;
+            font-size: 24px;
+            color: #333;
+        }
+        .extra-padding {
+            height: 300px; /* Extra padding at the bottom */
+        }
+    </style>
 </head>
 <body>
     <header class="custom-header text-green-900 py-4">
@@ -65,18 +80,49 @@
             <button class="arrow arrow-right" id="scrollRight_OppRec"><i class="fas fa-chevron-right"></i></button>
         </div>
 
+
         <h1 class="text-3xl font-bold mb-6 text-white">Comedy Recommendations...</h1>
         <div id="countdownTimer" class="text-gray-500 text-sm mb-2 mt-0"></div> <!-- Keep tight spacing -->
         <div class="recommendations-wrapper relative w-full mb-12"> <!-- Increased bottom margin -->
-            <div id="comRecommendationsContainer" class="recommendations-container">
+            <div id='comRecommendationsContainer' class="recommendations-container">
                 <!-- Recommendations will be dynamically inserted here -->
             </div>
             <div class="arrow-hover-region left"></div>
             <div class="arrow-hover-region right"></div>
-            <button class="arrow arrow-left" id="scrollLeft"><i class="fas fa-chevron-left"></i></button>
-            <button class="arrow arrow-right" id="scrollRight"><i class="fas fa-chevron-right"></i></button>
+            <button class="arrow arrow-left" id="scrollLeft_com"><i class="fas fa-chevron-left"></i></button>
+            <button class="arrow arrow-right" id="scrollRight_com"><i class="fas fa-chevron-right"></i></button>
         </div>
+        
+        <h1 class="text-3xl font-bold mb-6 text-white">Hist Recommendations...</h1>
+        <div class="recommendations-wrapper relative w-full mb-12"> <!-- Increased bottom margin -->
+            <div id="NonficContainer" class="recommendations-container">
+                <!-- NY Times history books will be dynamically inserted here -->
+            </div>
+            <div class="arrow-hover-region left"></div>
+            <div class="arrow-hover-region right"></div>
+            <button class="arrow arrow-left" id="scrollLeft_nonfic"><i class="fas fa-chevron-left"></i></button>
+            <button class="arrow arrow-right" id="scrollRight_nonfic"><i class="fas fa-chevron-right"></i></button>
+        </div>
+
+        <h1 class="text-3xl font-bold mb-6 text-white">Books for Young Adults...</h1>
+        <div class="recommendations-wrapper relative w-full mb-12"> <!-- Increased bottom margin -->
+            <div id="yadultContainer" class="recommendations-container">
+                <!-- NY Times history books will be dynamically inserted here -->
+            </div>
+            <div class="arrow-hover-region left"></div>
+            <div class="arrow-hover-region right"></div>
+            <button class="arrow arrow-left" id="scrollLeft_nonfic"><i class="fas fa-chevron-left"></i></button>
+            <button class="arrow arrow-right" id="scrollRight_nonfic"><i class="fas fa-chevron-right"></i></button>
+        </div>
+        
+
+
+
+
+
     </main>
+
+
 
 
 
@@ -88,5 +134,10 @@
             <div id="viewerCanvas" class="w-full h-96"></div>
         </div>
     </div>
+
+
+    <div class="extra-padding"></div>
 </body>
+
+
 </html>

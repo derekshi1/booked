@@ -4,6 +4,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const scrollRightButton = document.getElementById('scrollRight');
     const scrollLeftButton_nyt = document.getElementById('scrollLeft_nyt');
     const scrollRightButton_nyt = document.getElementById('scrollRight_nyt');
+
+    const scrollLeftButton_com = document.getElementById('scrollLeft_com');
+    const scrollRightButton_com = document.getElementById('scrollRight_com');
+
+    const scrollLeftButton_Nonfic = document.getElementById('scrollLeft_nonfic');
+    const scrollRightButton_Nonfic = document.getElementById('scrollRight_nonfic');
+
+
     const username = localStorage.getItem('username'); // Ensure the username is stored in localStorage
 
     const recommendationsContainer = document.getElementById('recommendationsContainer');
@@ -12,7 +20,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const bestSellersContainer = document.getElementById('bestSellersContainer');
     
     const comRecommendationsContainer = document.getElementById('comRecommendationsContainer');
-    
+
+    const NonficContainer = document.getElementById('NonficContainer');
+    const yadultContainer = document.getElementById('yadultContainer');
+
+
+
     const oppRecommendationsContainer = document.getElementById('oppRecommendationsContainer');
     const scrollLeft_OppRec = document.getElementById('scrollLeft_OppRec');
     const scrollRight_OppRec = document.getElementById('scrollRight_OppRec');
@@ -476,6 +489,38 @@ document.addEventListener('DOMContentLoaded', () => {
             behavior: 'smooth'
         });
     });
+    
+    scrollLeftButton_com.addEventListener('click', () => {
+        comRecommendationsContainer.scrollBy({
+            top: 0,
+            left: -comRecommendationsContainer.clientWidth,
+            behavior: 'smooth'
+        });
+    });
+
+    scrollRightButton_com.addEventListener('click', () => {
+        comRecommendationsContainer.scrollBy({
+            top: 0,
+            left: comRecommendationsContainer.clientWidth,
+            behavior: 'smooth'
+        });
+    });
+
+    scrollLeftButton_Nonfic.addEventListener('click', () => {
+        NonficContainer.scrollBy({
+            top: 0,
+            left: -NonficContainer.clientWidth,
+            behavior: 'smooth'
+        });
+    });
+
+    scrollRightButton_Nonfic.addEventListener('click', () => {
+        NonficContainer.scrollBy({
+            top: 0,
+            left: NonficContainer.clientWidth,
+            behavior: 'smooth'
+        });
+    });
 
     scrollLeft_OppRec.addEventListener('mouseenter', () => showArrow(scrollLeft_OppRec));
     scrollLeft_OppRec.addEventListener('mouseleave', () => hideArrow(scrollLeft_OppRec));
@@ -501,7 +546,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 async function fetchNYTimesBestSellers() {
-    const apiKey = '07KGzNSRt9XlvFc8Esd006b7fqiGA8cc'; // Replace with your actual API key
+    const apiKey = 'Glpuj6w9AxVo6kx0vpfy8x3hdBr10eHu'; // Replace with your actual API key
     const response = await fetch(`https://api.nytimes.com/svc/books/v3/lists/current/hardcover-fiction.json?api-key=${apiKey}`);
     const data = await response.json();
     return data.results.books.map(book => ({
@@ -540,6 +585,101 @@ const renderNYTimesBestSellers = (books) => {
         bestSellersContainer.appendChild(bookElement);
     });
 };
+
+
+
+async function fetchNYTimesyadult() {
+    const apiKey = 'Glpuj6w9AxVo6kx0vpfy8x3hdBr10eHu'; // Replace with your actual API key
+    const response = await fetch(`https://api.nytimes.com/svc/books/v3/lists/current/young-adult-hardcover.json?api-key=${apiKey}`);
+    const data = await response.json();
+    return data.results.books.map(book => ({
+        title: book.title,
+        authors: book.author,
+        thumbnail: book.book_image,
+        isbn: book.primary_isbn13
+    }));
+}
+
+
+
+
+
+const renderNYTimesyadult = (books) => {
+    yadultContainer.innerHTML = '';
+    books.forEach(book => {
+        const bookElement = document.createElement('div');
+        bookElement.classList.add('nyt-card', 'p-4', 'bg-gray-100', 'rounded', 'shadow', 'book-card');
+        bookElement.innerHTML = `
+            <div class="relative group">
+                <a href="../html/book.html?isbn=${book.isbn}" class="block relative overflow-hidden rounded-lg shadow-lg hover:shadow-2xl transition duration-300 ease-in-out group">
+                    <img src="${book.thumbnail}" alt="${book.title}" class="w-30 h-30 object-cover">
+                    <div class="absolute bottom-0 left-0 w-full p-4 bg-black bg-opacity-60 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-in-out">
+                        <h2 class="text-lg font-bold">${book.title}</h2>
+                        <p class="text-gray-300">by ${book.authors}</p>
+                    </div>
+                </a>
+            </div>
+        `;
+        yadultContainer.appendChild(bookElement);
+    });
+};
+
+fetchNYTimesyadult().then(books => {
+    renderNYTimesyadult(books);
+}).catch(error => {
+    console.error('Error fetching NY Times young adult books:', error);
+    renderPlaceholderRecommendations();
+});
+
+
+
+
+
+
+async function fetchNYTimesNonfic() {
+    const apiKey = 'Glpuj6w9AxVo6kx0vpfy8x3hdBr10eHu'; // Replace with your actual API key
+    const response = await fetch(`https://api.nytimes.com/svc/books/v3/lists/current/paperback-nonfiction.json?api-key=${apiKey}`);
+    const data = await response.json();
+    return data.results.books.map(book => ({
+        title: book.title,
+        authors: book.author,
+        thumbnail: book.book_image,
+        isbn: book.primary_isbn13
+    }));
+}
+
+
+
+
+
+const renderNYTimesNonfic = (books) => {
+    NonficContainer.innerHTML = '';
+    books.forEach(book => {
+        const bookElement = document.createElement('div');
+        bookElement.classList.add('nyt-card', 'p-4', 'bg-gray-100', 'rounded', 'shadow', 'book-card');
+        bookElement.innerHTML = `
+            <div class="relative group">
+                <a href="../html/book.html?isbn=${book.isbn}" class="block relative overflow-hidden rounded-lg shadow-lg hover:shadow-2xl transition duration-300 ease-in-out group">
+                    <img src="${book.thumbnail}" alt="${book.title}" class="w-30 h-30 object-cover">
+                    <div class="absolute bottom-0 left-0 w-full p-4 bg-black bg-opacity-60 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-in-out">
+                        <h2 class="text-lg font-bold">${book.title}</h2>
+                        <p class="text-gray-300">by ${book.authors}</p>
+                    </div>
+                </a>
+            </div>
+        `;
+        NonficContainer.appendChild(bookElement);
+    });
+};
+
+fetchNYTimesNonfic().then(books => {
+    renderNYTimesNonfic(books);
+}).catch(error => {
+    console.error('Error fetching NY Times Non-fiction books:', error);
+    renderPlaceholderRecommendations();
+});
+
+
 
 
 
