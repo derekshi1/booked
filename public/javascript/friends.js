@@ -2,15 +2,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     const urlParams = new URLSearchParams(window.location.search);
     const username = urlParams.get('username');
     const friendsTitle = document.getElementById('friendsTitle');
-    friendsTitle.innerHTML = `<em>${username}</em>  friends!`;
+    friendsTitle.innerHTML = `Friends`;
     const friendsListContainer = document.getElementById('friendsListContainer');
+    const friendsButton = document.getElementById("friendsSection");
 
+    // Make "Friends" button active
+    friendsButton.classList.add("active-link");
     try {
         const response = await fetch(`/api/friends/${username}`);
         const data = await response.json();
 
         if (data.success) {
             friendsListContainer.innerHTML = '';
+            const titleElement = document.createElement('h2');
+            titleElement.classList.add('text-2xl', 'font-bold', 'mb-4', 'text-white'); // Added 'text-white' class
+            titleElement.innerHTML = `<em>${username}</em> Friends`; // Use innerHTML with <em> to italicize the username
+            friendsListContainer.appendChild(titleElement);
 
             for (const friend of data.friends) {
                 // Fetch additional data for each friend
@@ -25,7 +32,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 // Build the friend card with the format you provided
                 const friendCard = document.createElement('div');
                 friendCard.classList.add('bg-gray-800', 'p-4', 'rounded-lg', 'shadow-md', 'flex', 'justify-between', 'items-center', 'mb-2');
-                friendCard.style.width = '800px'; // Set a specific width
+                friendCard.style.width = '600px'; // Set a specific width
                 friendCard.style.height = '100px'; // Set a specific height
 
                 friendCard.innerHTML = `
@@ -64,4 +71,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.error('Error fetching friends:', error);
         friendsListContainer.innerHTML = '<p class="text-white">Error loading friends.</p>';
     }
+
+    
 });

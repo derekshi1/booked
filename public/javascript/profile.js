@@ -194,7 +194,134 @@ document.addEventListener('DOMContentLoaded', async () => {
     } else {
         window.location.href = '../html/login.html';
     }
+
+    // New function to fetch and display genres
+    async function pieChart() {
+        try {
+            const username = profileUsername || loggedInUsername;
+            const response = await fetch(`/api/library/${username}`);
+            const data = await response.json();
+        
+            if (data.success) {
+                const categoryCounts = data.categoryCounts;
+
+                // Prep the data for the chart
+                const labels = Object.keys(categoryCounts);
+                const values = Object.values(categoryCounts);
+
+                const ctx = document.getElementById('categoryChart').getContext('2d');
+                new Chart(ctx, {
+                    type: 'pie',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Books by Category',
+                            data: values,
+                            backgroundColor: [
+                                '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40'
+                            ]
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: {
+                                position: 'top',                       
+                            },
+                            title: {
+                                display: true,
+                                text: 'Distribution of Books by Category'
+                            }
+                        }
+                    }
+                });
+            } else {
+                console.error('Failed to fetch category counts:', data.message);
+            }
+        } catch (error) {
+            console.error('Error fetching data:', error);
+        }
+    }
+
+    // Call the pieChart function
+    pieChart();
+
+
+    async function fetchUserReviews(username) {
+        try {
+          // Make a GET request to fetch the ratings
+          const response = await fetch(`/api/library/${username}/ratings`);
+          if (!response.ok) {
+            throw new Error('Failed to fetch user ratings');
+          }
+      
+          const data = await response.json();
+          const ratings = data.ratings || [];
+          console.log("Fetched Ratings:", ratings);
+          return ratings;
+        } catch (error) {
+          console.error('Error fetching ratings:', error);
+          return [];
+        }
+      }
+      
+
+      
+  
+      // Function to prepare histogram data
+      function prepareHistogramData(ratings) {
+        // Initialize bins for ranges: 0-19, 20-39, 40-59, 60-79, 80-100
+        const bins = [0, 0, 0, 0, 0];
+      
+        // Count the occurrences of each rating and place them in the appropriate bin
+        ratings.forEach(rating => {
+            if (rating >= 0 && rating < 20) {
+              bins[0]++;
+            } else if (rating >= 20 && rating < 40) {
+              bins[1]++;
+            } else if (rating >= 40 && rating < 60) {
+              bins[2]++;
+            } else if (rating >= 60 && rating < 80) {
+              bins[3]++;
+            } else if (rating >= 80 && rating <= 100) {
+              bins[4]++;
+            }
+          });
+      
+        return bins;
+      }
+      
+      // Function to render the histogram using Chart.js
+      function renderHistogram(bins) {
+        const ctx = document.getElementById('ratingsHistogram').getContext('2d');
+        new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: ['0-19', '20-39', '40-59', '60-79', '80-100'],
+            datasets: [{
+              label: 'Number of Reviews',
+              data: bins,
+              backgroundColor: 'rgba(75, 192, 192, 0.6)',
+              borderColor: 'rgba(75, 192, 192, 1)',
+              borderWidth: 1
+            }]
+          },
+          options: {
+            scales: {
+              y: {
+                beginAtZero: true
+              }
+            }
+          }
+        });
+      }
+      
+      const reviews = await fetchUserReviews(username);
+      const bins = prepareHistogramData(reviews);
+      renderHistogram(bins);
 });
+
+
 
 async function removeFromTop5(username, isbn) {
     try {

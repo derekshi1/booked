@@ -161,14 +161,6 @@ body {
     z-index: 1000;
 }
 
-.suggestion-item {
-    padding: 0.5rem;
-    cursor: pointer;
-}
-
-.suggestion-item:hover {
-    background-color: #f1f1f1;
-}
 
 .group:hover .group-hover\\:opacity-100 {
     opacity: 1;
@@ -1072,7 +1064,7 @@ body, main {
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
     text-align: left; /* Align text to the left */
     width: 90%;
-    max-width: 600px; /* Adjust width */
+    max-width: 80vw; /* Adjust width */
 }
 
 .list-modal input, .list-modal select, .list-modal textarea {
@@ -1091,26 +1083,40 @@ body, main {
     margin-top: 15px;
 }
 
-/* Suggestions Box Styles */
-.suggestions-box {
-    background: white;
-    color: black; /* Change to black for better visibility */
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    position: absolute;
-    z-index: 1000;
-    max-height: 200px;
-    overflow-y: auto; /* Scroll for overflow */
+#listSuggestionsBox {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
 }
 
 .suggestion-item {
-    padding: 10px;
-    cursor: pointer;
+    display: flex;
+    align-items: center;
+    padding: 8px;
+    background-color: #f9f9f9;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: background-color 0.2s, box-shadow 0.2s;
 }
 
 .suggestion-item:hover {
-    background-color: #f0f0f0; /* Highlight on hover */
+    background-color: #e5e5e5;
+    box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
 }
+
+.suggestion-item img {
+    width: 40px;
+    height: 60px;
+    margin-right: 12px;
+    border-radius: 4px;
+}
+
+.suggestion-item span {
+    font-size: 0.875rem;
+    color: #333;
+    font-weight: 500;
+}
+
 
 .hidden {
     display: none; /* Universal hide class */

@@ -114,10 +114,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         libraryGrid.className = 'library-container'; // Apply library-container class
 
         console.log(`[RENDER BOOKS] Rendering ${books.length} books for page ${page}`); // Add this log
-
-        // Calculate the start and end indices for the current page
-        
-        // Slice the books array to only get the books for the current page
     
         books.forEach(book => {
             console.log(`Rendering book `, book);  // Add this to verify the book data

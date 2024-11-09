@@ -1,7 +1,7 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const { spawn } = require('child_process');
-
+const pythonCommand = process.platform === 'win32' ? 'python' : 'python3';
 
 const app = express();
 const port = 8080;
@@ -29,6 +29,24 @@ const userSchema = new mongoose.Schema({
   profilePicture: { type: String, default: 'default-profile.png' }
 });
 
+
+const userListSchema = new mongoose.Schema({
+  username: { type: String, required: true },
+  listName: { type: String, required: true },
+  tags: [String],
+  visibility: { type: String, enum: ['private', 'friends', 'public'], default: 'public' },
+  description: String,
+  books: [{
+    isbn: String,
+    title: String,
+    authors: String,
+    description: String,
+    thumbnail: String,
+  }],
+  createdDate: { type: Date, default: Date.now }
+});
+
+
 const activitySchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   action: { type: String, required: true },
@@ -49,6 +67,7 @@ const friendRequestSchema = new mongoose.Schema({
 
 
 // Models
+const UserList = mongoose.model('UserList', userListSchema);
 const User = mongoose.model('User', userSchema);
 const Activity = mongoose.model('Activity', activitySchema);
 const FriendRequest = mongoose.model('FriendRequest', friendRequestSchema);
@@ -121,6 +140,35 @@ app.get('/', (req, res) => {
   res.sendFile(__dirname + '/public/html/index.html');
 });
 
+app.post('/api/users/:username/lists', async (req, res) => {
+  const { username } = req.params; // Get username from URL parameters
+  const { listName, tags, visibility, description, books } = req.body; // Get list data from request body
+
+  try {
+    // Create a new UserList instance
+    const newList = new UserList({
+      username,
+      listName,
+      tags,
+      visibility,
+      description,
+      books
+    });
+
+    // Save the list to the database
+    await newList.save();
+
+    // Respond with the newly created list
+    res.status(201).json({
+      success: true,
+      message: 'List created successfully',
+      list: newList
+    });
+  } catch (error) {
+    console.error('Error creating list:', error);
+    res.status(500).json({ success: false, message: 'Failed to create list' });
+  }
+});
 
 // Endpoint to get count of unread activities
 app.get('/api/activities/unread-count/:username', async (req, res) => {
@@ -389,6 +437,19 @@ app.get('/api/library/:username', async (req, res) => {
     }
     console.log('User Library Books:', userLibrary.books);
 
+    //Category Counts
+    const categoryCounts = userLibrary.books.reduce((acc, book) => {
+      acc[book.categories] = (acc[book.categories] || 0) + 1;
+      return acc;
+    }, {});
+    
+    if (categoryCounts.hasOwnProperty("")) {
+      categoryCounts["other"] = (categoryCounts["Other"] || 0) + categoryCounts[""];
+      delete categoryCounts[""];
+    }
+
+    console.log('Category Counts:', categoryCounts);
+
     // Fetch the paginated books from the userLibrary
     const paginatedBooks = userLibrary.books.slice(offset, offset + limit);
 
@@ -407,7 +468,8 @@ app.get('/api/library/:username', async (req, res) => {
       totalBooks,
       currentPage: Number(page),
       totalPages,   // This represents the total pages across all books
-      totalPaginationPages // This represents the total pages for pagination
+      totalPaginationPages, // This represents the total pages for pagination
+      categoryCounts //for category pie chart
     });
   } catch (error) {
     console.error(error);
@@ -422,48 +484,55 @@ app.get('/api/library/:username', async (req, res) => {
 app.get('/api/recommendations/:username', async (req, res) => {
   const { username } = req.params;
   try {
-    const userLibrary = await UserLibrary.findOne({ username });
-    if (!userLibrary) {
-      console.error(`No library found for user: ${username}`);
-      return res.status(404).json({ success: false, message: 'No library found for user' });
-    }
-
-    const library = userLibrary.books;
-     // Check if the library is empty
-     if (library.length === 0) {
-      console.log(`User ${username} has an empty library.`);
-      return res.status(200).json({ success: true, recommendations: [] });
-    }
-
-    const pythonProcess = spawn('python3', ['public/functions/recommendations.py', JSON.stringify(library)]);
-
-    let recommendations = '';
-    pythonProcess.stdout.on('data', (data) => {
-      recommendations += data.toString();
-    });
-
-    pythonProcess.stderr.on('data', (data) => {
-      console.error(`stderr: ${data}`);
-    });
-
-    pythonProcess.on('close', (code) => {
-      if (code !== 0) {
-        console.error(`Python process exited with code ${code}`);
-        return res.status(500).json({ success: false, message: 'Error generating recommendations' });
+      const userLibrary = await UserLibrary.findOne({ username });
+      if (!userLibrary) {
+          console.error(`No library found for user: ${username}`);
+          return res.status(404).json({ success: false, message: 'No library found for user' });
       }
-      try {
-        const recommendationsJSON = JSON.parse(recommendations);
-        console.log('Parsed recommendations JSON:', JSON.stringify(recommendationsJSON, null, 2));
-        res.status(200).json({ success: true, recommendations: recommendationsJSON });
-      } catch (error) {
-        console.error('Error parsing recommendations:', error);
-        res.status(500).json({ success: false, message: 'Error parsing recommendations' });
+
+      const library = userLibrary.books;
+      
+      // Check if the library is empty
+      if (library.length === 0) {
+          console.log(`User ${username} has an empty library.`);
+          return res.status(200).json({ success: true, recommendations: [] });
       }
+
+      // Spawn Python process with both library and username as arguments
+      const pythonProcess = spawn(pythonCommand, [
+          'public/functions/recommendations.py', 
+          JSON.stringify(library)
+      ]);
+
+      let recommendations = '';
+      pythonProcess.stdout.on('data', (data) => {
+          recommendations += data.toString();
+      });
+
+      pythonProcess.stderr.on('data', (data) => {
+          console.error(`stderr: ${data}`);
+      });
+
+      pythonProcess.on('close', (code) => {
+        if (code !== 0) {
+            console.error(`Python process exited with code ${code}`);
+            return res.status(500).json({ success: false, message: 'Error generating recommendations' });
+        }
+        console.log('Raw recommendations output:', recommendations);  // Debugging line to print raw output
+        try {
+            const recommendationsJSON = JSON.parse(recommendations);
+            console.log('Parsed recommendations JSON:', JSON.stringify(recommendationsJSON, null, 2));
+            res.status(200).json({ success: true, recommendations: recommendationsJSON });
+        } catch (error) {
+            console.error('Error parsing recommendations:', error);
+            res.status(500).json({ success: false, message: 'Error parsing recommendations' });
+        }
     });
+
 
   } catch (error) {
-    console.error('Error during recommendations generation:', error);
-    res.status(500).json({ success: false, message: 'Internal server error' });
+      console.error('Error during recommendations generation:', error);
+      res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });
 
@@ -475,7 +544,7 @@ app.get('/api/book-recommendations', async (req, res) => {
   }
 
   try {
-    const pythonProcess = spawn('python3', ['public/functions/singleRecs.py', isbn]);
+    const pythonProcess = spawn(pythonCommand, ['public/functions/singleRecs.py', isbn]);
 
     let recommendations = '';
     pythonProcess.stdout.on('data', (data) => {
@@ -483,8 +552,9 @@ app.get('/api/book-recommendations', async (req, res) => {
     });
 
     pythonProcess.stderr.on('data', (data) => {
-      console.error(`stderr: ${data}`);
-    });
+      console.error(`stderr: ${data.toString()}`);
+  });
+  
 
     pythonProcess.on('close', (code) => {
       if (code !== 0) {
@@ -657,6 +727,29 @@ app.post('/api/library/review', async (req, res) => {
   }
 });
 
+app.get('/api/library/:username/ratings', async (req, res) => {
+  const { username } = req.params;
+
+  try {
+    const userLibrary = await UserLibrary.findOne({ username });
+    if (!userLibrary) {
+      return res.status(404).json({ success: false, message: 'No library found for user' });
+    }
+
+    // Extract only the ratings from the user's books
+    const ratings = userLibrary.books
+      .map(book => book.rating) // Access each book's rating
+      .filter(rating => rating != null); // Filter out null or undefined ratings
+
+    res.status(200).json({
+      success: true,
+      ratings: ratings,
+      totalRatings: ratings.length
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
 
 // Fetch a specific book's review and rating from user's library
 app.get('/api/library/:username/books', async (req, res) => {
@@ -995,7 +1088,7 @@ app.post('/api/generate-lists', (req, res) => {
     return res.status(400).json({ error: 'No query provided' });
   }
 
-  const pythonProcess = spawn('python3', ['public/functions/listgeneration.py', query]);
+  const pythonProcess = spawn(pythonCommand, ['public/functions/listgeneration.py', query]);
 
   let list = '';
   pythonProcess.stdout.on('data', (data) => {
@@ -1037,7 +1130,7 @@ app.get('/api/opposite-recommendations/:username', async (req, res) => {
       return res.status(200).json({ success: true, recommendations: [] });
     }
 
-    const pythonProcess = spawn('python3', ['public/functions/oppositerecommendations.py', JSON.stringify(library)]);
+    const pythonProcess = spawn(pythonCommand, ['public/functions/oppositerecommendations.py', JSON.stringify(library)]);
 
     let recommendations = '';
     pythonProcess.stdout.on('data', (data) => {

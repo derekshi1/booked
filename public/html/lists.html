@@ -48,42 +48,52 @@
         </div>
         <div id="aiSuggestionsBox" class="mt-4 text-white grid-container"></div>
     </main>
-    <button id="createListButton" class="btn-primary text-xl text-white">Create New List</button>
-<!-- Create List Modal -->
-<div id="createListModal" class="list-modal hidden">
-    <div class="modal-content">
-        <h2 class= "text-2xl">New List</h2>
-        <div>
-            <label for="listNameInput">Name</label>
-            <input type="text" id="listNameInput" placeholder="Enter list name" />
-        </div>
-        <div>
-            <label for="tagsInput">Tags</label>
-            <input type="text" id="tagsInput" placeholder="eg. top 10" />
-        </div>
-        <div>
-            <label for="visibilitySelect">Who can view?</label>
-            <select id="visibilitySelect">
-                <option value="public">Public list</option>
-                <option value="private">Private list</option>
-                <option value="friends">Friends only</option>
+    <button id="createListButton" class="btn-grey text-xl text-white">Create New List</button>
+<div id="createListModal" class="hidden fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50">
+    <div class="bg-white rounded-lg p-6 relative" style="width: 80vw; max-width: 800px;"> <!-- Inline width style -->
+        <button id="cancelButton" class="absolute top-2 right-4 text-gray-500 hover:text-gray-700 text-xxl font-bold">&times;</button>
+
+        <!-- Step 1: List Details -->
+        <div id="step1" class="modal-step">
+            <h2 class="text-xl font-bold mb-4">Create New List</h2>
+            <label for="listName" class="block mb-2">List Name</label>
+            <input type="text" id="listName" class="border p-2 w-full mb-4" placeholder="Enter list name">
+
+            <label for="tags" class="block mb-2">Tags</label>
+            <input type="text" id="tags" class="border p-2 w-full mb-4" placeholder="Enter tags (comma-separated)">
+
+            <label for="visibility" class="block mb-2">Who can view?</label>
+            <select id="visibility" class="border p-2 w-full mb-4">
+                <option value="public">Public</option>
+                <option value="private">Private</option>
+                <option value="friends">Friends Only</option>
             </select>
+
+            <label for="description" class="block mb-2">Description</label>
+            <textarea id="description" class="border p-2 w-full mb-4" placeholder="Enter description"></textarea>
+         
+            <button id="nextButton" class="bg-blue-500 text-white p-2 rounded w-full">Next</button>
+        
         </div>
-        <div>
-            <label for="descriptionInput">Description</label>
-            <textarea id="descriptionInput" placeholder="Description"></textarea>
-        </div>
-        <div>
-            <label for="titleInput">Add a Book</label>
-            <input type="text" id="titleInput" placeholder="Enter name of book..." onkeydown="handleSearch(event)" />
-            <div id="listSuggestionsBox" class="suggestions-box hidden"></div>
-        </div>
-        <div class="modal-actions">
-            <button id="cancelButton" class="btn-secondary">Cancel</button>
-            <button id="confirmCreateButton" class="btn-primary">Save</button>
+
+        <!-- Step 2: Add Books -->
+        <div id="step2" class="modal-step hidden">
+            <h2 class="text-xl font-bold mb-4">Add Books to List</h2>
+            <input type="text" id="titleInput" class="border p-2 w-full mb-4" placeholder="Search for books to add">
+
+            <div id="listSuggestionsBox" class="border p-2 bg-gray-100 max-h-48 overflow-y-auto mb-4 hidden"></div>
+
+            <h3 id="selectedBooksHeader" class="text-lg font-bold mb-2 hidden">Selected Books</h3>
+            <div id="selectedBooksContainer" class="border p-2 bg-gray-100 rounded mb-4 hidden"></div>
+
+            <div class="flex space-x-2">
+                <button id="backButton" class="bg-gray-500 text-white p-2 rounded w-1/2">Back</button>
+                <button id="createListFinalButton" class="bg-blue-500 text-white p-2 rounded w-1/2">Create List</button>
+            </div>
         </div>
     </div>
 </div>
+
 
     
 </body>
