@@ -22,59 +22,57 @@
             </div>
         </div>
     </header>
+    
     <main class="container mx-auto mt-8">
-        <div class="flex gap-8">
-            <!-- Profile Container with central alignment -->
-            <div class="profile-container bg-gray-800 p-6 rounded-lg shadow-md w-1/3 h-96 flex flex-col items-center">
-                
-                <!-- Profile Info Row: Profile picture, username, logout button, and stats below -->
-                <div class="flex flex-col items-center ml-4 mt-8">
-                    <!-- Profile picture -->
-                    <div class="profile-pic mb-4">
-                        <img src="../profile.png" alt="Profile Picture" class="w-32 h-32 rounded-full">
-                    </div>
-                    
-                    <!-- Username and Logout Button -->
-                    <div class="username-container text-center mb-4">
-                        <h1 id="usernameDisplay" class="handwriting-font text-white text-2xl">Username</h1>
-                        <button id="logoutButton" class="text-white bg-red-700 px-3 py-1 rounded">Logout</button>
-                    </div>
-                    
-                    <!-- Stats centered horizontally and vertically below profile info -->
-                    <div class="stats-container flex justify-around items-center gap-4 ml-16 mt-2 w-full">
-                        <div class="stats-item text-center">
-                            <p id="bookCount" class="stats-value text-white font-bold text-2xl">0</p>
-                            <a id="booksLink" href="#" class="stats-label text-blue-500 hover:underline" style="color: #D3D3D3;">Books</a>
-                        </div>
-                        <div class="stats-item text-center">
-                            <p id="pageCount" class="stats-value text-white font-bold text-2xl">0</p>
-                            <span class="stats-label" style="color: #D3D3D3;">Pages</span>
-                        </div>
-                        <div class="stats-item text-center">
-                            <p id="numberOfFriends" class="stats-value text-white font-bold text-2xl">0</p>
-                            <a id="friendsLink" href="#" class="stats-label text-blue-500 hover:underline" style="color: #D3D3D3;">Friends</a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="stats-placeholder bg-gray-800 p-6 rounded-lg shadow-md flex-grow h-96 flex flex-col items-center justify-center text-white">
-                <div class="flex justify-between w-full h-full">
-                    <!-- Book Genres Summary (Pie Chart) -->
-                    <div class="w-1/2 pr-4">
-                        <h2 class="text-2xl font-bold text-white mb-4">Book Genres Summary</h2>
-                        <canvas id="categoryChart" class="border border-gray-300 rounded-lg w-full h-full max-w-md"></canvas>
-                    </div>
+        <!-- Top Left Profile Section -->
+        <div class="flex items-center space-x-6 mb-8">
+            <!-- Profile Picture -->
+            <img src="../profile.png" alt="Profile Picture" class="w-16 h-16 rounded-full">
 
-                    <!-- Histogram for Review Ratings -->
-                    <div class="w-1/2 pl-4">
-                        <h2 class="text-2xl font-bold text-white mb-4">Review Ratings Histogram</h2>
-                        <canvas id="ratingsHistogram" class="border border-gray-300 rounded-lg w-full h-full max-w-md"></canvas>
-                    </div>
+            <!-- Username and Logout Button -->
+            <div class="flex flex-col text-center">
+                <h1 id="usernameDisplay" class="handwriting-font text-white text-lg">Username</h1>
+                <button id="logoutButton" class="text-white bg-red-700 px-3 py-1 rounded">Logout</button>
+            </div>
+
+            <!-- Stats: Books, Pages, Friends -->
+            <div class="flex gap-6">
+                <div class="stats-item text-center">
+                    <p id="bookCount" class="text-white font-bold text-lg">0</p>
+                    <a id="booksLink" href="#" class="text-blue-500 hover:underline" style="color: #D3D3D3;">Books</a>
+                </div>
+                <div class="stats-item text-center">
+                    <p id="pageCount" class="text-white font-bold text-lg">0</p>
+                    <span class="text-gray-400">Pages</span>
+                </div>
+                <div class="stats-item text-center">
+                    <p id="numberOfFriends" class="text-white font-bold text-lg">0</p>
+                    <a id="friendsLink" href="#" class="text-blue-500 hover:underline" style="color: #D3D3D3;">Friends</a>
                 </div>
             </div>
         </div>
         
+        <!-- Stats Placeholder for Charts (below profile) -->
+        <div class="flex justify-center items-center"> <!-- Center container without full-screen height -->
+        <!-- Stats Placeholder: Make this container skinnier by adjusting width and height -->
+            <div class="stats-placeholder bg-gray-800 p-4 rounded-lg shadow-md h-1/4 w-5/6 border-4 border-gray-500"> 
+                <div class="flex gap-8"> <!-- Flex container for side-by-side charts -->
+                    <!-- Book Genres Summary (Pie Chart) -->
+                    <div class="flex-1 flex flex-col justify-center items-center h-96 mt-12">
+                        <h2 class="text-2xl font-bold text-white mb-4">Book Genres Summary</h2>
+                        <canvas id="categoryChart" class="rounded-lg w-full mb-4"></canvas>
+                    </div>
+
+                    <!-- Histogram for Review Ratings -->
+                    <div class="flex-1 flex flex-col justify-center items-center h-64 mt-12 mr-12">
+                        <h2 class="text-2xl font-bold text-white mb-4">Review Ratings Histogram</h2>
+                        <canvas id="ratingsHistogram" class="rounded-lg w-full"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+      
+
         <!-- Top 5 Books Section Below -->
         <div class="top5-container mt-8">
             <h2 class="text-2xl font-bold text-white mb-4">Top 5 Books:</h2>
@@ -84,3 +82,4 @@
     </main>
 </body>
 </html>
+

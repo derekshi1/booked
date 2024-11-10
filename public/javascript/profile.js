@@ -219,14 +219,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                             data: values,
                             backgroundColor: [
                                 '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40'
-                            ]
+                            ],
+                            borderWidth: 4,
                         }]
                     },
                     options: {
                         responsive: true,
                         plugins: {
                             legend: {
-                                position: 'top',                       
+                                position: 'left',                       
                             },
                             title: {
                                 display: true,
