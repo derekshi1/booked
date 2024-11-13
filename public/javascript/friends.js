@@ -4,7 +4,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     const friendsTitle = document.getElementById('friendsTitle');
     friendsTitle.innerHTML = `Friends`;
     const friendsListContainer = document.getElementById('friendsListContainer');
+    const friendsButton = document.getElementById("friendsSection");
 
+    // Make "Friends" button active
+    friendsButton.classList.add("active-link");
     try {
         const response = await fetch(`/api/friends/${username}`);
         const data = await response.json();
