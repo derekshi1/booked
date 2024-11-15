@@ -296,8 +296,8 @@ body {
 
 .recommendation-card {
     flex: 1 0 auto; /* Allow the cards to grow and shrink but maintain their width */
-    width: 200px; /* Minimum width for each card */
-    height: 275px;
+    width: 250px; /* Minimum width for each card */
+    height: 350px;
     padding: 0.5rem; /* Add padding to maintain some spacing inside the card */
     background-color: #2D2D2D; /* Background color for better visibility */
     border-radius: 8px; /* Rounded corners */
@@ -310,8 +310,8 @@ body {
     flex-direction: column; /* Align items in a column */
 }
 .recommendation-card img {
-    width:180px; /* Make sure the image covers the entire card */
-    height:255px;
+    width:220px; /* Make sure the image covers the entire card */
+    height:320px;
     border-radius: 4px; /* Rounded corners for images */
 }
 
@@ -584,6 +584,9 @@ input[type=range]::-moz-range-thumb {
 }
 
 
+
+
+
 .sparkle-container {
     position: relative;
     display: flex;
@@ -654,8 +657,8 @@ input[type=range]::-moz-range-thumb {
     }
 }.nyt-card {
     flex: 1 0 auto; /* Allow the cards to grow and shrink but maintain their width */
-    width:  180px;
-    height: 255px;
+    width:  250px;
+    height: 350px;
     padding: 0.5rem; /* Add padding to maintain some spacing inside the card */
     background-color: #2D2D2D; /* Background color for better visibility */
     border-radius: 8px; /* Rounded corners */
@@ -667,12 +670,21 @@ input[type=range]::-moz-range-thumb {
     justify-content: center; /* Center horizontally */
     flex-direction: column; /* Align items in a column */
 }
+
+.nyt-card img {
+    width:220px; /* Make sure the image covers the entire card */
+    height:320px;
+    border-radius: 4px; /* Rounded corners for images */
+}
+
 .grid-container {
     display: grid;
     grid-template-columns: repeat(7, 1fr); /* 7 columns */
     grid-template-rows: repeat(4, auto);  /* 4 rows */
     gap: 1rem; /* Adjust gap as needed */
 }
+
+
 
 
 a:hover {
