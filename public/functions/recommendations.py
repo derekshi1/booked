@@ -107,7 +107,7 @@ def calculate_initial_compatibility(book1, book2):
     return compatibility_score * 100
 
 
-async def find_best_matches(library, total_recommendations=25):
+async def find_best_matches(library, total_recommendations=15):
     num_books = len(library)
     base_recommendations_per_book = total_recommendations // num_books
     extra_recommendations = total_recommendations % num_books
@@ -194,7 +194,7 @@ async def find_best_matches(library, total_recommendations=25):
 if __name__ == "__main__":
     try:
         library = json.loads(sys.argv[1])
-        recommendations = asyncio.run(find_best_matches(library, total_recommendations=25))
+        recommendations = asyncio.run(find_best_matches(library, total_recommendations=15))
         print(json.dumps(recommendations))
     except Exception as e:
         print(f"Error: {str(e)}", file=sys.stderr)

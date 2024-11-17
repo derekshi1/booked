@@ -106,7 +106,7 @@ def find_books_by_genres(genres, max_results=500):
                 genre_list.remove(genre)
     return books[:max_results]
 
-def find_opposite_matches(library, total_recommendations=25):
+def find_opposite_matches(library, total_recommendations=15):
     recommendations_per_book = total_recommendations // len(library)
     extra_recommendations = total_recommendations % len(library)
 
@@ -164,7 +164,7 @@ def find_opposite_matches(library, total_recommendations=25):
     
     return recommendations
 
-def get_random_books(total_recommendations=25):
+def get_random_books(total_recommendations=15):
     all_genres = ["Fiction", "Non-Fiction", "Science", "Biography", "Children", "Fantasy", "Romance", "Mystery", "History", "Poetry", "Science Fiction", "Self-Help", "Philosophy", "Health", "Business", "Travel", "Humor", "Comics", "Religion"]  # You can add more genres here
     random.shuffle(all_genres)
     potential_matches = find_books_by_genres(all_genres, max_results=total_recommendations * 3)
