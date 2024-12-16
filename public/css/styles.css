@@ -1133,3 +1133,28 @@ body, main {
 .hidden {
     display: none; /* Universal hide class */
 }
+
+/* Toggle background and dot styling */
+.toggle-bg {
+    position: relative;
+    transition: background-color 0.3s;
+}
+
+.toggle-dot {
+    top: -2px; /* Adjust to center the dot vertically */
+    left: 0;
+    transform: translateX(0);
+    transition: transform 0.3s;
+}
+
+/* When the checkbox is checked, move the dot */
+#recommendationToggle:checked + .toggle-bg .toggle-dot {
+    transform: translateX(32px); /* Move dot to the right */
+}
+
+#recommendationToggle:checked + .toggle-bg {
+    background-color: #4CAF50; /* Green color when checked */
+}
+
+
+

@@ -13,7 +13,6 @@ API_KEY = 'AIzaSyCFDaqjpgA8K_NqqCw93xorS3zumc_52u8'
 # Load the pre-trained sentence transformer model
 model = SentenceTransformer('paraphrase-MiniLM-L6-v2')
 
-
 async def fetch_book_info(session, genre, start_index, backoff=1):
     params = {
         'q': f'subject:{genre}',

@@ -26,7 +26,7 @@ const userSchema = new mongoose.Schema({
   password: { type: String, required: true },
   friends: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], default: [] },
   friendRequests: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'FriendRequest' }], default: [] },
-  profilePicture: { type: String, default: 'default-profile.png' }
+  profilePicture: { type: String, default: '../profile.png' }
 });
 
 
@@ -529,6 +529,71 @@ app.get('/api/recommendations/:username', async (req, res) => {
         }
     });
 
+
+  } catch (error) {
+      console.error('Error during recommendations generation:', error);
+      res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
+app.get('/api/group-recommendations', async (req, res) => {
+  const { usernames } = req.query; // Expect usernames to be passed as a comma-separated string
+  if (!usernames) {
+      return res.status(400).json({ success: false, message: 'Usernames are required' });
+  }
+
+  const usernameArray = usernames.split(',');
+
+  try {
+      // Fetch libraries for all users
+      const userLibraries = await UserLibrary.find({ username: { $in: usernameArray } });
+      
+      // Check if any libraries were found
+      if (!userLibraries || userLibraries.length === 0) {
+          console.error('No libraries found for the given users.');
+          return res.status(404).json({ success: false, message: 'No libraries found for the given users' });
+      }
+
+      // Merge all books from the libraries into one combined library
+      const combinedLibrary = [];
+      userLibraries.forEach(userLibrary => {
+          combinedLibrary.push(...userLibrary.books);
+      });
+
+      // Remove duplicates from combinedLibrary if necessary
+      const uniqueBooks = Array.from(new Set(combinedLibrary.map(book => book.isbn)))
+          .map(isbn => combinedLibrary.find(book => book.isbn === isbn));
+
+      // Spawn Python process with the combined library
+      const pythonProcess = spawn(pythonCommand, [
+          'public/functions/recommendations.py',
+          JSON.stringify(uniqueBooks)
+      ]);
+
+      let recommendations = '';
+      pythonProcess.stdout.on('data', (data) => {
+          recommendations += data.toString();
+      });
+
+      pythonProcess.stderr.on('data', (data) => {
+          console.error(`stderr: ${data}`);
+      });
+
+      pythonProcess.on('close', (code) => {
+          if (code !== 0) {
+              console.error(`Python process exited with code ${code}`);
+              return res.status(500).json({ success: false, message: 'Error generating recommendations' });
+          }
+          console.log('Raw recommendations output:', recommendations); // Debugging line
+          try {
+              const recommendationsJSON = JSON.parse(recommendations);
+              console.log('Parsed recommendations JSON:', JSON.stringify(recommendationsJSON, null, 2));
+              res.status(200).json({ success: true, recommendations: recommendationsJSON });
+          } catch (error) {
+              console.error('Error parsing recommendations:', error);
+              res.status(500).json({ success: false, message: 'Error parsing recommendations' });
+          }
+      });
 
   } catch (error) {
       console.error('Error during recommendations generation:', error);

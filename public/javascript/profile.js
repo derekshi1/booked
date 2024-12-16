@@ -213,28 +213,32 @@ document.addEventListener('DOMContentLoaded', async () => {
                 new Chart(ctx, {
                     type: 'pie',
                     data: {
-                        labels: labels,
-                        datasets: [{
-                            label: 'Books by Category',
-                            data: values,
-                            backgroundColor: [
-                                '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40'
-                            ]
-                        }]
+                      labels: labels,
+                      datasets: [{
+                        label: 'Books by Category',
+                        data: values,
+                        backgroundColor: [
+                          '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40'
+                        ]
+                      }]
                     },
                     options: {
-                        responsive: true,
-                        plugins: {
-                            legend: {
-                                position: 'top',                       
-                            },
-                            title: {
-                                display: true,
-                                text: 'Distribution of Books by Category'
-                            }
+                      responsive: true,
+                      plugins: {
+                        legend: {
+                          position: 'top',
+                          labels: {
+                            color: 'white' // Color for legend text
+                          }
+                        },
+                        title: {
+                          display: true,
+                          text: 'Distribution of Books by Category',
+                          color: 'white' // Color for title text
                         }
+                      }
                     }
-                });
+                  });
             } else {
                 console.error('Failed to fetch category counts:', data.message);
             }
@@ -295,25 +299,40 @@ document.addEventListener('DOMContentLoaded', async () => {
       function renderHistogram(bins) {
         const ctx = document.getElementById('ratingsHistogram').getContext('2d');
         new Chart(ctx, {
-          type: 'bar',
-          data: {
-            labels: ['0-19', '20-39', '40-59', '60-79', '80-100'],
-            datasets: [{
-              label: 'Number of Reviews',
-              data: bins,
-              backgroundColor: 'rgba(75, 192, 192, 0.6)',
-              borderColor: 'rgba(75, 192, 192, 1)',
-              borderWidth: 1
-            }]
-          },
-          options: {
-            scales: {
-              y: {
-                beginAtZero: true
+            type: 'bar',
+            data: {
+              labels: ['0-19', '20-39', '40-59', '60-79', '80-100'],
+              datasets: [{
+                label: 'Number of Reviews',
+                data: bins,
+                backgroundColor: 'rgba(75, 192, 192, 0.6)',
+                borderColor: 'rgba(75, 192, 192, 1)',
+                borderWidth: 1
+              }]
+            },
+            options: {
+              scales: {
+                x: {
+                  ticks: {
+                    color: 'white' // Color for x-axis labels
+                  }
+                },
+                y: {
+                  ticks: {
+                    color: 'white' // Color for y-axis labels
+                  }
+                }
+              },
+              plugins: {
+                legend: {
+                  labels: {
+                    color: 'white' // Color for legend text
+                  }
+                }
               }
             }
-          }
-        });
+          });
+          
       }
       
       const reviews = await fetchUserReviews(username);

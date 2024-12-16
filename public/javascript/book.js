@@ -19,9 +19,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             console.log(`API response: `, data);  // Logging API response
             if (data.totalItems > 0) {
                 const book = data.items[0].volumeInfo;
-                const bookCoverImage = book.imageLinks ? book.imageLinks.thumbnail.replace('zoom=1', '') + '&zoom=1' : 'https://via.placeholder.com/128x192?text=No+Image';
-                document.getElementById('bookCover').src = bookCoverImage;
-                document.body.style.backgroundImage = `url(${bookCoverImage})`;
+                //const bookCoverImage = book.imageLinks ? book.imageLinks.thumbnail.replace('zoom=1', '') + '&zoom=1' : 'https://via.placeholder.com/128x192?text=No+Image';
+                //document.getElementById('bookCover').src = bookCoverImage;
+                //document.body.style.backgroundImage = `url(${bookCoverImage})`;
                 document.body.style.backgroundSize = "70% 100%";
                 document.body.style.backgroundAttachment = "fixed"; // Keeps it fixed while scrolling
                 document.body.style.backgroundPosition = "center center"; // Center the image on both axes
@@ -29,7 +29,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 document.body.style.backgroundColor = '#2d342d'; // Dark green as fallbac
                 
 
-               
+               /*
                 const overlay = document.createElement('div');
                 overlay.style.position = "fixed";
                 overlay.style.top = '50%'; 
@@ -40,7 +40,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 overlay.style.backgroundColor = 'rgba(255, 255, 255, 0.65)'; 
                 overlay.style.zIndex = '-1'; 
                 document.body.appendChild(overlay);
-
+                */
                 bookDetails.innerHTML = `
                 <div class="content-container flex">
     <!-- Left section (fixed) -->
@@ -80,7 +80,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     </div>
 
     <!-- Right section (scrollable) -->
-    <div class="w-3/4 ml-8" style="margin-left: 300px;">
+    <div class="w-3/4 ml-8 text-white" style="margin-left: 300px;">
         <h1 class="text-4xl font-bold mb-3">${book.title}</h1>
         <h2 class="text-xl mb-3">by ${book.authors ? book.authors.join(', ') : 'Unknown'}</h2>
         <p class="text-base mb-2"><strong>Categories:</strong> ${book.categories ? book.categories.join(', ') : 'None'}</p>
