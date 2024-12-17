@@ -16,7 +16,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             friendsListContainer.innerHTML = '';
             const titleElement = document.createElement('h2');
             titleElement.classList.add('text-2xl', 'font-bold', 'mb-4', 'text-white'); // Added 'text-white' class
-            titleElement.innerHTML = `<em>${username}</em> Friends`; // Use innerHTML with <em> to italicize the username
+            titleElement.innerHTML = `${username}'s Friends`; // Use innerHTML with <em> to italicize the username
             friendsListContainer.appendChild(titleElement);
 
             for (const friend of data.friends) {

@@ -44,17 +44,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                 bookDetails.innerHTML = `
                 <div class="content-container flex">
     <!-- Left section (fixed) -->
-    <div class="w-1/4 fixed top-40 left-60 h-screen">
+    <div class="w-1/4 top-90 left-50 h-screen">
         <div class="relative"> 
-            <img src="${book.imageLinks ? book.imageLinks.thumbnail.replace('zoom=1', '') + '&zoom=1' : 'https://via.placeholder.com/128x192?text=No+Image'}" alt="${book.title}" class="book-card card book-cover w-60 h-96 object-cover mb-8">
+            <img src="${book.imageLinks ? book.imageLinks.thumbnail.replace('zoom=1', '') + '&zoom=1' : 'https://via.placeholder.com/128x192?text=No+Image'}" alt="${book.title}" class="book-card card book-cover w-80 h-128 object-cover mb-8">
         </div>
 
         <!-- Button section: Preview and Add Buttons side by side -->
-        <div class="flex items-center gap-4 mt-4">
-            <!-- Preview Button -->
-            <button id="previewButton" onclick="loadBook('${isbn}')" class="px-4 py-2 bg-green-500 text-white rounded h-48px w-40">Preview</button>
+        <div class="flex items-right gap-0 relative" style="top: -90px; left: 200px">
             
-            <!-- Add Button Next to Preview Button -->
             <div class="add-button-container">
                 <button id="addButton" class="add-button relative flex items-center justify-center">
                     <div class="icon-container absolute left-2.8 flex flex-col space-y-1">
@@ -80,14 +77,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     </div>
 
     <!-- Right section (scrollable) -->
-    <div class="w-3/4 ml-8 text-white" style="margin-left: 300px;">
+    <div class="w-3/4 ml-8 top-90 text-white" style="margin-left: 60px;">
         <h1 class="text-4xl font-bold mb-3">${book.title}</h1>
-        <h2 class="text-xl mb-3">by ${book.authors ? book.authors.join(', ') : 'Unknown'}</h2>
-        <p class="text-base mb-2"><strong>Categories:</strong> ${book.categories ? book.categories.join(', ') : 'None'}</p>
-        <p class="text-base mb-2"><strong>Published:</strong> ${book.publishedDate}</p>
-        <p class="text-base mb-2"><strong>Pages:</strong> ${book.pageCount}</p>
-        <p class="text-base mb-2"><strong>Publisher:</strong> ${book.publisher}</p>
-        <p class="text-base mb-2"><strong>Average Rating:</strong> ${book.averageRating ? book.averageRating : 'N/A'} (${book.ratingsCount ? book.ratingsCount : 0} ratings)</p>
+        <h2 class="text-3xl mb-3">${book.authors ? book.authors.join(', ') : 'Unknown'}</h2>
+        <p class="text-base mb-2"><strong>${book.publishedDate}, ${book.pageCount} pages</strong>
         <p class="text-base mb-2">${book.description ? book.description : 'No description available'}</p>
 
         <!-- Recommendations section -->
