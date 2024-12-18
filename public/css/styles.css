@@ -740,11 +740,9 @@ body, main {
 
 /* Default styles for the activity container */
 .activity {
-    background-color: #f0f4f8;  /* Light background for better visibility */
-    border-radius: 16px;        /* Makes the corners rounded */
-    padding: 16px;              /* Adds spacing inside the card */
+    background-color: rgb(31, 41, 55);  /* Light background for better visibility */
+    border-radius: 8px;        /* Makes the corners rounded */
     margin-bottom: 20px;        /* Adds spacing between activity cards */
-    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1); /* Subtle shadow for depth */
     transition: transform 0.3s ease, box-shadow 0.3s ease; /* Smooth hover effects */
 }
 .activity.unread {
@@ -765,11 +763,7 @@ body, main {
     animation: highlightUnread 3s ease-in-out; /* Increased duration to 3 seconds for a slower fade */
 }
 /* Hover effect for the activity container */
-.activity:hover {
-    background-color: #f0f4f8; /* Lighten the background color */
-    transform: translateY(-3px); /* Slight lift on hover */
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Add a subtle shadow */
-}
+
 
 #socialTab {
     position: relative; /* Make the socialTab the reference point for positioning */
@@ -1129,7 +1123,3 @@ body, main {
     font-weight: 500;
 }
 
-
-.hidden {
-    display: none; /* Universal hide class */
-}

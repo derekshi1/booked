@@ -25,10 +25,17 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const friendsButton = document.getElementById("friendsSection");
 
+    const activityButton = document.getElementById("activitySection");
+
     // Add a click event listener to the button
     friendsButton.addEventListener("click", function() {
         // Redirect to friends.html with the username as a query parameter
         window.location.href = `friends.html?username=${encodeURIComponent(username)}`;
+    });
+
+     // Add a click event listener to the button
+    activityButton.addEventListener("click", function() {
+        window.location.href = `activity.html`;
     });
 
     if (window.location.pathname.includes('social.html')) {
@@ -257,13 +264,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 activityContent = `
                 <div class="flex justify-between items-center ${mostRecentActivity.isRead ? '' : 'unread'}">
                         <div>
+                             <a href = "../html/profile.html?username=${mostRecentActivity.username}">
+                                <img src = "../profile.png" alt="Profile Picture" class="w-16 h-16 rounded-full">
+                            </a>
                             <a href="../html/profile.html?username=${mostRecentActivity.username}" class="text-blue-500 hover:underline hover:font-bold">
                                 <strong>${mostRecentActivity.username}</strong>
                             </a> 
-                            ${mostRecentActivity.action}
-                            <a href="../html/profile.html?username=${mostRecentActivity.bookTitle}" class="text-blue-500 hover:underline hover:font-bold">
-                                ${mostRecentActivity.bookTitle}
-                            </a>
+                            <span class = "text-gray-300"> ${mostRecentActivity.action} </span>
                         </div>
                     </div>
                 `;
@@ -295,11 +302,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                     activityContent = `
                         <div class="activity flex justify-between items-center ${mostRecentActivity.isRead ? '' : 'unread'}">
                             <div>
+                                <a href = "../html/profile.html?username=${mostRecentActivity.username}">
+                                    <img src = "../profile.png" alt="Profile Picture" class="w-16 h-16 rounded-full">
+                                </a>
                                 <a href="../html/profile.html?username=${mostRecentActivity.username}" class="text-blue-500 hover:underline">
                                     <strong>${mostRecentActivity.username}</strong>
                                 </a> 
-                                ${mostRecentActivity.action} 
-                                <a href="../html/book.html?isbn=${mostRecentActivity.isbn}" class="text-gray-500 hover:text-gray-800 hover:font-bold">
+                                <span class="text-gray-300">${mostRecentActivity.action}</span>
+                                <a href="../html/book.html?isbn=${mostRecentActivity.isbn}" class="text-gray-300 hover:text-gray-100 hover:font-bold">
                                     <em>${mostRecentActivity.bookTitle}</em>
                                 </a>
                             </div>
@@ -375,6 +385,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                     renderAdditionalActivities(userActivities.slice(1), activityElement, seeMoreLink);
                 });
             }
+
+        
         });
     };
     
@@ -403,7 +415,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <a href="../html/profile.html?username=${activity.username}" class="text-blue-500 hover:underline hover:font-bold">
                             <strong>${activity.username}</strong>
                         </a> 
-                        ${activity.action}
+                        <span class = "text-gray-300"> ${activity.action} </span>
                         <a href="../html/profile.html?username=${activity.bookTitle}" class="text-blue-500 hover:underline hover:font-bold">
                             ${activity.bookTitle}
                         </a>
@@ -436,7 +448,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <div class="activity flex justify-between items-center ${activity.isRead ? '' : 'unread'}">
                             <div>
                                 ${activity.action}  
-                                <a href="../html/book.html?isbn=${activity.isbn}" class="text-gray-500 hover:text-gray-800 hover:font-bold">
+                                <a href="../html/book.html?isbn=${activity.isbn}" class="text-gray-500 hover:text-gray-200 hover:font-bold">
                                     <em>${activity.bookTitle}</em>
                                 </a>
                             </div>
@@ -445,15 +457,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                             </div>
                         </div>
                         <div class="review-content hidden p-4 bg-gray-100" style="margin-top: -20px; rounded">
-                            <p class="review-text text-sm">
+                            <p class="review-text text-sm bg-gray-500">
                                 <strong>${activity.username}</strong> review: "${activity.review}"
                             </p>
-                            <p class="rating-text text-sm">
+                            <p class="rating-text text-sm text-gray-600">
                                 Rating: <strong>${activity.rating}/100</strong>
                             </p>
                         </div>
                         <div class="flex justify-between items-end mt-2 relative">
-                            <p class="time-ago text-gray-600 text-xs">${formatTimeAgo(activity.timestamp)}</p>
+                            <p class="time-ago text-gray-500 text-xs">${formatTimeAgo(activity.timestamp)}</p>
                             ${activity.action.includes('reviewed') ? `
                             <a href="#" class="see-review-link text-gray-500 hover:underline" 
                                 style="position: absolute; bottom: 20px; left: 0; font-size: 15px;" 
