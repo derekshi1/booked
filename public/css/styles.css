@@ -740,7 +740,7 @@ body, main {
 
 /* Default styles for the activity container */
 .activity {
-    background-color: rgb(31, 41, 55);  /* Light background for better visibility */
+    background-color: rgb(31, 41, 55);  /* match card color to cards in friends.html */
     border-radius: 8px;        /* Makes the corners rounded */
     margin-bottom: 20px;        /* Adds spacing between activity cards */
     transition: transform 0.3s ease, box-shadow 0.3s ease; /* Smooth hover effects */
