@@ -128,7 +128,18 @@ const userLibrarySchema = new mongoose.Schema({
     review: String,
     rating: Number,
 
-  }]
+  }],
+  currentlyReading: {
+    books: [{
+      isbn: String,
+      title: String,
+      authors: String,
+      description: String,
+      thumbnail: String,
+      categories: [String],
+      pageCount: Number,
+      startDate: { type: Date, default: Date.now } // Tracks when the user started reading the book
+    }]  }
 });
 const UserLibrary = mongoose.model('UserLibrary', userLibrarySchema);
 
@@ -454,8 +465,10 @@ app.get('/api/library/:username', async (req, res) => {
     const paginatedBooks = userLibrary.books.slice(offset, offset + limit);
 
     // Calculate total pages across all books
-    const totalPages = userLibrary.books.reduce((sum, book) => sum + book.pageCount, 0);
-    
+    const totalPages = userLibrary.books.reduce((sum, book) => {
+      const pageCount = book.pageCount || 0; // Use 0 if pageCount is null or undefined
+      return sum + pageCount;
+    }, 0);    
     // Calculate the total number of books in the user's library
     const totalBooks = userLibrary.books.length;
 
@@ -476,7 +489,6 @@ app.get('/api/library/:username', async (req, res) => {
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });
-
 
 
 
@@ -535,6 +547,112 @@ app.get('/api/recommendations/:username', async (req, res) => {
       res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });
+//THIS RECOMMENDATIONS USES the COLLABORATIVE RECS ONE FIRST, THEN FALLS BACK to CONTENT BASED
+/*
+app.get('/api/recommendations/:username', async (req, res) => {
+  const { username } = req.params;
+
+  try {
+      const userLibrary = await UserLibrary.findOne({ username });
+      if (!userLibrary) {
+          console.error(`No library found for user: ${username}`);
+          return res.status(404).json({ success: false, message: 'No library found for user' });
+      }
+
+      const library = userLibrary.books;
+
+      // Check if the library is empty
+      if (library.length === 0) {
+          console.log(`User ${username} has an empty library.`);
+          return res.status(200).json({ success: true, recommendations: [] });
+      }
+
+      // Step 1: Call NetflixRecommendations (Collaborative Filtering)
+      console.log(`Calling NetflixRecommendations for user: ${username}`);
+      let recommendations = '';
+
+      const pythonProcessCF = spawn(pythonCommand, [
+          'public/functions/NetflixRecommendations.py',
+          username, // Pass username to the collaborative filtering script
+          '10'      // Number of recommendations to generate
+      ]);
+
+      pythonProcessCF.stdout.on('data', (data) => {
+          recommendations += data.toString();
+      });
+
+      pythonProcessCF.stderr.on('data', (data) => {
+          console.error(`NetflixRecommendations stderr: ${data}`);
+      });
+
+      pythonProcessCF.on('close', async (code) => {
+          if (code !== 0) {
+              console.error(`NetflixRecommendations script failed with code ${code}`);
+              return fallbackToContentBased();
+          }
+
+          console.log('Raw NetflixRecommendations output:', recommendations);
+
+          try {
+              const parsedRecommendations = JSON.parse(recommendations);
+              if (parsedRecommendations.length > 0) {
+                  // If collaborative filtering returned results, send them
+                  console.log('NetflixRecommendations returned results.');
+                  return res.status(200).json({ success: true, recommendations: parsedRecommendations });
+              } else {
+                  // If no results, call the fallback function
+                  console.log('NetflixRecommendations returned no results. Falling back to content-based recommendations.');
+                  return fallbackToContentBased();
+              }
+          } catch (error) {
+              console.error('Error parsing NetflixRecommendations output:', error);
+              return fallbackToContentBased();
+          }
+      });
+
+      // Step 2: Fallback to Content-Based Recommendations
+      const fallbackToContentBased = async () => {
+          console.log(`Calling content-based recommendations for user: ${username}`);
+          const pythonProcessCB = spawn(pythonCommand, [
+              'public/functions/recommendations.py', 
+              JSON.stringify(library)
+          ]);
+
+          let contentBasedRecommendations = '';
+
+          pythonProcessCB.stdout.on('data', (data) => {
+              contentBasedRecommendations += data.toString();
+          });
+
+          pythonProcessCB.stderr.on('data', (data) => {
+              console.error(`Content-based stderr: ${data}`);
+          });
+
+          pythonProcessCB.on('close', (code) => {
+              if (code !== 0) {
+                  console.error(`Content-based script failed with code ${code}`);
+                  return res.status(500).json({ success: false, message: 'Failed to generate recommendations' });
+              }
+
+              try {
+                  const parsedRecommendations = JSON.parse(contentBasedRecommendations);
+                  console.log('Content-based recommendations returned successfully.');
+                  return res.status(200).json({ success: true, recommendations: parsedRecommendations });
+              } catch (error) {
+                  console.error('Error parsing content-based recommendations:', error);
+                  return res.status(500).json({ success: false, message: 'Error parsing recommendations' });
+              }
+          });
+      };
+
+  } catch (error) {
+      console.error('Error during recommendations generation:', error);
+      res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+*/
+
+
 
 app.get('/api/group-recommendations', async (req, res) => {
   const { usernames } = req.query; // Expect usernames to be passed as a comma-separated string
@@ -1532,6 +1650,125 @@ app.post('/api/check-friendship-status', async (req, res) => {
   } catch (error) {
     console.error('Error checking friendship status:', error);
     res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+//add to your own current reading
+app.post('/api/library/currently-reading/add', async (req, res) => {
+  try {
+    // Extract the username from the request body
+    const { username, isbn, title, authors, description, thumbnail, categories, pageCount } = req.body;
+
+    // Validate input data
+    if (!username || !isbn || !title) {
+      return res.status(400).json({ error: 'Username, ISBN, and Title are required.' });
+    }
+
+    // Find the user's library
+    const userLibrary = await UserLibrary.findOne({ username });
+
+    if (!userLibrary) {
+      console.error('User library not found for username:', username);
+      return res.status(404).json({ error: 'User library not found.' });
+    }
+
+    // Check if the book already exists in Currently Reading
+    const isAlreadyReading = userLibrary.currentlyReading.books.some(book => book.isbn === isbn);
+    if (isAlreadyReading) {
+      return res.status(400).json({ error: 'Book is already in your Currently Reading list.' });
+    }
+
+    // Add the book to Currently Reading
+    userLibrary.currentlyReading.books.push({
+      isbn,
+      title,
+      authors,
+      description,
+      thumbnail,
+      categories,
+      pageCount,
+      startDate: new Date(), // Add current date
+    });
+
+    // Save the updated library
+    await userLibrary.save();
+
+    res.status(200).json({ message: 'Book added to Currently Reading!', currentlyReading: userLibrary.currentlyReading.books });
+  } catch (error) {
+    console.error('Error in /api/library/currently-reading/add:', error.message);
+    res.status(500).json({ error: 'Internal server error.' });
+  }
+});
+
+
+
+//get a users' current reading
+app.get('/api/library/:username/currently-reading', async (req, res) => {
+  try {
+    const username = req.params.username;
+
+    // Find the user's library and ensure 'currentlyReading.books' is fully retrieved
+    const userLibrary = await UserLibrary.findOne({ username }).select('currentlyReading');
+
+    if (!userLibrary) {
+      return res.status(404).json({ error: 'User library not found.' });
+    }
+
+    const currentlyReading = userLibrary.currentlyReading.books.map(book => ({
+      isbn: book.isbn,
+      title: book.title,
+      authors: book.authors,
+      description: book.description,
+      thumbnail: book.thumbnail,
+      categories: book.categories,
+      pageCount: book.pageCount,
+      startDate: book.startDate, // Include startDate
+    }));
+
+    res.status(200).json({
+      success: true,
+      currentlyReading
+    });
+  } catch (error) {
+    console.error('Error fetching currently reading:', error.message);
+    res.status(500).json({ error: 'Internal server error.' });
+  }
+});
+app.post('/api/library/:username/currently-reading/end', async (req, res) => {
+  try {
+    const { username } = req.params; // Extract username from the request params
+    const { isbn } = req.body; // Extract ISBN from the request body
+
+    // Validate input
+    if (!isbn) {
+      return res.status(400).json({ success: false, message: 'ISBN is required to end currently reading.' });
+    }
+
+    // Find the user's library
+    const userLibrary = await UserLibrary.findOne({ username });
+
+    if (!userLibrary) {
+      return res.status(404).json({ success: false, message: 'User library not found.' });
+    }
+
+    // Check if the book exists in the currently reading list
+    const bookIndex = userLibrary.currentlyReading.books.findIndex(book => book.isbn === isbn);
+
+    if (bookIndex === -1) {
+      return res.status(400).json({ success: false, message: 'Book not found in Currently Reading list.' });
+    }
+
+    userLibrary.currentlyReading.books.splice(bookIndex, 1);
+
+    await userLibrary.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Book removed from Currently Reading list.',
+      currentlyReading: userLibrary.currentlyReading.books
+    });
+  } catch (error) {
+    console.error('Error in /api/library/:username/currently-reading/end:', error.message);
+    res.status(500).json({ success: false, message: 'Internal server error.' });
   }
 });
 

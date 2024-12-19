@@ -7,6 +7,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     const username = localStorage.getItem('username');
     const searchInput = document.getElementById('searchFriendInput');
     const clearButton = document.getElementById('clearSearchButton');
+    const reviewsButton = document.getElementById('reviewsSection');
+    const subheaderButtons = document.querySelectorAll("nav button");
+    const currentlyReadingButton = document.getElementById('currentlyReadingSection')
+
 
     searchInput.addEventListener('input', () => {
         clearButton.style.display = searchInput.value ? 'block' : 'none';
@@ -30,6 +34,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Redirect to friends.html with the username as a query parameter
         window.location.href = `friends.html?username=${encodeURIComponent(username)}`;
     });
+    currentlyReadingButton.addEventListener("click", function() {
+        // Redirect to friends.html with the username as a query parameter
+        window.location.href = `currentlyreading.html?username=${encodeURIComponent(username)}`;
+    });    
+    reviewsButton.addEventListener("click", function() {
+        // Redirect to friends.html with the username as a query parameter
+        window.location.href = `social.html?username=${encodeURIComponent(username)}`;
+    });
+    
 
     if (window.location.pathname.includes('social.html')) {
         if (socialTabClicked) {
