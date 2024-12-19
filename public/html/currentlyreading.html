@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml"><html lang="en">
 <head>
     <meta http-equiv="content-type" content="text/html; charset=utf-8"/>
-    <title>Friends List</title>
+    <title>Your Friends Are Reading...</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Indie+Flower&display=swap" rel="stylesheet">
@@ -10,6 +10,7 @@
     <script defer src="../javascript/header.js"></script>
     <script defer src="../javascript/social.js"></script>
     <script defer src="../javascript/profile.js"></script>
+    <script defer src="../javascript/currentlyreading.js "> </script>
     <link href="../css/styles.css" rel="stylesheet"> 
 
 </head>
@@ -55,23 +56,16 @@
                     </button>
                 </div>
             </div>
+
         </div>
+
     </div>
 
-    <main class="container mx-auto mt-8">
-        <div class="flex space-x-8">
-        
-            <!-- Friends List Column -->
-            <div id="friendsListContainer" class="flex-1 space-y-4">
-                <h2 id="friendsTitle"class="text-2xl font-semibold text-white"></h2>
-                <!-- Friends list will be dynamically inserted here -->
-            </div>
-            
-            <!-- Friend Requests Column -->
-            <div id="friendRequests" class="flex-1 space-y-4">
-                <!-- Friend request list will be dynamically inserted here -->
-            </div>
-    
+    <main class="container mx-auto mt-8 px-4">
+        <h1 class="text-4xl font-bold text-white">Your Friends Are Reading...</h1>
+
+        <div id="currentlyReadingGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            <!-- Book thumbnails will be dynamically inserted here -->
         </div>
     </main>
 </body>

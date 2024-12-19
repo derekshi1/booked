@@ -215,6 +215,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // Function to render recommendations
     const renderRecommendations = (recommendations) => {
         recommendationsContainer.innerHTML = '';
+        if (!recommendations || recommendations.length === 0) {
+            console.warn('[DEBUG] No valid recommendations found. Rendering placeholders...');
+            renderPlaceholderRecommendations();
+            return;
+        }
         recommendations.forEach(recommendation => {
             const recommendationElement = document.createElement('div');
             recommendationElement.classList.add('recommendation-card', 'p-4', 'bg-gray-100', 'rounded', 'shadow-lg');
@@ -229,6 +234,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 const hex = `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
                 return hex;
             };
+            const title = recommendation.title || 'Unknown Title';
+            const authors = (recommendation.authors && recommendation.authors.length > 0) ? recommendation.authors.join(', ') : 'Unknown Author';
+
     
             // Fallback to a colored cover if the image is a placeholder or fails to load
             const onErrorFallback = (event) => {
@@ -264,7 +272,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         />
                         <div class="absolute bottom-0 left-0 w-full p-4 bg-black bg-opacity-60 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-in-out">
                             <h2 class="text-lg font-bold">${recommendation.title}</h2>
-                            <p class="text-gray-300">by ${recommendation.authors.join(', ')} </p>
+                            <p class="text-gray-300">by ${authors} </p>
                         </div>
                     </a>
                 </div>

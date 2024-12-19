@@ -37,7 +37,7 @@
             <!-- Search bar in subheader -->
             <div class="flex items-center">
                 <button id="clearSearchButton" class="p-2 bg-red-500 text-white rounded-l mb-2" style= "display: none;">&times;</button>
-<!-- Search bar in subheader -->
+            <!-- Search bar in subheader -->
                 <div class="flex items-center relative">
                     <!-- Search Icon on the left -->
                     <img src="https://cdn-icons-png.flaticon.com/512/54/54481.png" alt="Search" class="absolute left-3 w-5 h-5" id="expandSearchIcon">
@@ -58,16 +58,20 @@
     <!-- Main Content -->
     <main class="container mx-auto mt-8">
         <div class="flex flex-col items-center">
-            <div id="searchResults" class="w-full max-w-lg mx-auto mb-12">
+            <!-- Search Results Section -->
+            <div id="searchResults" class="w-full max-w-md mx-auto mb-12">
                 <!-- Search results will be populated here -->
             </div>
-            <div class="w-full max-w-lg mx-auto my-8">
-                <h2 class="text-2xl font-bold text-white text-center mb-4">Friendly Activities</h2>
-                <div id="activitiesFeed" class="w-full">
+            
+            <!-- Friendly Reviews Section -->
+            <div class="w-full">
+                <h1 class="text-2xl font-bold text-white text-left mb-4">Friendly Reviews</h1>
+                <div id="activitiesFeed" class="w-full p-6 rounded shadow-md">
                     <!-- Activities feed will be populated here -->
                 </div>
             </div>
         </div>
-    </main>  
+    </main>
+    
 </body>
 </html>
