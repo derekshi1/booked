@@ -1,0 +1,198 @@
+import asyncio
+import aiohttp
+from sentence_transformers import SentenceTransformer
+from pinecone import Pinecone, ServerlessSpec
+from cachetools import TTLCache
+import os
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
+
+# Pinecone setup
+PINECONE_API_KEY = os.getenv("PINECONE_KEY")
+PINECONE_ENVIRONMENT = "us-east-1"
+INDEX_NAME = "vectorized-book-description-database"
+DIMENSION = 128  # Embedding dimension
+BATCH_SIZE = 100
+
+# API Keys
+GOOGLE_API_KEY = os.getenv("API_KEY")
+NYT_API_KEY = os.getenv("NYT_API_KEY")
+
+# URLs
+GOOGLE_BOOKS_API_URL = "https://www.googleapis.com/books/v1/volumes"
+OPEN_LIBRARY_SEARCH_URL = "https://openlibrary.org/search.json"
+NYT_BOOKS_API_URL = "https://api.nytimes.com/svc/books/v3/lists/current/hardcover-fiction.json"
+
+# Initialize
+model = SentenceTransformer('bongsoo/kpf-sbert-128d-v1')
+book_cache = TTLCache(maxsize=5000, ttl=3600)  # Cache for 1 hour
+fetched_books = set()
+
+# Initialize Pinecone
+pc = Pinecone(api_key=PINECONE_API_KEY)
+if INDEX_NAME not in pc.list_indexes().names():
+    pc.create_index(
+        name=INDEX_NAME,
+        dimension=DIMENSION,
+        metric="cosine",
+        spec=ServerlessSpec(cloud="aws", region=PINECONE_ENVIRONMENT),
+    )
+index = pc.Index(INDEX_NAME)
+
+# Helper Functions
+async def fetch_google_books(session, genre, start_index, order_by="relevance"):
+    params = {
+        "q": f"subject:{genre}",
+        "orderBy": order_by,
+        "maxResults": 40,
+        "startIndex": start_index,
+        "key": GOOGLE_API_KEY,
+    }
+    print(f"Fetching Google Books for genre '{genre}' with order '{order_by}' starting at index {start_index}")
+    async with session.get(GOOGLE_BOOKS_API_URL, params=params) as response:
+        if response.status == 200:
+            data = await response.json()
+            print(f"Fetched {len(data.get('items', []))} books from Google Books for genre '{genre}'")
+            return data
+        print(f"Failed to fetch Google Books: {response.status}")
+        return {}
+
+def process_google_book(book):
+    volume_info = book.get("volumeInfo", {})
+    description = volume_info.get("description", "")
+    if not description or book["id"] in fetched_books:
+        return None
+    
+    fetched_books.add(book["id"])
+    metadata = {
+        "title": volume_info.get("title", "Unknown Title"),
+        "authors": ", ".join(volume_info.get("authors", [])),
+        "isbn": volume_info.get("industryIdentifiers", [{}])[0].get("identifier", ""),
+        "publishedDate": volume_info.get("publishedDate", ""),
+    }
+    if not metadata["isbn"]:  # Validate ISBN before creating the record
+        print(f"Skipping Google Book with missing ISBN: {metadata['title']}")
+        return None
+    embedding = model.encode(description).tolist()
+    print(f"Processed Google Book: {metadata['title']} with ISBN {metadata['isbn']}")
+    return {"id": metadata["isbn"], "values": embedding, "metadata": metadata}
+
+async def fetch_open_library_books(session, query, start_index):
+    params = {"q": query, "limit": 40, "offset": start_index}
+    print(f"Fetching Open Library books for query '{query}' starting at index {start_index}")
+    async with session.get(OPEN_LIBRARY_SEARCH_URL, params=params) as response:
+        if response.status == 200:
+            data = await response.json()
+            print(f"Fetched {len(data.get('docs', []))} books from Open Library for query '{query}'")
+            return data
+        print(f"Failed to fetch Open Library books: {response.status}")
+        return {}
+
+def process_open_library_book(book):
+    if book["key"] in fetched_books:
+        return None
+    
+    description = book.get("description", "")
+    if not description:
+        return None
+    
+    fetched_books.add(book["key"])
+    metadata = {
+        "title": book.get("title", "Unknown Title"),
+        "authors": ", ".join(book.get("author_name", [])),
+        "isbn": book.get("isbn", [None])[0],
+        "publishedDate": book.get("first_publish_year", ""),
+    }
+    if not metadata["isbn"]:  # Validate ISBN before creating the record
+        print(f"Skipping Open Library Book with missing ISBN: {metadata['title']}")
+        return None
+    embedding = model.encode(description).tolist()
+    print(f"Processed Open Library Book: {metadata['title']} with ISBN {metadata['isbn']}")
+    return {"id": metadata["isbn"], "values": embedding, "metadata": metadata}
+
+async def fetch_nyt_books():
+    params = {"api-key": NYT_API_KEY}
+    print("Fetching NYT Books API")
+    async with aiohttp.ClientSession() as session:
+        async with session.get(NYT_BOOKS_API_URL, params=params) as response:
+            if response.status == 200:
+                data = await response.json()
+                print(f"Fetched {len(data.get('results', {}).get('books', []))} books from NYT API")
+                return data
+            print(f"Failed to fetch NYT Books: {response.status}")
+            return {}
+
+def process_nyt_book(book):
+    if book["primary_isbn13"] in fetched_books:
+        return None
+    
+    fetched_books.add(book["primary_isbn13"])
+    metadata = {
+        "title": book["title"],
+        "authors": book["author"],
+        "isbn": book["primary_isbn13"],
+        "thumbnail": book["book_image"],
+    }
+    if not metadata["isbn"]:  # Validate ISBN before creating the record
+        print(f"Skipping NYT Book with missing ISBN: {metadata['title']}")
+        return None
+    description = book.get("description", "")
+    embedding = model.encode(description).tolist() if description else None
+    print(f"Processed NYT Book: {metadata['title']} with ISBN {metadata['isbn']}")
+    return {"id": metadata["isbn"], "values": embedding, "metadata": metadata}
+
+# Main Fetcher
+async def fetch_and_process_books():
+    async with aiohttp.ClientSession() as session:
+        # Metadata-based queries
+        queries = [
+            {"type": "rating", "value": "high"},        # High ratings
+            {"type": "popularity", "value": "popular"}, # Popular books
+            {"type": "date", "value": "newest"},        # Newest books
+        ]
+        total_books = []
+
+        for query in queries:
+            print(f"Starting fetch for metadata query: {query}")
+
+            # Fetch from Google Books
+            google_books = await fetch_google_books(
+                session, genre="fiction", start_index=0, order_by=query["value"]
+            )
+            for book in google_books.get("items", []):
+                processed = process_google_book(book)
+                if processed:
+                    total_books.append(processed)
+
+            # Fetch from Open Library
+            open_library_books = await fetch_open_library_books(
+                session, query=query["value"], start_index=0
+            )
+            for book in open_library_books.get("docs", []):
+                processed = process_open_library_book(book)
+                if processed:
+                    total_books.append(processed)
+
+            # Fetch from NYT
+            nyt_books = await fetch_nyt_books()
+            for book in nyt_books.get("results", {}).get("books", []):
+                processed = process_nyt_book(book)
+                if processed:
+                    total_books.append(processed)
+
+            # Upload in batches
+            if len(total_books) >= BATCH_SIZE:
+                print(f"Uploading {len(total_books[:BATCH_SIZE])} books to Pinecone...")
+                index.upsert(total_books[:BATCH_SIZE])
+                total_books = total_books[BATCH_SIZE:]
+
+        # Upload remaining books
+        if total_books:
+            print(f"Uploading remaining {len(total_books)} books to Pinecone...")
+            index.upsert(total_books)
+
+if __name__ == "__main__":
+    print("Starting book fetch and process pipeline")
+    asyncio.run(fetch_and_process_books())
