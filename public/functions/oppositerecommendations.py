@@ -3,10 +3,13 @@ import json
 import random
 import requests
 from sentence_transformers import SentenceTransformer, util
+import os
+from dotenv import load_dotenv
 
+load_dotenv()
 # Define the Google Books API URL
 GOOGLE_BOOKS_API_URL = "https://www.googleapis.com/books/v1/volumes"
-API_KEY = 'AIzaSyCFDaqjpgA8K_NqqCw93xorS3zumc_52u8'  # Replace with your API key
+API_KEY = os.getenv("API_KEY")
 
 # Load the pre-trained sentence transformer model
 model = SentenceTransformer('paraphrase-MiniLM-L6-v2')
@@ -24,51 +27,22 @@ def get_book_info(query):
             book = data['items'][0]['volumeInfo']
             return {
                 'title': book.get('title'),
-                'authors': book.get('authors', []),  # Default to empty list if None
-                'categories': book.get('categories', []),  # Default to empty list if None
-                'publishedDate': book.get('publishedDate', ''),  # Default to empty string if None
+                'authors': book.get('authors', []),
+                'categories': book.get('categories', []),
+                'publishedDate': book.get('publishedDate', ''),
                 'description': book.get('description', ''),
                 'pageCount': book.get('pageCount', 0),
-                'publisher': book.get('publisher', ''),
-                'isbn': [identifier['identifier'] for identifier in book.get('industryIdentifiers', [])],
-                'language': book.get('language', ''),
-                'averageRating': book.get('averageRating', 0),
                 'thumbnail': book.get('imageLinks', {}).get('thumbnail', 'https://via.placeholder.com/150')
             }
     return None
 
-def calculate_opposite_compatibility(book1, book2):
-    if not book1 or not book2:
-        return 0
-    # Opposite categories
-    common_categories = set(book1.get('categories', [])).intersection(set(book2.get('categories', [])))
-    category_length_sum = len(book1.get('categories', [])) + len(book2.get('categories', []))
-    if category_length_sum == 0:
-        category_opposite = 0  # Or some other default value
-    else:
-        category_opposite = 1 - (len(common_categories) / category_length_sum)  
-    # Opposite publication dates
-    pub_date_opposite = 0
-    if book1.get('publishedDate') and book2.get('publishedDate'):
-        try:
-            year1 = int(book1['publishedDate'][:4])
-            year2 = int(book2['publishedDate'][:4])
-            pub_date_opposite = abs(year1 - year2) / max(year1, year2)
-        except ValueError:
-            pass
-    
-    # Combine opposite criteria
-    compatibility_score = (
-        0.9 * category_opposite +  # Increase weight for category opposite
-        0.1 * pub_date_opposite    # Decrease weight for pub date opposite
-    )
-    return compatibility_score * 100
-
-def find_books_by_genres(genres, max_results=500):
+def find_books_by_genres(genres, max_results=100):
     books = []
     genre_list = list(genres)
     random.shuffle(genre_list)
     start_indices = {genre: random.randint(0, 100) for genre in genre_list}
+
+    sys.stderr.write(f"[DEBUG] Fetching books for genres: {genre_list}\n")
 
     while len(books) < max_results and genre_list:
         for genre in genre_list:
@@ -76,115 +50,103 @@ def find_books_by_genres(genres, max_results=500):
                 break
             params = {
                 'q': f'subject:{genre}',
-                'maxResults': random.randint(10, 30),
+                'maxResults': 20,
                 'startIndex': start_indices[genre],
                 'key': API_KEY
             }
             response = requests.get(GOOGLE_BOOKS_API_URL, params=params)
-            
             if response.status_code == 200:
                 data = response.json()
                 if 'items' in data:
                     for item in data['items']:
-                        volume_info = item.get('volumeInfo')
-                        books.append({
+                        volume_info = item.get('volumeInfo', {})
+                        book = {
                             'title': volume_info.get('title'),
                             'authors': volume_info.get('authors', []),
                             'categories': volume_info.get('categories', []),
-                            'publishedDate': volume_info.get('publishedDate', ''),
                             'description': volume_info.get('description', ''),
-                            'pageCount': volume_info.get('pageCount', 0),
-                            'thumbnail': volume_info.get('imageLinks', {}).get('thumbnail', 'https://via.placeholder.com/150'),
-                            'isbn': [identifier['identifier'] for identifier in volume_info.get('industryIdentifiers', [])],
-                            'score': 0,
-                            'related_to': ''
-                        })
-                    start_indices[genre] += random.randint(20, 40)
+                            'thumbnail': volume_info.get('imageLinks', {}).get('thumbnail', 'https://via.placeholder.com/150')
+                        }
+                        if book not in books:  # Ensure no duplicates
+                            books.append(book)
+                    start_indices[genre] += 20
                 else:
+                    sys.stderr.write(f"[DEBUG] No items found for genre: {genre}\n")
                     genre_list.remove(genre)
             else:
+                sys.stderr.write(f"[ERROR] Failed to fetch books for genre {genre}, status code: {response.status_code}\n")
                 genre_list.remove(genre)
+
+    sys.stderr.write(f"[DEBUG] Total books fetched: {len(books)}\n")
     return books[:max_results]
 
-def find_opposite_matches(library, total_recommendations=15):
-    recommendations_per_book = total_recommendations // len(library)
-    extra_recommendations = total_recommendations % len(library)
+def find_opposite_least_similar(library, total_recommendations=15):
+    sys.stderr.write(f"[DEBUG] Input library size: {len(library)}\n")
 
+    # Step 1: Extract user genres
     user_genres = set()
     for book in library:
         user_genres.update(book.get('categories', []))
+    sys.stderr.write(f"[DEBUG] User genres: {user_genres}\n")
 
-    all_genres = set(["Fiction", "Non-Fiction", "Science", "Biography", "Children", "Fantasy", "Romance", "Mystery", "History", "Poetry", "Science Fiction", "Self-Help", "Philosophy", "Health", "Business", "Travel", "Humor", "Comics", "Religion"])  # You can add more genres here
+    # Step 2: Determine opposite genres
+    all_genres = set(["Fiction", "Non-Fiction", "Science", "Biography", "Children",
+                      "Fantasy", "Romance", "Mystery", "History", "Poetry",
+                      "Science Fiction", "Self-Help", "Philosophy", "Health",
+                      "Business", "Travel", "Humor", "Comics", "Religion"])
     opposite_genres = all_genres - user_genres
+    sys.stderr.write(f"[DEBUG] Opposite genres: {opposite_genres}\n")
 
-    potential_matches = find_books_by_genres(opposite_genres, max_results=len(library) * recommendations_per_book * 3)
+    # Step 3: Fetch books from opposite genres
+    potential_matches = find_books_by_genres(opposite_genres, max_results=500)
 
-    recommended_titles = set()
-    book_recommendations = {book['title']: [] for book in library}
-    
-    for user_book in library:
-        initial_compatibilities = []
-        for potential_book in potential_matches:
-            if potential_book['title'] not in recommended_titles:
-                initial_score = calculate_opposite_compatibility(user_book, potential_book)
-                if initial_score > 0:
-                    initial_compatibilities.append((potential_book, initial_score))
-        initial_compatibilities.sort(key=lambda x: x[1], reverse=True)
-        top_initial_matches = initial_compatibilities[:recommendations_per_book * 3]
-        refined_compatibilities = []
-        for match, score in top_initial_matches:
-            match['score'] = score
-            match['related_to'] = user_book['title']
-            refined_compatibilities.append((match, score))
+    # Step 4: Compute similarity scores
+    library_embeddings = {
+        book['title']: model.encode(book['description']) for book in library if 'description' in book
+    }
+    sys.stderr.write(f"[DEBUG] Generated {len(library_embeddings)} library embeddings\n")
 
-        refined_compatibilities.sort(key=lambda x: x[1], reverse=True)
-        count_added = 0
-        for match in refined_compatibilities:
-            if match[0]['title'] not in recommended_titles:
-                recommended_titles.add(match[0]['title'])
-                book_recommendations[user_book['title']].append(match[0])
-                count_added += 1
-                if count_added >= recommendations_per_book + (1 if extra_recommendations > 0 else 0):
-                    break
-        if extra_recommendations > 0:
-            extra_recommendations -= 1
-    
-    recommendations = [rec for recs in book_recommendations.values() for rec in recs]
-    
-    try:
-        recommendations = recommendations[:total_recommendations]
-    except Exception as e:
-        print(f"Error slicing recommendations: {e}", file=sys.stderr)
-        #print(f"Recommendations: {json.dumps(recommendations)}", file=sys.stderr)
+    ranked_books = []
+    for potential_book in potential_matches:
+        if 'description' in potential_book:
+            potential_embedding = model.encode(potential_book['description'])
+            min_similarity = min(
+                util.cos_sim(potential_embedding, lib_embedding).item()
+                for lib_embedding in library_embeddings.values()
+            )
+            if potential_book not in [book for book, _ in ranked_books]:  # Ensure no duplicates
+                ranked_books.append((potential_book, min_similarity))
 
-    if len(recommendations) < total_recommendations:
-        additional_recommendations = [book for book in potential_matches if book['title'] not in recommended_titles]
-        additional_recommendations.sort(key=lambda x: x['score'], reverse=True)
-        recommendations.extend(additional_recommendations[:total_recommendations - len(recommendations)])    
-    
+    sys.stderr.write(f"[DEBUG] Calculated similarity for {len(ranked_books)} books\n")
+
+    # Step 5: Rank and return recommendations
+    ranked_books.sort(key=lambda x: x[1])  # Least similar first
+    recommendations = [book for book, _ in ranked_books[:total_recommendations]]
+
+    if not recommendations:
+        sys.stderr.write("[INFO] No opposite recommendations found. Fetching random obscure books.\n")
+        recommendations = get_random_books(total_recommendations)
+
+    sys.stderr.write(f"[DEBUG] Final recommendations count: {len(recommendations)}\n")
     return recommendations
 
 def get_random_books(total_recommendations=15):
-    all_genres = ["Fiction", "Non-Fiction", "Science", "Biography", "Children", "Fantasy", "Romance", "Mystery", "History", "Poetry", "Science Fiction", "Self-Help", "Philosophy", "Health", "Business", "Travel", "Humor", "Comics", "Religion"]  # You can add more genres here
+    all_genres = ["Mystery", "Fantasy", "Science Fiction", "Biography", "Romance",
+    "History", "Children", "Comics", "Poetry", "Self-Help", "Philosophy",
+    "Health", "Business", "Travel", "Humor"]
     random.shuffle(all_genres)
-    potential_matches = find_books_by_genres(all_genres, max_results=total_recommendations * 3)
-    random.shuffle(potential_matches)
-    recommendations = potential_matches[:total_recommendations]
-
-    return recommendations
+    potential_matches = find_books_by_genres(all_genres, max_results=total_recommendations * 2)
+    unique_matches = []
+    for book in potential_matches:
+        if book not in unique_matches:  # Ensure no duplicates
+            unique_matches.append(book)
+    random.shuffle(unique_matches)
+    return unique_matches[:total_recommendations]
 
 if __name__ == "__main__":
     try:
-        if len(sys.argv) > 1:
-            library = json.loads(sys.argv[1])
-            if not library:
-                recommendations = get_random_books()  # If library is empty, get random books
-            else:
-                recommendations = find_opposite_matches(library)
-        else:
-            recommendations = get_random_books()
-        print(json.dumps(recommendations))
+        library = json.loads(sys.argv[1])
+        recommendations = find_opposite_least_similar(library, total_recommendations=15)
+        print(json.dumps(recommendations))  # Output recommendations as JSON
     except Exception as e:
-        print(f"Error: {str(e)}", file=sys.stderr)
-        # Return an empty list if an error occurs
-        print(json.dumps([]))
+        sys.stderr.write(f"Error: {str(e)}\n")
