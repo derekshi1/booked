@@ -4,6 +4,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const scrollRightButton = document.getElementById('scrollRight');
     const scrollLeftButton_nyt = document.getElementById('scrollLeft_nyt');
     const scrollRightButton_nyt = document.getElementById('scrollRight_nyt');
+    const scrollLeftNF = document.getElementById('scrollLeftNF');
+    const scrollRightNF = document.getElementById('scrollRightNF');
+    const scrollLeftYA = document.getElementById('scrollLeftYA');
+    const scrollRightYA = document.getElementById('scrollRightYA');
     const username = localStorage.getItem('username'); // Ensure the username is stored in localStorage
 
     const recommendationsContainer = document.getElementById('recommendationsContainer');
@@ -18,6 +22,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const lastFetchTimeKey = `${username}_lastFetchTime`;
     const nextFetchTimeKey = `${username}_nextFetchTime`;
     const recommendationsKey = `${username}_recommendations`;
+    const oppRecommendationsKey = `${username}_opposite_recommendations`; 
+
     const lastFetchTime = localStorage.getItem(lastFetchTimeKey);
     const storedRecommendations = JSON.parse(localStorage.getItem(recommendationsKey));
     const now = new Date().getTime();
@@ -261,10 +267,13 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!thumbnail || isPlaceholder(thumbnail)) {
                 thumbnail = 'invalid-url.jpg'; // This will trigger the onErrorFallback
             }
+            const isbn = Array.isArray(recommendation.isbn) && recommendation.isbn.length > 0
+            ? recommendation.isbn[0]
+            : 'no-isbn';
     
             recommendationElement.innerHTML = `
                 <div class="relative group book-card">
-                    <a href="../html/book.html?isbn=${recommendation.isbn[0]}" class="block relative overflow-hidden rounded-lg shadow-lg hover:shadow-2xl transition duration-300 ease-in-out group">
+                    <a href="../html/book.html?isbn=${isbn}" class="block relative overflow-hidden rounded-lg shadow-lg hover:shadow-2xl transition duration-300 ease-in-out group">
                         <img 
                             src="${thumbnail}?zoom=1" 
                             alt="${recommendation.title}" 
@@ -350,10 +359,13 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!thumbnail || isPlaceholder(thumbnail)) {
                 thumbnail = 'invalid-url.jpg'; // This will trigger the onErrorFallback
             }
+            const isbn = Array.isArray(recommendation.isbn) && recommendation.isbn.length > 0
+            ? recommendation.isbn[0]
+            : 'no-isbn'; // Fallback if ISBN is missing
     
             recommendationElement.innerHTML = `
                 <div class="relative group">
-                    <a href="../html/book.html?isbn=${recommendation.isbn[0]}" class="block relative overflow-hidden rounded-lg shadow-lg hover:shadow-2xl transition duration-300 ease-in-out group">
+                    <a href="../html/book.html?isbn=${isbn}" class="block relative overflow-hidden rounded-lg shadow-lg hover:shadow-2xl transition duration-300 ease-in-out group">
                         <img 
                             src="${thumbnail}?zoom=1" 
                             alt="${recommendation.title}" 
@@ -379,11 +391,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (username) {
             const nextFetchTime = localStorage.getItem(nextFetchTimeKey);
     
-            // Display existing recommendations if available
-            if (storedRecommendations && storedRecommendations.length > 0) {
-                renderOppositeRecommendations(storedRecommendations);
+            const storedOppRecommendations = JSON.parse(localStorage.getItem(oppRecommendationsKey));
+            if (storedOppRecommendations && storedOppRecommendations.length > 0) {
+                renderOppositeRecommendations(storedOppRecommendations);
             }
-    
             // Start the countdown timer
             if (nextFetchTime && now < nextFetchTime) {
                 startCountdown(nextFetchTime);
@@ -397,7 +408,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
                     if (data.success && data.recommendations.length > 0) {
                         renderOppositeRecommendations(data.recommendations);
-                        localStorage.setItem(recommendationsKey, JSON.stringify(data.recommendations)); // Store new recommendations
+                        localStorage.setItem(oppRecommendationsKey, JSON.stringify(data.recommendations)); // Store new recommendations
                         localStorage.setItem(lastFetchTimeKey, now); // Update the fetch timestamp
                         const newNextFetchTime = now + timeThreshold;
                         localStorage.setItem(nextFetchTimeKey, newNextFetchTime); // Store the next fetch time
@@ -573,6 +584,39 @@ document.addEventListener('DOMContentLoaded', () => {
             behavior: 'smooth'
         });
     });
+    scrollLeftYA.addEventListener('click', () => {
+        yadultContainer.scrollBy({
+            top: 0,
+            left: -recommendationsContainer.clientWidth,
+            behavior: 'smooth'
+        });
+    });
+
+    scrollRightYA.addEventListener('click', () => {
+        yadultContainer.scrollBy({
+            top: 0,
+            left: recommendationsContainer.clientWidth,
+            behavior: 'smooth'
+        });
+    });
+
+    scrollLeftNF.addEventListener('click', () => {
+        nonfictionContainer.scrollBy({
+            top: 0,
+            left: -recommendationsContainer.clientWidth,
+            behavior: 'smooth'
+        });
+    });
+
+    scrollRightNF.addEventListener('click', () => {
+        nonfictionContainer.scrollBy({
+            top: 0,
+            left: recommendationsContainer.clientWidth,
+            behavior: 'smooth'
+        });
+    });
+
+    
 
     scrollLeftButton_nyt.addEventListener('click', () => {
         bestSellersContainer.scrollBy({
@@ -653,6 +697,85 @@ const renderNYTimesBestSellers = (books) => {
         bestSellersContainer.appendChild(bookElement);
     });
 };
+
+async function fetchNYTimesyadult() {
+    const apiKey = 'Glpuj6w9AxVo6kx0vpfy8x3hdBr10eHu'; // Replace with your actual API key
+    const response = await fetch(`https://api.nytimes.com/svc/books/v3/lists/current/young-adult-hardcover.json?api-key=${apiKey}`);
+    const data = await response.json();
+    return data.results.books.map(book => ({
+        title: book.title,
+        authors: book.author,
+        thumbnail: book.book_image,
+        isbn: book.primary_isbn13
+    }));
+}
+const renderNYTimesyadult = (books) => {
+    yadultContainer.innerHTML = '';
+    books.forEach(book => {
+        const bookElement = document.createElement('div');
+        bookElement.classList.add('nyt-card', 'p-4', 'bg-gray-100', 'rounded', 'shadow', 'book-card');
+        bookElement.innerHTML = `
+            <div class="relative group">
+                <a href="../html/book.html?isbn=${book.isbn}" class="block relative overflow-hidden rounded-lg shadow-lg hover:shadow-2xl transition duration-300 ease-in-out group">
+                    <img src="${book.thumbnail}" alt="${book.title}" class="w-30 h-30 object-cover">
+                    <div class="absolute bottom-0 left-0 w-full p-4 bg-black bg-opacity-60 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-in-out">
+                        <h2 class="text-lg font-bold">${book.title}</h2>
+                        <p class="text-gray-300">by ${book.authors}</p>
+                    </div>
+                </a>
+            </div>
+        `;
+        yadultContainer.appendChild(bookElement);
+    });
+};
+
+fetchNYTimesyadult().then(books => {
+    renderNYTimesyadult(books);
+}).catch(error => {
+    console.error('Error fetching NY Times young adult books:', error);
+    renderPlaceholderRecommendations();
+});
+
+
+async function fetchNF() {
+    const apiKey = 'Glpuj6w9AxVo6kx0vpfy8x3hdBr10eHu'; // Replace with your actual API key
+    const response = await fetch(`https://api.nytimes.com/svc/books/v3/lists/current/hardcover-nonfiction.json?api-key=${apiKey}`);
+    const data = await response.json();
+    return data.results.books.map(book => ({
+        title: book.title,
+        authors: book.author,
+        thumbnail: book.book_image,
+        isbn: book.primary_isbn13
+    }));
+}
+
+const renderNF = (books) => {
+    nonfictionContainer.innerHTML = '';
+    books.forEach(book => {
+        const bookElement = document.createElement('div');
+        bookElement.classList.add('nyt-card', 'p-4', 'bg-gray-100', 'rounded', 'shadow', 'book-card');
+        bookElement.innerHTML = `
+            <div class="relative group">
+                <a href="../html/book.html?isbn=${book.isbn}" class="block relative overflow-hidden rounded-lg shadow-lg hover:shadow-2xl transition duration-300 ease-in-out group">
+                    <img src="${book.thumbnail}" alt="${book.title}" class="w-30 h-30 object-cover">
+                    <div class="absolute bottom-0 left-0 w-full p-4 bg-black bg-opacity-60 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-in-out">
+                        <h2 class="text-lg font-bold">${book.title}</h2>
+                        <p class="text-gray-300">by ${book.authors}</p>
+                    </div>
+                </a>
+            </div>
+        `;
+        nonfictionContainer.appendChild(bookElement);
+    });
+};
+
+fetchNF().then(books => {
+    renderNF(books);
+}).catch(error => {
+    console.error('Error fetching NY Times young adult books:', error);
+    renderPlaceholderRecommendations();
+});
+
 
 // logic for cylcing lists: 1. need to create the render lists helper method ( you guys have already done this in your code just make a general function to render lists)
 //2. the generateNewLists function which will store all the lists and only output 2 at a time
