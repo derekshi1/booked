@@ -1345,6 +1345,7 @@ app.get('/api/opposite-recommendations/:username', async (req, res) => {
   }
 });
 
+
 app.get('/api/search-users', async (req, res) => {
   const query = req.query.query;
   try {

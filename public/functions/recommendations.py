@@ -5,10 +5,13 @@ import asyncio
 import aiohttp
 from sentence_transformers import SentenceTransformer, util
 from collections import defaultdict
+import os
+from dotenv import load_dotenv
 
+load_dotenv()
 # Define the Google Books API URL
 GOOGLE_BOOKS_API_URL = "https://www.googleapis.com/books/v1/volumes"
-API_KEY = 'AIzaSyCFDaqjpgA8K_NqqCw93xorS3zumc_52u8'
+API_KEY = os.getenv("API_KEY")
 
 # Load the pre-trained sentence transformer model
 model = SentenceTransformer('paraphrase-MiniLM-L6-v2')

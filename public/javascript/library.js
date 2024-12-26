@@ -85,7 +85,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             } else {
                 console.log("No current reads available for user.");
-                currentReadsGrid.innerHTML = '<p class="text-center text-gray-300 col-span-full">No current reads to display.</p>';
+                currentReadsGrid.innerHTML = '';
+                currentReadsTitle.innerHTML = '';
             }
         } catch (error) {
             console.error('Error fetching current reads:', error);
