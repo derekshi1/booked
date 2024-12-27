@@ -1,0 +1,89 @@
+import sys
+import json
+import asyncio
+import aiohttp
+from sentence_transformers import SentenceTransformer
+import pinecone
+from cachetools import TTLCache
+import os
+from dotenv import load_dotenv
+
+# Pinecone initialization
+PINECONE_API_KEY = os.getenv("PINECONE_KEY")  # Replace with your Pinecone API key
+PINECONE_ENVIRONMENT = "us-east-1"  # Replace with your Pinecone environment
+INDEX_NAME = "vectorized-book-description-database"
+
+pinecone.init(api_key=PINECONE_API_KEY, environment=PINECONE_ENVIRONMENT)
+index = pinecone.Index(INDEX_NAME)
+
+# Load the pre-trained sentence transformer model
+model = SentenceTransformer("paraphrase-MiniLM-L6-v2")
+
+# Google Books API configuration
+GOOGLE_BOOKS_API_URL = "https://www.googleapis.com/books/v1/volumes"
+API_KEY = os.getenv("API_KEY")
+
+# Cache setup
+book_cache = TTLCache(maxsize=1000, ttl=600)
+
+async def get_book_info(isbn):
+    if isbn in book_cache:
+        return book_cache[isbn]
+
+    params = {"q": f"isbn:{isbn}", "maxResults": 1, "key": API_KEY}
+    async with aiohttp.ClientSession() as session:
+        async with session.get(GOOGLE_BOOKS_API_URL, params=params) as response:
+            if response.status == 200:
+                data = await response.json()
+                if "items" in data:
+                    book = data["items"][0]["volumeInfo"]
+                    book_info = {
+                        "title": book.get("title"),
+                        "authors": book.get("authors", []),
+                        "categories": book.get("categories", []),
+                        "description": book.get("description", ""),
+                        "isbn": isbn,
+                        "thumbnail": book.get("imageLinks", {}).get("thumbnail", ""),
+                    }
+                    book_cache[isbn] = book_info
+                    return book_info
+    return None
+
+async def find_similar_books(book, top_k=5):
+    description = book.get("description", "")
+    if not description:
+        raise ValueError("Book description is missing.")
+
+    # Encode the book description
+    vector = model.encode(description).tolist()
+
+    # Query Pinecone for similar vectors
+    response = index.query(vector=vector, top_k=top_k, include_metadata=True)
+
+    # Extract recommendations from Pinecone response
+    recommendations = []
+    for match in response["matches"]:
+        metadata = match["metadata"]
+        recommendations.append({
+            "title": metadata.get("title"),
+            "authors": metadata.get("authors", []),
+            "categories": metadata.get("categories", []),
+            "isbn": metadata.get("isbn"),
+            "thumbnail": metadata.get("thumbnail"),
+            "score": match["score"],
+        })
+
+    return recommendations
+
+if __name__ == "__main__":
+    try:
+        book_isbn = sys.argv[1]
+        book_info = asyncio.run(get_book_info(book_isbn))
+        if not book_info:
+            print("Error: Book not found", file=sys.stderr)
+            sys.exit(1)
+
+        recommendations = asyncio.run(find_similar_books(book_info))
+        print(json.dumps(recommendations, indent=4))
+    except Exception as e:
+        print(f"Error: {str(e)}", file=sys.stderr)
