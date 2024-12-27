@@ -104,7 +104,8 @@ const userLibrarySchema = new mongoose.Schema({
     review: String,
     rating: Number,
     reviewDate: Date, // Ensure this field exists
-    visibility: { type: String, enum: ['private', 'friends', 'public'], default: 'public' } // Add this line
+    visibility: { type: String, enum: ['private', 'friends', 'public'], default: 'public' },
+    likes: [String]
   }],
   top5: [{
     isbn: String,
@@ -1214,34 +1215,45 @@ app.get('/api/reviews/books/:isbn', async (req, res) => {
       const book = library.books.find(book => book.isbn === isbn);
 
       if (book && book.review) {
+        const isLikedByUser = book.likes.includes(loggedInUsername);
+
         // Always include the loggedInUsername's reviews, regardless of visibility
         if (library.username === loggedInUsername) {
           reviews.push({
+            _id: book._id, 
             username: library.username,
             review: book.review,
             rating: book.rating,
             reviewDate: book.reviewDate,
-            visibility: book.visibility, // Keep track of visibility
+            visibility: book.visibility, 
+            likes: book.likes.length || 0,
+            isLikedByUser,
           });
         } else {
           // Check visibility and include the review based on visibility for other users
           if (book.visibility === 'public') {
             reviews.push({
+              _id: book._id, 
               username: library.username,
               review: book.review,
               rating: book.rating,
               reviewDate: book.reviewDate,
               visibility: book.visibility,
+              likes: book.likes.length || 0,
+              isLikedByUser,
             });
           } else if (book.visibility === 'friends') {
             const isFriend = await checkFriendship(library.username, loggedInUsername);
             if (isFriend) {
               reviews.push({
+                _id: book._id, 
                 username: library.username,
                 review: book.review,
                 rating: book.rating,
                 reviewDate: book.reviewDate,
                 visibility: book.visibility,
+                likes: book.likes.length || 0,
+                isLikedByUser,
               });
             }
           }
@@ -1773,6 +1785,65 @@ app.post('/api/library/:username/currently-reading/end', async (req, res) => {
   }
 });
 
+// adding likes
+app.post('/api/library/review/:reviewId/like', async (req, res) => {
+  try {
+    const { reviewId } = req.params;
+    const { username } = req.body;
+
+    const userLibrary = await UserLibrary.findOne({ "books._id": reviewId });
+
+    if (!userLibrary) {
+      return res.status(404).json({ success: false, message: 'User library not found' });
+    }
+
+    const book = userLibrary.books.find(book => book._id.toString() === reviewId);
+
+    if (!book) {
+      return res.status(404).json({ success: false, message: 'Book not found' });
+    }
+
+    if (!book.likes.includes(username)) {
+      book.likes.push(username);
+    } else {
+      return res.status(400).json({ success: false, message: 'You already liked this review.' });
+    }
+
+    await userLibrary.save();
+    res.status(200).json({ success: true, likes: book.likes.length });
+  } catch (error) {
+    console.error('Error liking review:', error);
+    res.status(500).json({ success: false, message: 'Error liking review' });
+  }
+});
+
+// Removing likes
+app.post('/api/library/review/:reviewId/unlike', async (req, res) => {
+  try {
+    const { reviewId } = req.params;
+    const { username } = req.body;
+
+    const userLibrary = await UserLibrary.findOne({ "books._id": reviewId });
+
+    if (!userLibrary) {
+      return res.status(404).json({ success: false, message: 'User library not found' });
+    }
+
+    const book = userLibrary.books.find(book => book._id.toString() === reviewId);
+
+    if (!book) {
+      return res.status(404).json({ success: false, message: 'Book not found' });
+    }
+
+    book.likes = book.likes.filter(user => user !== username);
+
+    await userLibrary.save();
+    res.status(200).json({ success: true, likes: book.likes.length });
+  } catch (error) {
+    console.error('Error unliking review:', error);
+    res.status(500).json({ success: false, message: 'Error unliking review' });
+  }
+});
 
 
 app.listen(port, () => {

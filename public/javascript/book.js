@@ -191,9 +191,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             dropdownMenu.addEventListener('click', (event) => {
                 event.stopPropagation();
             });
-        
-
-
+    
             
                 fetchAndDisplayReviews(isbn);
 
@@ -494,7 +492,10 @@ async function displayReview(reviews) {
     }
 }
 function createReviewElement(review, isFriend) {
+    const params = new URLSearchParams(window.location.search);
+
     console.log('Creating Review Element:', review);  // Log the review object
+    const isbn = params.get('isbn');
 
     const reviewDiv = document.createElement('div');
     reviewDiv.classList.add('review', 'p-4', 'mb-4', 'border', 'rounded', 'bg-white', 'shadow-md');
@@ -517,24 +518,69 @@ function createReviewElement(review, isFriend) {
         : `<span class="ml-2 inline-flex items-center px-3 py-0.5 rounded-full text-sm font-medium bg-blue-600 text-white">
                 🌍 Public
            </span>`;
+           
+        const isLikedClass = review.isLikedByUser ? 'text-red-500' : 'text-gray-600';
+        console.log("liked by user: ????", review.isLikedByUser)
 
-    reviewDiv.innerHTML = `
-    <div class="flex items-center">
-        <a href="../html/profile.html?username=${review.username}" class= "text-lg font-semibold" style="display: inline-flex; text-decoration: none; color: #333; padding: 2px 4px;"
-        onmouseover="this.style.textDecoration='underline'; this.style.color='#555';"
-       onmouseout="this.style.textDecoration='none'; this.style.color='#333';">
-${review.username}</a>  
-            ${visibilityBadge}
-    </div>
-
-        <p class="text-sm text-gray-600 mb-2">Rating: <strong>${review.rating}/100 </strong></p>
-        <p class="text-gray-600 mb-2 ml-2"> ${review.review}</p>
-        <p class="text-xs text-gray-500">Reviewed on: ${new Date(review.reviewDate).toLocaleDateString()}</p>
-    `;
-    
-    return reviewDiv;
+           reviewDiv.innerHTML = `
+           <div class="flex items-center justify-between">
+               <div>
+                   <a href="../html/profile.html?username=${review.username}" class="text-lg font-semibold" style="display: inline-flex; text-decoration: none; color: #333; padding: 2px 4px;"
+                   onmouseover="this.style.textDecoration='underline'; this.style.color='#555';"
+                  onmouseout="this.style.textDecoration='none'; this.style.color='#333';">
+                       ${review.username}
+                   </a>  
+                   ${visibilityBadge}
+               </div>
+            <button class="like-button flex items-center ${isLikedClass} hover:text-red-500 focus:outline-none" data-review-id="${review._id}">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-1" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+        </svg>
+                <span class="like-count">${review.likes || 0}</span>
+            </button>
+           </div>
+       
+           <p class="text-sm text-gray-600 mb-2">Rating: <strong>${review.rating}/100</strong></p>
+           <p class="text-gray-600 mb-2 ml-2">${review.review}</p>
+           <p class="text-xs text-gray-500">Reviewed on: ${new Date(review.reviewDate).toLocaleDateString()}</p>
+           `;
+       
+           // Attach like button event listener
+           const likeButton = reviewDiv.querySelector('.like-button');
+           likeButton.addEventListener('click', async () => {
+            const reviewId = likeButton.getAttribute('data-review-id'); 
+            console.log("review ID:", reviewId)
+            await toggleLikeReview(reviewId, likeButton);
+        });
+       
+           return reviewDiv;
 }
+async function toggleLikeReview(reviewId, likeButton) {
+    try {
+        const username = localStorage.getItem('username');
+        const isLiked = likeButton.classList.contains('text-red-500'); // Check if already liked
+        const endpoint = isLiked 
+            ? `/api/library/review/${reviewId}/unlike` 
+            : `/api/library/review/${reviewId}/like`;
 
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username }),
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            const likeCountElement = likeButton.querySelector('.like-count');
+            likeCountElement.textContent = data.likes;
+            likeButton.classList.toggle('text-red-500'); // Toggle heart color
+        } else {
+            console.error('Failed to toggle like:', response.statusText);
+        }
+    } catch (error) {
+        console.error('Error toggling like:', error);
+    }
+}
 
 
 function renderRecommendations(recommendations) {
