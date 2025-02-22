@@ -4,6 +4,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const scrollRightButton = document.getElementById('scrollRight');
     const scrollLeftButton_nyt = document.getElementById('scrollLeft_nyt');
     const scrollRightButton_nyt = document.getElementById('scrollRight_nyt');
+    const scrollLeftNF = document.getElementById('scrollLeftNF');
+    const scrollRightNF = document.getElementById('scrollRightNF');
+    const scrollLeftYA = document.getElementById('scrollLeftYA');
+    const scrollRightYA = document.getElementById('scrollRightYA');
     const username = localStorage.getItem('username'); // Ensure the username is stored in localStorage
 
     const recommendationsContainer = document.getElementById('recommendationsContainer');
@@ -18,6 +22,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const lastFetchTimeKey = `${username}_lastFetchTime`;
     const nextFetchTimeKey = `${username}_nextFetchTime`;
     const recommendationsKey = `${username}_recommendations`;
+    const oppRecommendationsKey = `${username}_opposite_recommendations`; 
+
     const lastFetchTime = localStorage.getItem(lastFetchTimeKey);
     const storedRecommendations = JSON.parse(localStorage.getItem(recommendationsKey));
     const now = new Date().getTime();
@@ -33,6 +39,97 @@ document.addEventListener('DOMContentLoaded', () => {
     const bypassLimit = urlParams.get('bypassLimit') === 'True';
     
 
+    const recommendationToggle = document.getElementById('recommendationToggle');
+    const forMeText = document.getElementById('toggleTextForMe');
+    const forGroupText = document.getElementById('toggleTextForGroup');
+
+    // Ensure initial state is set to "For Me" when checked
+    if (recommendationToggle.checked) {
+        forMeText.classList.add('text-gray-400');
+        forGroupText.classList.remove('text-gray-400');
+        searchFriendsContainer.classList.add('hidden');
+    
+    } else {
+        forMeText.classList.remove('text-gray-400');
+        forGroupText.classList.add('text-gray-400');
+        searchFriendsContainer.classList.remove('hidden');
+    }
+
+    // Add event listener to toggle text when the checkbox is toggled
+    recommendationToggle.addEventListener('change', function() {
+        const isChecked = this.checked;
+
+        if (isChecked) {
+            forMeText.classList.add('text-gray-400');
+            forGroupText.classList.remove('text-gray-400');
+            searchFriendsContainer.classList.add('hidden');
+
+        } else {
+            forMeText.classList.remove('text-gray-400');
+            forGroupText.classList.add('text-gray-400');
+            searchFriendsContainer.classList.remove('hidden');
+
+        }
+    });
+    let selectedUsernames = [];
+
+    function toggleFriendSelection(username, element) {
+        const index = selectedUsernames.indexOf(username);
+        const usernameText = element.querySelector('span'); // Find the username text element
+    
+        if (index === -1) {
+            // If the username is not already selected, add it and change the text color
+            selectedUsernames.push(username);
+            usernameText.classList.add('text-green-700'); // Change text color to green
+        } else {
+            // If the username is already selected, remove it and reset the text color
+            selectedUsernames.splice(index, 1);
+            usernameText.classList.remove('text-green-700'); // Reset text color
+        }
+    }
+    
+    searchFriendsInput.addEventListener('input', async function() {
+        const query = this.value;
+        if (query.length < 2) return; // Wait until the user has typed at least 2 characters
+    
+        try {
+            const response = await fetch(`/api/search-users?query=${encodeURIComponent(query)}`);
+            const data = await response.json();
+    
+            if (data.success) {
+                // Clear previous results
+                searchResults.innerHTML = '';
+                data.users.forEach(user => {
+                    const userContainer = document.createElement('div');
+                    userContainer.classList.add('flex', 'items-center', 'p-2', 'border-b', 'cursor-pointer');
+                
+                    const profileImage = document.createElement('img');
+                    profileImage.src = user.profilePicture || '../profile.png'; // Use default if no profile picture
+                    profileImage.classList.add('w-10', 'h-10', 'rounded-full', 'mr-3'); // Styling for the image
+                
+                    // Create the text element for the username
+                    const usernameText = document.createElement('span');
+                    usernameText.textContent = user.username;
+                    usernameText.classList.add('text-gray-200', 'font-semibold', 'hover:text-gray-600'); // Move hover class here
+                
+                    // Append the image and username to the user container
+                    userContainer.appendChild(profileImage);
+                    userContainer.appendChild(usernameText);
+                
+                    // Append the user container to the search results
+                    searchResults.appendChild(userContainer);
+                
+                    // Add click event listener for selection
+                    userContainer.addEventListener('click', () => toggleFriendSelection(user.username, userContainer));
+                });
+                
+            }
+        } catch (error) {
+            console.error('Error fetching users:', error);
+        }
+    });
+
+
     const startGenerateCountdown = (timeLeft) => {
         const countdownElement = document.getElementById('countdownTimer_rec'); // Use the new ID for countdown timer
     
@@ -41,7 +138,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const timeRemaining = timeLeft - (currentTime - clickData.lastReset);
     
             if (timeRemaining <= 0) {
-                countdownElement.textContent = "You can generate recommendations again!";
                 generateButton.disabled = false;
                 clearInterval(generateCountdownInterval);
                 return;
@@ -125,6 +221,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // Function to render recommendations
     const renderRecommendations = (recommendations) => {
         recommendationsContainer.innerHTML = '';
+        if (!recommendations || recommendations.length === 0) {
+            console.warn('[DEBUG] No valid recommendations found. Rendering placeholders...');
+            renderPlaceholderRecommendations();
+            return;
+        }
         recommendations.forEach(recommendation => {
             const recommendationElement = document.createElement('div');
             recommendationElement.classList.add('recommendation-card', 'p-4', 'bg-gray-100', 'rounded', 'shadow-lg');
@@ -139,6 +240,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 const hex = `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
                 return hex;
             };
+            const title = recommendation.title || 'Unknown Title';
+            const authors = (recommendation.authors && recommendation.authors.length > 0) ? recommendation.authors.join(', ') : 'Unknown Author';
+
     
             // Fallback to a colored cover if the image is a placeholder or fails to load
             const onErrorFallback = (event) => {
@@ -163,10 +267,13 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!thumbnail || isPlaceholder(thumbnail)) {
                 thumbnail = 'invalid-url.jpg'; // This will trigger the onErrorFallback
             }
+            const isbn = Array.isArray(recommendation.isbn) && recommendation.isbn.length > 0
+            ? recommendation.isbn[0]
+            : 'no-isbn';
     
             recommendationElement.innerHTML = `
                 <div class="relative group book-card">
-                    <a href="../html/book.html?isbn=${recommendation.isbn[0]}" class="block relative overflow-hidden rounded-lg shadow-lg hover:shadow-2xl transition duration-300 ease-in-out group">
+                    <a href="../html/book.html?isbn=${isbn}" class="block relative overflow-hidden rounded-lg shadow-lg hover:shadow-2xl transition duration-300 ease-in-out group">
                         <img 
                             src="${thumbnail}?zoom=1" 
                             alt="${recommendation.title}" 
@@ -174,7 +281,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         />
                         <div class="absolute bottom-0 left-0 w-full p-4 bg-black bg-opacity-60 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-in-out">
                             <h2 class="text-lg font-bold">${recommendation.title}</h2>
-                            <p class="text-gray-300">by ${recommendation.authors.join(', ')} </p>
+                            <p class="text-gray-300">by ${authors} </p>
                         </div>
                     </a>
                 </div>
@@ -252,10 +359,13 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!thumbnail || isPlaceholder(thumbnail)) {
                 thumbnail = 'invalid-url.jpg'; // This will trigger the onErrorFallback
             }
+            const isbn = Array.isArray(recommendation.isbn) && recommendation.isbn.length > 0
+            ? recommendation.isbn[0]
+            : 'no-isbn'; // Fallback if ISBN is missing
     
             recommendationElement.innerHTML = `
                 <div class="relative group">
-                    <a href="../html/book.html?isbn=${recommendation.isbn[0]}" class="block relative overflow-hidden rounded-lg shadow-lg hover:shadow-2xl transition duration-300 ease-in-out group">
+                    <a href="../html/book.html?isbn=${isbn}" class="block relative overflow-hidden rounded-lg shadow-lg hover:shadow-2xl transition duration-300 ease-in-out group">
                         <img 
                             src="${thumbnail}?zoom=1" 
                             alt="${recommendation.title}" 
@@ -281,11 +391,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (username) {
             const nextFetchTime = localStorage.getItem(nextFetchTimeKey);
     
-            // Display existing recommendations if available
-            if (storedRecommendations && storedRecommendations.length > 0) {
-                renderOppositeRecommendations(storedRecommendations);
+            const storedOppRecommendations = JSON.parse(localStorage.getItem(oppRecommendationsKey));
+            if (storedOppRecommendations && storedOppRecommendations.length > 0) {
+                renderOppositeRecommendations(storedOppRecommendations);
             }
-    
             // Start the countdown timer
             if (nextFetchTime && now < nextFetchTime) {
                 startCountdown(nextFetchTime);
@@ -299,7 +408,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
                     if (data.success && data.recommendations.length > 0) {
                         renderOppositeRecommendations(data.recommendations);
-                        localStorage.setItem(recommendationsKey, JSON.stringify(data.recommendations)); // Store new recommendations
+                        localStorage.setItem(oppRecommendationsKey, JSON.stringify(data.recommendations)); // Store new recommendations
                         localStorage.setItem(lastFetchTimeKey, now); // Update the fetch timestamp
                         const newNextFetchTime = now + timeThreshold;
                         localStorage.setItem(nextFetchTimeKey, newNextFetchTime); // Store the next fetch time
@@ -367,24 +476,23 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!generateButton.classList.contains('racing-glow')) {
                 generateButton.classList.add('racing-glow'); // Add the racing border animation
                 generateButton.textContent = 'Generating Recommendations...';
-
             }
             generateButton.disabled = true;
             const now = Date.now();
             generateButton.classList.remove('glow-button');
-
+        
             if (now - clickData.lastReset >= limitResetTime) {
                 clickData.count = 0;
                 clickData.lastReset = now;
                 updateClickData(clickData);
             }
-    
+        
             if (!bypassLimit) {
                 if (clickData.count >= clickLimit) {
                     const timeUntilReset = limitResetTime - (now - clickData.lastReset);
                     startGenerateCountdown(timeUntilReset);
                     generateButton.classList.remove('glow-button');
-
+        
                     console.log('Click limit reached. Please wait until the countdown ends.');
                     return;
                 }
@@ -392,14 +500,34 @@ document.addEventListener('DOMContentLoaded', () => {
                 updateClickData(clickData);
                 updateRecommendationStatus(clickData);
             }
-            // Proceed with generating recommendations
+        
+            // Check the state of the toggle
+            const recommendationToggle = document.getElementById('recommendationToggle');
+            const isGroupMode = !recommendationToggle.checked; // Assuming "For a Group" is when it's unchecked
+        
             try {
-                //showSparkles();
-                const response = await fetch(`/api/recommendations/${username}`);
+                let response;
+                if (isGroupMode) {
+                    // If the toggle is set to "For a Group," fetch group recommendations
+                    if (selectedUsernames.length === 0) {
+                        alert('Please select at least one friend for group recommendations.');
+                        generateButton.disabled = false;
+                        generateButton.classList.remove('racing-glow'); // Remove the racing border animation
+                        generateButton.classList.add('glow-button');
+                        generateButton.textContent = 'Generate Recommendations'; // Reset the text
+                        return;
+                    }
+                    
+                    const usernamesQuery = selectedUsernames.join(',');
+                    response = await fetch(`/api/group-recommendations?usernames=${encodeURIComponent(usernamesQuery)}`);
+                } else {
+                    // If the toggle is set to "For Me," fetch personal recommendations
+                    response = await fetch(`/api/recommendations/${username}`);
+                }
+        
                 const data = await response.json();
-    
                 console.log('Recommendations response:', data);
-    
+        
                 if (data.success && data.recommendations.length > 0) {
                     localStorage.setItem(`${username}_recommendations`, JSON.stringify(data.recommendations));
                     renderRecommendations(data.recommendations);
@@ -414,10 +542,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 generateButton.classList.remove('racing-glow'); // Remove the racing border animation
                 generateButton.classList.add('glow-button');
                 generateButton.textContent = 'Generate Recommendations'; // Reset the text
-
-
+                generateButton.disabled = false; // Re-enable the button
             }
         });
+        
 }      else{
     renderPlaceholderRecommendations();
 }
@@ -456,6 +584,39 @@ document.addEventListener('DOMContentLoaded', () => {
             behavior: 'smooth'
         });
     });
+    scrollLeftYA.addEventListener('click', () => {
+        yadultContainer.scrollBy({
+            top: 0,
+            left: -recommendationsContainer.clientWidth,
+            behavior: 'smooth'
+        });
+    });
+
+    scrollRightYA.addEventListener('click', () => {
+        yadultContainer.scrollBy({
+            top: 0,
+            left: recommendationsContainer.clientWidth,
+            behavior: 'smooth'
+        });
+    });
+
+    scrollLeftNF.addEventListener('click', () => {
+        nonfictionContainer.scrollBy({
+            top: 0,
+            left: -recommendationsContainer.clientWidth,
+            behavior: 'smooth'
+        });
+    });
+
+    scrollRightNF.addEventListener('click', () => {
+        nonfictionContainer.scrollBy({
+            top: 0,
+            left: recommendationsContainer.clientWidth,
+            behavior: 'smooth'
+        });
+    });
+
+    
 
     scrollLeftButton_nyt.addEventListener('click', () => {
         bestSellersContainer.scrollBy({
@@ -497,7 +658,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 async function fetchNYTimesBestSellers() {
-    const apiKey = '07KGzNSRt9XlvFc8Esd006b7fqiGA8cc'; // Replace with your actual API key
+    const apiKey = '07KGzNSRt9XlvFc8Esd006b7fqiGA8cc'; 
     const response = await fetch(`https://api.nytimes.com/svc/books/v3/lists/current/hardcover-fiction.json?api-key=${apiKey}`);
     const data = await response.json();
     return data.results.books.map(book => ({
@@ -535,6 +696,155 @@ const renderNYTimesBestSellers = (books) => {
         `;
         bestSellersContainer.appendChild(bookElement);
     });
+};
+
+async function fetchNYTimesyadult() {
+    const apiKey = 'Glpuj6w9AxVo6kx0vpfy8x3hdBr10eHu'; // Replace with your actual API key
+    const response = await fetch(`https://api.nytimes.com/svc/books/v3/lists/current/young-adult-hardcover.json?api-key=${apiKey}`);
+    const data = await response.json();
+    return data.results.books.map(book => ({
+        title: book.title,
+        authors: book.author,
+        thumbnail: book.book_image,
+        isbn: book.primary_isbn13
+    }));
+}
+const renderNYTimesyadult = (books) => {
+    yadultContainer.innerHTML = '';
+    books.forEach(book => {
+        const bookElement = document.createElement('div');
+        bookElement.classList.add('nyt-card', 'p-4', 'bg-gray-100', 'rounded', 'shadow', 'book-card');
+        bookElement.innerHTML = `
+            <div class="relative group">
+                <a href="../html/book.html?isbn=${book.isbn}" class="block relative overflow-hidden rounded-lg shadow-lg hover:shadow-2xl transition duration-300 ease-in-out group">
+                    <img src="${book.thumbnail}" alt="${book.title}" class="w-30 h-30 object-cover">
+                    <div class="absolute bottom-0 left-0 w-full p-4 bg-black bg-opacity-60 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-in-out">
+                        <h2 class="text-lg font-bold">${book.title}</h2>
+                        <p class="text-gray-300">by ${book.authors}</p>
+                    </div>
+                </a>
+            </div>
+        `;
+        yadultContainer.appendChild(bookElement);
+    });
+};
+
+fetchNYTimesyadult().then(books => {
+    renderNYTimesyadult(books);
+}).catch(error => {
+    console.error('Error fetching NY Times young adult books:', error);
+    renderPlaceholderRecommendations();
+});
+
+
+async function fetchNF() {
+    const apiKey = 'Glpuj6w9AxVo6kx0vpfy8x3hdBr10eHu'; // Replace with your actual API key
+    const response = await fetch(`https://api.nytimes.com/svc/books/v3/lists/current/hardcover-nonfiction.json?api-key=${apiKey}`);
+    const data = await response.json();
+    return data.results.books.map(book => ({
+        title: book.title,
+        authors: book.author,
+        thumbnail: book.book_image,
+        isbn: book.primary_isbn13
+    }));
+}
+
+const renderNF = (books) => {
+    nonfictionContainer.innerHTML = '';
+    books.forEach(book => {
+        const bookElement = document.createElement('div');
+        bookElement.classList.add('nyt-card', 'p-4', 'bg-gray-100', 'rounded', 'shadow', 'book-card');
+        bookElement.innerHTML = `
+            <div class="relative group">
+                <a href="../html/book.html?isbn=${book.isbn}" class="block relative overflow-hidden rounded-lg shadow-lg hover:shadow-2xl transition duration-300 ease-in-out group">
+                    <img src="${book.thumbnail}" alt="${book.title}" class="w-30 h-30 object-cover">
+                    <div class="absolute bottom-0 left-0 w-full p-4 bg-black bg-opacity-60 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-in-out">
+                        <h2 class="text-lg font-bold">${book.title}</h2>
+                        <p class="text-gray-300">by ${book.authors}</p>
+                    </div>
+                </a>
+            </div>
+        `;
+        nonfictionContainer.appendChild(bookElement);
+    });
+};
+
+fetchNF().then(books => {
+    renderNF(books);
+}).catch(error => {
+    console.error('Error fetching NY Times young adult books:', error);
+    renderPlaceholderRecommendations();
+});
+
+
+// logic for cylcing lists: 1. need to create the render lists helper method ( you guys have already done this in your code just make a general function to render lists)
+//2. the generateNewLists function which will store all the lists and only output 2 at a time
+// 3. call the fucntion 'fetch and display lists; in the dom 
+//4. test (there will be errors)
+
+const fetchAndDisplayLists = async () => {
+    if (username) {
+        const nextFetchTime = localStorage.getItem(nextFetchTimeKey);
+
+        // Logic to manage list display
+        const storedLists = localStorage.getItem(listsKey); // Retrieve stored lists from localStorage
+        const parsedLists = storedLists ? JSON.parse(storedLists) : []; // Parse lists if available
+
+        // Check if there are existing lists and display a set
+        if (parsedLists && parsedLists.length > 0) {
+            // Example: Display the current 2 out of 8 lists
+            // Use your existing helper methods to render the lists
+            renderLists(parsedLists); // Assuming renderLists is a helper method you have
+        }
+
+        // Start the countdown timer
+        if (nextFetchTime && now < nextFetchTime) {
+            startCountdown(nextFetchTime);
+        } else {
+            // If the timer is up or no fetch has been made yet, cycle to the next set of lists
+            try {
+                // Example: Logic to cycle through lists
+                // Use your existing logic to select the next 2 lists out of 8
+                // For example, rotate through the lists every 3 hours:
+                /*
+                  1. Determine the current set of lists to display
+                  2. Use a modulo operation to cycle through the list index
+                  3. Store the index in localStorage and update it as needed
+                */
+                const listIndex = parseInt(localStorage.getItem(listIndexKey)) || 0;
+                const nextIndex = (listIndex + 2) % 8; // Cycle through sets of 2 lists
+                localStorage.setItem(listIndexKey, nextIndex); // Update the index
+
+                // Fetch or generate new lists if necessary
+                // For now, this is represented with comments:
+                // Example: fetch(`/api/lists/${username}`) or similar logic
+
+                // Simulated new list generation (replace with actual logic)
+                const newLists = generateNewLists(); // Placeholder for your list generation logic
+                renderLists(newLists); // Render the new set of lists
+
+                localStorage.setItem(listsKey, JSON.stringify(newLists)); // Store new lists
+                localStorage.setItem(lastFetchTimeKey, now); // Update the fetch timestamp
+                const newNextFetchTime = now + timeThreshold; // 3 hours later
+                localStorage.setItem(nextFetchTimeKey, newNextFetchTime); // Store the next fetch time
+                startCountdown(newNextFetchTime); // Start the countdown
+            } catch (error) {
+                console.error('Error cycling through lists:', error);
+            }
+        }
+    } else {
+        console.log('No username found in localStorage.');
+    }
+};
+
+// Placeholder method to generate new lists (replace with your actual list generation logic)
+const generateNewLists = () => {
+    // Example: Return a set of 2 out of 8 lists
+    return [
+        { id: 1, name: 'List 1' },
+        { id: 2, name: 'List 2' }
+        // Add logic to select the appropriate lists based on your requirements
+    ];
 };
 
 });

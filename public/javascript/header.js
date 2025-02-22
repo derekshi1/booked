@@ -20,9 +20,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     const logoLink = document.createElement('a');
     logoLink.href = '../html/index.html';
     const logo = document.createElement('img');
-    logo.src = '../logo.jpg';
+    logo.src = '../logonobg.png';
     logo.alt = 'Booked Logo';
-    logo.classList.add('w-50', 'h-20', 'mr-4', 'logo-transition');
+    logo.classList.add('w-100', 'h-12', 'mr-4', 'logo-transition');
     logoLink.appendChild(logo);
     
     // Create and append navigation links
@@ -107,19 +107,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             usernameElement.style.color = window.scrollY > 50 ? 'white' : '';
         }
         if (window.scrollY > 50 && !logoChanged) {
-            header.style.backgroundColor = 'rgba(45, 52, 45, 0.8)'; // New background with slight transparency (90%)
+            header.style.backgroundColor = 'rgba(45, 52, 45, 1)'; // New background with slight transparency
             searchIcon.classList.add('search-icon-white'); // Add white color class
 
             // Fade out the current logo
             logo.style.opacity = '0';
             
             // After the fade-out transition is complete, change the src and fade back in
-            setTimeout(() => {
-                logo.src = '../dark-logo.jpeg'; /* New logo with correct background color */
-                logo.style.opacity = '1';
-            }, 500); // Match this timeout to your transition duration (1s in this case)
-            logoChanged = true;  // Mark the logo as changed
-            
+            logo.src = '../logonobg.png'; // New logo with correct background color
+            logo.style.opacity = '1'; // Ensure logo is fully visible
+            logoChanged = true; // Mark the logo as changed
+                
             // Change all link colors to white
             links.forEach(link => {
                 link.style.color = 'white';
@@ -132,12 +130,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             logo.style.opacity = '0';
             searchIcon.classList.remove('search-icon-white'); // Remove white color class
 
-            // After the fade-out transition is complete, change the src and fade back in
-            setTimeout(() => {
-                logo.src = '../logo.jpg'; /* Original logo */
-                logo.style.opacity = '1';
-            }, 500); // Match this timeout to your transition duration (1s in this case)
-            logoChanged = false;  // Mark the logo as reverted
+            logo.src = '../logonobg.png'; // Original logo
+            logo.style.opacity = '1'; // Ensure logo is fully visible
+            logoChanged = false; // Mark the logo as reverted
             
             // Change all link colors back to their original color
             links.forEach(link => {

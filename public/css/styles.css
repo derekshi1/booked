@@ -328,15 +328,19 @@ body {
 .single-recommendations-wrapper{
     width: 100%; /* Full width of the parent container */
     position: relative;
-    overflow: hidden;
+    overflow-y: auto;
+    overflow-x: hidden;
+    height: 100%;
+    margin-left: 20%; 
+
 }
 
 .single-recommendations-container {
     display: flex;
-    flex-direction: row;
-    overflow-x: auto;
+    flex-direction: column;
+    overflow-y: auto;
     gap: 1rem; /* Adjust the gap as needed */
-    overflow-y: hidden; 
+    overflow-x: hidden; 
 
 }
 
@@ -353,7 +357,7 @@ body {
 
 .single-recommendation-card {
     flex-shrink: 0;
-    width: 14%; /* Adjust this width to fit 7 books in the container */
+    width: 100%; /* Adjust this width to fit 7 books in the container */
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     border-radius: 0.5rem;
     padding: 1rem;
@@ -1133,3 +1137,31 @@ body, main {
 .hidden {
     display: none; /* Universal hide class */
 }
+
+/* Toggle background and dot styling */
+.toggle-bg {
+    position: relative;
+    transition: background-color 0.3s;
+}
+
+.toggle-dot {
+    top: -2px; /* Adjust to center the dot vertically */
+    left: 0;
+    transform: translateX(0);
+    transition: transform 0.3s;
+}
+
+/* When the checkbox is checked, move the dot */
+#recommendationToggle:checked + .toggle-bg .toggle-dot {
+    transform: translateX(32px); /* Move dot to the right */
+}
+
+#recommendationToggle:checked + .toggle-bg {
+    background-color: #4CAF50; /* Green color when checked */
+}
+.tan-title {
+    color: rgba(233, 220, 175, 1);
+}
+
+
+

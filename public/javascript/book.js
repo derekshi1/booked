@@ -19,32 +19,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             console.log(`API response: `, data);  // Logging API response
             if (data.totalItems > 0) {
                 const book = data.items[0].volumeInfo;
-                const bookCoverImage = book.imageLinks ? book.imageLinks.thumbnail.replace('zoom=1', '') + '&zoom=1' : 'https://via.placeholder.com/128x192?text=No+Image';
-                document.getElementById('bookCover').src = bookCoverImage;
-                document.body.style.backgroundImage = `url(${bookCoverImage})`;
-                document.body.style.backgroundSize = "70% 100%";
-                document.body.style.backgroundAttachment = "fixed"; // Keeps it fixed while scrolling
-                document.body.style.backgroundPosition = "center center"; // Center the image on both axes
-                document.body.style.backgroundRepeat = "no-repeat";
                 document.body.style.backgroundColor = '#2d342d'; // Dark green as fallbac
                 
-
-               
-                const overlay = document.createElement('div');
-                overlay.style.position = "fixed";
-                overlay.style.top = '50%'; 
-                overlay.style.left = '50%'; 
-                overlay.style.width = '70vw'; 
-                overlay.style.height = '100vh'; 
-                overlay.style.transform = 'translate(-50%, -50%)'; 
-                overlay.style.backgroundColor = 'rgba(255, 255, 255, 0.65)'; 
-                overlay.style.zIndex = '-1'; 
-                document.body.appendChild(overlay);
 
                 bookDetails.innerHTML = `
                 <div class="content-container flex">
     <!-- Left section (fixed) -->
-    <div class="w-1/4 fixed top-40 left-60 h-screen">
+    <div class="w-1/4 fixed top-40 left-20 h-screen">
         <div class="relative"> 
             <img src="${book.imageLinks ? book.imageLinks.thumbnail.replace('zoom=1', '') + '&zoom=1' : 'https://via.placeholder.com/128x192?text=No+Image'}" alt="${book.title}" class="book-card card book-cover w-60 h-96 object-cover mb-8">
         </div>
@@ -73,41 +54,40 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <li><button id="addToLibraryButton" class="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100">Add to Library</button></li>
                         <li><button id="addToReadingListButton" class="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100">Add to Reading List</button></li>
                         <li><button id="addToTop5Button" class="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100">Add to Top 5</button></li>
+                        <li><button id="addToCurrentlyReadingButton" class="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100">Add to Currently Reading</button></li>
                     </ul>
                 </div>
             </div>
         </div>
     </div>
+    <!-- Center Content (flexible width) -->
+    <div class="flex-1 ml-52 mr-0 mt-8">
+        <div class="pr-8">
+            <h1 class="text-4xl font-bold mb-3 text-white">${book.title}</h1>
+            <h2 class="text-xl mb-3 text-white">by ${book.authors ? book.authors.join(', ') : 'Unknown'}</h2>
+            <p class="text-base mb-2 text-white"><strong>Categories:</strong> ${book.categories ? book.categories.join(', ') : 'None'}</p>
+            <p class="text-base mb-2 text-white"><strong>Published:</strong> ${book.publishedDate}</p>
+            <p class="text-base mb-2 text-white"><strong>Pages:</strong> ${book.pageCount}</p>
+            <p class="text-base mb-2 text-white"><strong>Average Rating:</strong> ${book.averageRating ? book.averageRating : 'N/A'} (${book.ratingsCount ? book.ratingsCount : 0} ratings)</p>
+            <p class="text-base mb-2 text-white">${book.description ? book.description : 'No description available'}</p>
 
-    <!-- Right section (scrollable) -->
-    <div class="w-3/4 ml-8" style="margin-left: 300px;">
-        <h1 class="text-4xl font-bold mb-3">${book.title}</h1>
-        <h2 class="text-xl mb-3">by ${book.authors ? book.authors.join(', ') : 'Unknown'}</h2>
-        <p class="text-base mb-2"><strong>Categories:</strong> ${book.categories ? book.categories.join(', ') : 'None'}</p>
-        <p class="text-base mb-2"><strong>Published:</strong> ${book.publishedDate}</p>
-        <p class="text-base mb-2"><strong>Pages:</strong> ${book.pageCount}</p>
-        <p class="text-base mb-2"><strong>Publisher:</strong> ${book.publisher}</p>
-        <p class="text-base mb-2"><strong>Average Rating:</strong> ${book.averageRating ? book.averageRating : 'N/A'} (${book.ratingsCount ? book.ratingsCount : 0} ratings)</p>
-        <p class="text-base mb-2">${book.description ? book.description : 'No description available'}</p>
-
-        <!-- Recommendations section -->
-        <div id="recommendations" class="mt-8">
-            <h2 class="text-3xl font-bold mb-4">Similar Books</h2>
-            <div class="single-recommendations-wrapper relative w-full mt-8 overflow-hidden">
-                <div id="loadingVisual" class="loading-balls-container">
-                    <div class="ball"></div>
-                    <div class="ball"></div>
-                    <div class="ball"></div>
-                </div>
-
-                <div id="recommendationsContainer" class="single-recommendations-container"></div>
+            <!-- Reviews Section -->
+            <div id="reviewsSection" class="mt-2">
+                <h2 class="text-3xl font-bold mb-4 text-white font-medium tan-title"><em>Reviews</em></h2>
+                <div id="reviewsContainer" class= "mt-2"></div>
             </div>
         </div>
-
-        <!-- Reviews section -->
-        <div id="reviewsSection" class="mt-8">
-            <h2 class="text-3xl font-bold mb-4">Reviews</h2>
-            <div id="reviewsContainer"></div> <!-- Reviews will be dynamically inserted here -->
+    </div>
+   <!-- Recommendations Section -->
+    <div id="recommendations" class="mt-8 right-5 w-1/6">
+        <h2 class="text-3xl font-bold mb-4 text-white font-medium tan-title"><em>Similar Books </em></h2>
+        <div class="single-recommendations-wrapper relative w-full mt-8 overflow-auto">
+            <div id="loadingVisual" class="loading-balls-container">
+                <div class="ball"></div>
+                <div class="ball"></div>
+                <div class="ball"></div>
+            </div>
+            <div id="recommendationsContainer" class="single-recommendations-container"></div>
         </div>
     </div>
 </div>
@@ -127,6 +107,66 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 
             });
+            const addToCurrentlyReadingButton = document.getElementById('addToCurrentlyReadingButton');
+
+            addToCurrentlyReadingButton.addEventListener('click', () => {
+                addToCurrentlyReading(isbn); // Use the `isbn` variable already loaded in this context
+                dropdownMenu.classList.add('hidden'); // Hide the dropdown menu after the action
+            });
+
+
+            function addToCurrentlyReading(isbn) {
+                const apiKey = 'AIzaSyCFDaqjpgA8K_NqqCw93xorS3zumc_52u8';
+                const username = localStorage.getItem('username');
+            
+                if (!username) {
+                    alert('You need to be logged in to add books to Currently Reading.');
+                    return;
+                }
+            
+                // Fetch book details using the Google Books API
+                fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}&key=${apiKey}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        const book = data.items[0].volumeInfo;
+                        const bookData = {
+                            username,
+                            isbn,
+                            title: book.title,
+                            authors: book.authors ? book.authors.join(', ') : 'Unknown',
+                            categories: book.categories ? book.categories : [],
+                            pageCount: book.pageCount,
+                            description: book.description ? book.description : 'No description available',
+                            thumbnail: book.imageLinks ? book.imageLinks.thumbnail : 'https://via.placeholder.com/128x192?text=No+Image'
+                        };
+            
+                        // Send book data to the backend API
+                        fetch('/api/library/currently-reading/add', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify(bookData),
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                alert('Book added to Currently Reading!');
+                            } else {
+                                alert('Failed to add book to Currently Reading: ' + data.message);
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error adding book to Currently Reading:', error);
+                            alert('Error adding book to Currently Reading.');
+                        });
+                    })
+                    .catch(error => {
+                        console.error('Error fetching book data:', error);
+                        alert('Error fetching book data.');
+                    });
+            }
+            
         
             // Add functionality for each option
             addToLibraryButton.addEventListener('click', () => {
@@ -151,9 +191,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             dropdownMenu.addEventListener('click', (event) => {
                 event.stopPropagation();
             });
-        
-
-
+    
             
                 fetchAndDisplayReviews(isbn);
 
@@ -440,7 +478,7 @@ async function displayReview(reviews) {
     // Display public reviews
     if (publicReviews.length > 0) {
         const publicHeader = document.createElement('h4');
-        publicHeader.classList.add('text-lg', 'font-bold', 'mt-4', 'mb-2');
+        publicHeader.classList.add('text-lg', 'font-bold', 'mt-4', 'mb-2', 'text-white');
         publicHeader.textContent = 'Public Reviews';
         reviewsContainer.appendChild(publicHeader);
 
@@ -454,7 +492,10 @@ async function displayReview(reviews) {
     }
 }
 function createReviewElement(review, isFriend) {
+    const params = new URLSearchParams(window.location.search);
+
     console.log('Creating Review Element:', review);  // Log the review object
+    const isbn = params.get('isbn');
 
     const reviewDiv = document.createElement('div');
     reviewDiv.classList.add('review', 'p-4', 'mb-4', 'border', 'rounded', 'bg-white', 'shadow-md');
@@ -477,24 +518,69 @@ function createReviewElement(review, isFriend) {
         : `<span class="ml-2 inline-flex items-center px-3 py-0.5 rounded-full text-sm font-medium bg-blue-600 text-white">
                 🌍 Public
            </span>`;
+           
+        const isLikedClass = review.isLikedByUser ? 'text-red-500' : 'text-gray-600';
+        console.log("liked by user: ????", review.isLikedByUser)
 
-    reviewDiv.innerHTML = `
-    <div class="flex items-center">
-        <a href="../html/profile.html?username=${review.username}" class= "text-lg font-semibold" style="display: inline-flex; text-decoration: none; color: #333; padding: 2px 4px;"
-        onmouseover="this.style.textDecoration='underline'; this.style.color='#555';"
-       onmouseout="this.style.textDecoration='none'; this.style.color='#333';">
-${review.username}</a>  
-            ${visibilityBadge}
-    </div>
-
-        <p class="text-sm text-gray-600 mb-2">Rating: <strong>${review.rating}/100 </strong></p>
-        <p class="text-base mb-2 ml-2"> ${review.review}</p>
-        <p class="text-xs text-gray-500">Reviewed on: ${new Date(review.reviewDate).toLocaleDateString()}</p>
-    `;
-    
-    return reviewDiv;
+           reviewDiv.innerHTML = `
+           <div class="flex items-center justify-between">
+               <div>
+                   <a href="../html/profile.html?username=${review.username}" class="text-lg font-semibold" style="display: inline-flex; text-decoration: none; color: #333; padding: 2px 4px;"
+                   onmouseover="this.style.textDecoration='underline'; this.style.color='#555';"
+                  onmouseout="this.style.textDecoration='none'; this.style.color='#333';">
+                       ${review.username}
+                   </a>  
+                   ${visibilityBadge}
+               </div>
+            <button class="like-button flex items-center ${isLikedClass} hover:text-red-500 focus:outline-none" data-review-id="${review._id}">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-1" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+        </svg>
+                <span class="like-count">${review.likes || 0}</span>
+            </button>
+           </div>
+       
+           <p class="text-sm text-gray-600 mb-2">Rating: <strong>${review.rating}/100</strong></p>
+           <p class="text-gray-600 mb-2 ml-2">${review.review}</p>
+           <p class="text-xs text-gray-500">Reviewed on: ${new Date(review.reviewDate).toLocaleDateString()}</p>
+           `;
+       
+           // Attach like button event listener
+           const likeButton = reviewDiv.querySelector('.like-button');
+           likeButton.addEventListener('click', async () => {
+            const reviewId = likeButton.getAttribute('data-review-id'); 
+            console.log("review ID:", reviewId)
+            await toggleLikeReview(reviewId, likeButton);
+        });
+       
+           return reviewDiv;
 }
+async function toggleLikeReview(reviewId, likeButton) {
+    try {
+        const username = localStorage.getItem('username');
+        const isLiked = likeButton.classList.contains('text-red-500'); // Check if already liked
+        const endpoint = isLiked 
+            ? `/api/library/review/${reviewId}/unlike` 
+            : `/api/library/review/${reviewId}/like`;
 
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username }),
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            const likeCountElement = likeButton.querySelector('.like-count');
+            likeCountElement.textContent = data.likes;
+            likeButton.classList.toggle('text-red-500'); // Toggle heart color
+        } else {
+            console.error('Failed to toggle like:', response.statusText);
+        }
+    } catch (error) {
+        console.error('Error toggling like:', error);
+    }
+}
 
 
 function renderRecommendations(recommendations) {
@@ -504,7 +590,7 @@ function renderRecommendations(recommendations) {
     recommendations.slice(0, 5).forEach(book => {
         const bookElement = document.createElement('div');
         bookElement.classList.add('single-recommendation-card', 'book-card', 'relative', 'p-6', 'rounded-lg', 'shadow-lg', 'cursor-pointer', 'hover:shadow-2xl', 'transition', 'duration-300', 'ease-in-out');
-        bookElement.style.width = '18.5%'; // Adjust this width to fit 7 books in the container
+        bookElement.style.width = '100%'; // Adjust this width to fit 7 books in the container
         bookElement.innerHTML = `
             <a href="../html/book.html?isbn=${book.isbn}" class="block relative overflow-hidden rounded-lg shadow-lg hover:shadow-2xl transition duration-300 ease-in-out group">
                 <img src="${book.thumbnail}" alt="${book.title}" class="w-full h-64 object-cover rounded-t-lg">

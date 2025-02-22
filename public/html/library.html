@@ -24,6 +24,12 @@
         </div>
     </header>
     <main class="container mx-auto mt-8">
+        <section id="currentReadsSection" class="mb-12">
+            <h1 id="currentReadsTitle" class="text-3xl font-bold text-white mb-4"></h1>
+            <div id="currentReadsGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                <!-- Current Reads will be dynamically inserted here -->
+            </div>
+        </section>
         <h1 id="libraryTitle" class="text-white text-3xl font-bold mb-4"></h1>
         <div>
             <label id="sortLabel" for="sortOptions" class="text-white mr-2"></label>
@@ -44,7 +50,7 @@
         </div>
         
         
-        <h1 class="text-3xl font-bold mb-6 text-white mt-12">Reading List</h1>
+        <h1 id="readListTitle" class="text-3xl font-bold text-white mb-4"></h1>
         <div id="readingListGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             <!-- Book cards will be dynamically inserted here -->
         </div>

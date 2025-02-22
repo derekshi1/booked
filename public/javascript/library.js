@@ -19,6 +19,109 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const isOwnLibrary = username === loggedInUsername;
     const libraryTitle = document.getElementById('libraryTitle');
+    const currentReadsTitle = document.getElementById('currentReadsTitle'); // Reference for Current Reads Title
+    const currentReadsGrid = document.getElementById('currentReadsGrid'); // Reference for Current Reads Grid
+    const readListTitle = document.getElementById('readListTitle');
+    // Apply the color to the entire Current Reads title
+    currentReadsTitle.innerHTML = isOwnLibrary 
+    ? `<span class="tan-title"><em>Your</em> Current Reads...</span>` 
+    : `<span class="tan-title"><em>${username}'s</em> Current Reads...</span>`;
+
+    // Apply the color to the entire Reading List title
+    readListTitle.innerHTML = isOwnLibrary 
+    ? `<span class="tan-title"><em>Your</em> Reading List...</span>` 
+    : `<span class="tan-title"><em>${username}'s</em> Reading List...</span>`;
+
+
+
+    async function fetchAndDisplayCurrentReads() {
+        try {
+            const url = `/api/library/${username}/currently-reading`; // Endpoint to fetch current reads
+    
+            const response = await fetch(url);
+            const data = await response.json();
+    
+            if (data.success && data.currentlyReading.length > 0) {
+                // Render the current reads
+                currentReadsGrid.innerHTML = ''; // Clear the grid
+    
+                data.currentlyReading.forEach(book => {
+                   
+                    // Check if authors is an array, otherwise handle it gracefully
+                    const authorsText = Array.isArray(book.authors) 
+                        ? book.authors.join(', ') 
+                        : book.authors || "Unknown Author";
+    
+                    const bookElement = document.createElement('div');
+                    bookElement.className = 'flex flex-col items-center mt-6'; 
+                    bookElement.innerHTML = `
+                    <a href="../html/book.html?isbn=${book.isbn}" class="relative group block">
+                            <div class="relative group book-card">
+                                <img src="${book.thumbnail}" alt="${book.title}" class="w-40 h-50 object-cover rounded-md shadow-md">
+                                <div class="absolute bottom-0 left-0 right-0 bg-gray-900 bg-opacity-75 text-white text-sm text-center p-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    ${book.title} <br><span class="text-xs">By ${authorsText}</span>
+                                </div>
+                            </div>
+                        </a>
+                        <div class="text-center mt-2">
+                        <p class="text-gray-100 text-small">Reading since: ${new Date(book.startDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                            ${isOwnLibrary 
+                                ? `<button class="mt-2 px-4 py-2 bg-red-500 text-white rounded end-currently-reading-btn" data-isbn="${book.isbn}">End Reading</button>` 
+                                : ''
+                            }
+                        </div>
+                    `;
+                    currentReadsGrid.appendChild(bookElement);
+                });
+    
+                if (isOwnLibrary) {
+                    const endButtons = document.querySelectorAll('.end-currently-reading-btn');
+                    endButtons.forEach(button => {
+                        button.addEventListener('click', () => {
+                            const isbn = button.getAttribute('data-isbn');
+                            endCurrentlyReading(isbn);
+                        });
+                    });
+                }
+            } else {
+                console.log("No current reads available for user.");
+                currentReadsGrid.innerHTML = '';
+                currentReadsTitle.innerHTML = '';
+            }
+        } catch (error) {
+            console.error('Error fetching current reads:', error);
+            currentReadsGrid.innerHTML = '<p class="text-center text-red-500">Error loading current reads. Please try again later.</p>';
+        }
+    }
+    
+    async function endCurrentlyReading(isbn) {
+        try {
+            const url = `/api/library/${loggedInUsername}/currently-reading/end`;
+            
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ isbn })
+            });
+
+            const data = await response.json();
+            console.log(`[END CURRENT READING] Response:`, data);
+
+            if (data.success) {
+                alert('Book removed from your current reads!');
+                await fetchAndDisplayCurrentReads(); // Refresh current reads
+            } else {
+                alert(`Failed to remove book: ${data.message}`);
+            }
+        } catch (error) {
+            console.error('Error ending current read:', error);
+            alert('An error occurred while ending the current read. Please try again.');
+        }
+    }
+
+    // Initial fetch for current reads
+    await fetchAndDisplayCurrentReads();
+
     if (!isOwnLibrary) {
         // Hide sort options and review modal for someone else's library
         if (sortOptions) sortOptions.style.display = 'none';
@@ -26,7 +129,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         sortLabel.textContent = ""; // Hide the label if viewing someone else's library
         if (sortOptions) sortOptions.style.display = 'none';
         if (saveReviewButton) saveReviewButton.style.display = 'none';
-        libraryTitle.innerHTML = `<em>${username}'s Library</em>  `;
+        libraryTitle.innerHTML = `<span class="tan-title"><em>${username}'s</em> Library...</span>`;
         await fetchAndDisplayBooks(currentPage);
 
     } else {
@@ -36,7 +139,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             currentPage = 1;
             await fetchAndDisplayBooks(sortBy, currentPage);
         });
-        libraryTitle.innerHTML = `<em>Your Library</em>  `;
+        libraryTitle.innerHTML = `<span class="tan-title"><em>Your</em> Library...</span>`;
 
     }
     if (isOwnLibrary) {

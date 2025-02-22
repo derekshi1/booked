@@ -26,7 +26,7 @@ const userSchema = new mongoose.Schema({
   password: { type: String, required: true },
   friends: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], default: [] },
   friendRequests: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'FriendRequest' }], default: [] },
-  profilePicture: { type: String, default: 'default-profile.png' }
+  profilePicture: { type: String, default: '../profile.png' }
 });
 
 
@@ -104,7 +104,8 @@ const userLibrarySchema = new mongoose.Schema({
     review: String,
     rating: Number,
     reviewDate: Date, // Ensure this field exists
-    visibility: { type: String, enum: ['private', 'friends', 'public'], default: 'public' } // Add this line
+    visibility: { type: String, enum: ['private', 'friends', 'public'], default: 'public' },
+    likes: [String]
   }],
   top5: [{
     isbn: String,
@@ -128,7 +129,18 @@ const userLibrarySchema = new mongoose.Schema({
     review: String,
     rating: Number,
 
-  }]
+  }],
+  currentlyReading: {
+    books: [{
+      isbn: String,
+      title: String,
+      authors: String,
+      description: String,
+      thumbnail: String,
+      categories: [String],
+      pageCount: Number,
+      startDate: { type: Date, default: Date.now } // Tracks when the user started reading the book
+    }]  }
 });
 const UserLibrary = mongoose.model('UserLibrary', userLibrarySchema);
 
@@ -454,8 +466,10 @@ app.get('/api/library/:username', async (req, res) => {
     const paginatedBooks = userLibrary.books.slice(offset, offset + limit);
 
     // Calculate total pages across all books
-    const totalPages = userLibrary.books.reduce((sum, book) => sum + book.pageCount, 0);
-    
+    const totalPages = userLibrary.books.reduce((sum, book) => {
+      const pageCount = book.pageCount || 0; // Use 0 if pageCount is null or undefined
+      return sum + pageCount;
+    }, 0);    
     // Calculate the total number of books in the user's library
     const totalBooks = userLibrary.books.length;
 
@@ -476,7 +490,6 @@ app.get('/api/library/:username', async (req, res) => {
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });
-
 
 
 
@@ -529,6 +542,177 @@ app.get('/api/recommendations/:username', async (req, res) => {
         }
     });
 
+
+  } catch (error) {
+      console.error('Error during recommendations generation:', error);
+      res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+//THIS RECOMMENDATIONS USES the COLLABORATIVE RECS ONE FIRST, THEN FALLS BACK to CONTENT BASED
+/*
+app.get('/api/recommendations/:username', async (req, res) => {
+  const { username } = req.params;
+
+  try {
+      const userLibrary = await UserLibrary.findOne({ username });
+      if (!userLibrary) {
+          console.error(`No library found for user: ${username}`);
+          return res.status(404).json({ success: false, message: 'No library found for user' });
+      }
+
+      const library = userLibrary.books;
+
+      // Check if the library is empty
+      if (library.length === 0) {
+          console.log(`User ${username} has an empty library.`);
+          return res.status(200).json({ success: true, recommendations: [] });
+      }
+
+      // Step 1: Call NetflixRecommendations (Collaborative Filtering)
+      console.log(`Calling NetflixRecommendations for user: ${username}`);
+      let recommendations = '';
+
+      const pythonProcessCF = spawn(pythonCommand, [
+          'public/functions/NetflixRecommendations.py',
+          username, // Pass username to the collaborative filtering script
+          '10'      // Number of recommendations to generate
+      ]);
+
+      pythonProcessCF.stdout.on('data', (data) => {
+          recommendations += data.toString();
+      });
+
+      pythonProcessCF.stderr.on('data', (data) => {
+          console.error(`NetflixRecommendations stderr: ${data}`);
+      });
+
+      pythonProcessCF.on('close', async (code) => {
+          if (code !== 0) {
+              console.error(`NetflixRecommendations script failed with code ${code}`);
+              return fallbackToContentBased();
+          }
+
+          console.log('Raw NetflixRecommendations output:', recommendations);
+
+          try {
+              const parsedRecommendations = JSON.parse(recommendations);
+              if (parsedRecommendations.length > 0) {
+                  // If collaborative filtering returned results, send them
+                  console.log('NetflixRecommendations returned results.');
+                  return res.status(200).json({ success: true, recommendations: parsedRecommendations });
+              } else {
+                  // If no results, call the fallback function
+                  console.log('NetflixRecommendations returned no results. Falling back to content-based recommendations.');
+                  return fallbackToContentBased();
+              }
+          } catch (error) {
+              console.error('Error parsing NetflixRecommendations output:', error);
+              return fallbackToContentBased();
+          }
+      });
+
+      // Step 2: Fallback to Content-Based Recommendations
+      const fallbackToContentBased = async () => {
+          console.log(`Calling content-based recommendations for user: ${username}`);
+          const pythonProcessCB = spawn(pythonCommand, [
+              'public/functions/recommendations.py', 
+              JSON.stringify(library)
+          ]);
+
+          let contentBasedRecommendations = '';
+
+          pythonProcessCB.stdout.on('data', (data) => {
+              contentBasedRecommendations += data.toString();
+          });
+
+          pythonProcessCB.stderr.on('data', (data) => {
+              console.error(`Content-based stderr: ${data}`);
+          });
+
+          pythonProcessCB.on('close', (code) => {
+              if (code !== 0) {
+                  console.error(`Content-based script failed with code ${code}`);
+                  return res.status(500).json({ success: false, message: 'Failed to generate recommendations' });
+              }
+
+              try {
+                  const parsedRecommendations = JSON.parse(contentBasedRecommendations);
+                  console.log('Content-based recommendations returned successfully.');
+                  return res.status(200).json({ success: true, recommendations: parsedRecommendations });
+              } catch (error) {
+                  console.error('Error parsing content-based recommendations:', error);
+                  return res.status(500).json({ success: false, message: 'Error parsing recommendations' });
+              }
+          });
+      };
+
+  } catch (error) {
+      console.error('Error during recommendations generation:', error);
+      res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+*/
+
+
+
+app.get('/api/group-recommendations', async (req, res) => {
+  const { usernames } = req.query; // Expect usernames to be passed as a comma-separated string
+  if (!usernames) {
+      return res.status(400).json({ success: false, message: 'Usernames are required' });
+  }
+
+  const usernameArray = usernames.split(',');
+
+  try {
+      // Fetch libraries for all users
+      const userLibraries = await UserLibrary.find({ username: { $in: usernameArray } });
+      
+      // Check if any libraries were found
+      if (!userLibraries || userLibraries.length === 0) {
+          console.error('No libraries found for the given users.');
+          return res.status(404).json({ success: false, message: 'No libraries found for the given users' });
+      }
+
+      // Merge all books from the libraries into one combined library
+      const combinedLibrary = [];
+      userLibraries.forEach(userLibrary => {
+          combinedLibrary.push(...userLibrary.books);
+      });
+
+      // Remove duplicates from combinedLibrary if necessary
+      const uniqueBooks = Array.from(new Set(combinedLibrary.map(book => book.isbn)))
+          .map(isbn => combinedLibrary.find(book => book.isbn === isbn));
+
+      // Spawn Python process with the combined library
+      const pythonProcess = spawn(pythonCommand, [
+          'public/functions/recommendations.py',
+          JSON.stringify(uniqueBooks)
+      ]);
+
+      let recommendations = '';
+      pythonProcess.stdout.on('data', (data) => {
+          recommendations += data.toString();
+      });
+
+      pythonProcess.stderr.on('data', (data) => {
+          console.error(`stderr: ${data}`);
+      });
+
+      pythonProcess.on('close', (code) => {
+          if (code !== 0) {
+              console.error(`Python process exited with code ${code}`);
+              return res.status(500).json({ success: false, message: 'Error generating recommendations' });
+          }
+          console.log('Raw recommendations output:', recommendations); // Debugging line
+          try {
+              const recommendationsJSON = JSON.parse(recommendations);
+              console.log('Parsed recommendations JSON:', JSON.stringify(recommendationsJSON, null, 2));
+              res.status(200).json({ success: true, recommendations: recommendationsJSON });
+          } catch (error) {
+              console.error('Error parsing recommendations:', error);
+              res.status(500).json({ success: false, message: 'Error parsing recommendations' });
+          }
+      });
 
   } catch (error) {
       console.error('Error during recommendations generation:', error);
@@ -1031,34 +1215,45 @@ app.get('/api/reviews/books/:isbn', async (req, res) => {
       const book = library.books.find(book => book.isbn === isbn);
 
       if (book && book.review) {
+        const isLikedByUser = book.likes.includes(loggedInUsername);
+
         // Always include the loggedInUsername's reviews, regardless of visibility
         if (library.username === loggedInUsername) {
           reviews.push({
+            _id: book._id, 
             username: library.username,
             review: book.review,
             rating: book.rating,
             reviewDate: book.reviewDate,
-            visibility: book.visibility, // Keep track of visibility
+            visibility: book.visibility, 
+            likes: book.likes.length || 0,
+            isLikedByUser,
           });
         } else {
           // Check visibility and include the review based on visibility for other users
           if (book.visibility === 'public') {
             reviews.push({
+              _id: book._id, 
               username: library.username,
               review: book.review,
               rating: book.rating,
               reviewDate: book.reviewDate,
               visibility: book.visibility,
+              likes: book.likes.length || 0,
+              isLikedByUser,
             });
           } else if (book.visibility === 'friends') {
             const isFriend = await checkFriendship(library.username, loggedInUsername);
             if (isFriend) {
               reviews.push({
+                _id: book._id, 
                 username: library.username,
                 review: book.review,
                 rating: book.rating,
                 reviewDate: book.reviewDate,
                 visibility: book.visibility,
+                likes: book.likes.length || 0,
+                isLikedByUser,
               });
             }
           }
@@ -1161,6 +1356,7 @@ app.get('/api/opposite-recommendations/:username', async (req, res) => {
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });
+
 
 app.get('/api/search-users', async (req, res) => {
   const query = req.query.query;
@@ -1469,7 +1665,185 @@ app.post('/api/check-friendship-status', async (req, res) => {
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });
+//add to your own current reading
+app.post('/api/library/currently-reading/add', async (req, res) => {
+  try {
+    // Extract the username from the request body
+    const { username, isbn, title, authors, description, thumbnail, categories, pageCount } = req.body;
 
+    // Validate input data
+    if (!username || !isbn || !title) {
+      return res.status(400).json({ error: 'Username, ISBN, and Title are required.' });
+    }
+
+    // Find the user's library
+    const userLibrary = await UserLibrary.findOne({ username });
+
+    if (!userLibrary) {
+      console.error('User library not found for username:', username);
+      return res.status(404).json({ error: 'User library not found.' });
+    }
+
+    // Check if the book already exists in Currently Reading
+    const isAlreadyReading = userLibrary.currentlyReading.books.some(book => book.isbn === isbn);
+    if (isAlreadyReading) {
+      return res.status(400).json({ error: 'Book is already in your Currently Reading list.' });
+    }
+
+    // Add the book to Currently Reading
+    userLibrary.currentlyReading.books.push({
+      isbn,
+      title,
+      authors,
+      description,
+      thumbnail,
+      categories,
+      pageCount,
+      startDate: new Date(), // Add current date
+    });
+
+    // Save the updated library
+    await userLibrary.save();
+
+    res.status(200).json({ message: 'Book added to Currently Reading!', currentlyReading: userLibrary.currentlyReading.books });
+  } catch (error) {
+    console.error('Error in /api/library/currently-reading/add:', error.message);
+    res.status(500).json({ error: 'Internal server error.' });
+  }
+});
+
+
+
+//get a users' current reading
+app.get('/api/library/:username/currently-reading', async (req, res) => {
+  try {
+    const username = req.params.username;
+
+    // Find the user's library and ensure 'currentlyReading.books' is fully retrieved
+    const userLibrary = await UserLibrary.findOne({ username }).select('currentlyReading');
+
+    if (!userLibrary) {
+      return res.status(404).json({ error: 'User library not found.' });
+    }
+
+    const currentlyReading = userLibrary.currentlyReading.books.map(book => ({
+      isbn: book.isbn,
+      title: book.title,
+      authors: book.authors,
+      description: book.description,
+      thumbnail: book.thumbnail,
+      categories: book.categories,
+      pageCount: book.pageCount,
+      startDate: book.startDate, // Include startDate
+    }));
+
+    res.status(200).json({
+      success: true,
+      currentlyReading
+    });
+  } catch (error) {
+    console.error('Error fetching currently reading:', error.message);
+    res.status(500).json({ error: 'Internal server error.' });
+  }
+});
+app.post('/api/library/:username/currently-reading/end', async (req, res) => {
+  try {
+    const { username } = req.params; // Extract username from the request params
+    const { isbn } = req.body; // Extract ISBN from the request body
+
+    // Validate input
+    if (!isbn) {
+      return res.status(400).json({ success: false, message: 'ISBN is required to end currently reading.' });
+    }
+
+    // Find the user's library
+    const userLibrary = await UserLibrary.findOne({ username });
+
+    if (!userLibrary) {
+      return res.status(404).json({ success: false, message: 'User library not found.' });
+    }
+
+    // Check if the book exists in the currently reading list
+    const bookIndex = userLibrary.currentlyReading.books.findIndex(book => book.isbn === isbn);
+
+    if (bookIndex === -1) {
+      return res.status(400).json({ success: false, message: 'Book not found in Currently Reading list.' });
+    }
+
+    userLibrary.currentlyReading.books.splice(bookIndex, 1);
+
+    await userLibrary.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Book removed from Currently Reading list.',
+      currentlyReading: userLibrary.currentlyReading.books
+    });
+  } catch (error) {
+    console.error('Error in /api/library/:username/currently-reading/end:', error.message);
+    res.status(500).json({ success: false, message: 'Internal server error.' });
+  }
+});
+
+// adding likes
+app.post('/api/library/review/:reviewId/like', async (req, res) => {
+  try {
+    const { reviewId } = req.params;
+    const { username } = req.body;
+
+    const userLibrary = await UserLibrary.findOne({ "books._id": reviewId });
+
+    if (!userLibrary) {
+      return res.status(404).json({ success: false, message: 'User library not found' });
+    }
+
+    const book = userLibrary.books.find(book => book._id.toString() === reviewId);
+
+    if (!book) {
+      return res.status(404).json({ success: false, message: 'Book not found' });
+    }
+
+    if (!book.likes.includes(username)) {
+      book.likes.push(username);
+    } else {
+      return res.status(400).json({ success: false, message: 'You already liked this review.' });
+    }
+
+    await userLibrary.save();
+    res.status(200).json({ success: true, likes: book.likes.length });
+  } catch (error) {
+    console.error('Error liking review:', error);
+    res.status(500).json({ success: false, message: 'Error liking review' });
+  }
+});
+
+// Removing likes
+app.post('/api/library/review/:reviewId/unlike', async (req, res) => {
+  try {
+    const { reviewId } = req.params;
+    const { username } = req.body;
+
+    const userLibrary = await UserLibrary.findOne({ "books._id": reviewId });
+
+    if (!userLibrary) {
+      return res.status(404).json({ success: false, message: 'User library not found' });
+    }
+
+    const book = userLibrary.books.find(book => book._id.toString() === reviewId);
+
+    if (!book) {
+      return res.status(404).json({ success: false, message: 'Book not found' });
+    }
+
+    book.likes = book.likes.filter(user => user !== username);
+
+    await userLibrary.save();
+    res.status(200).json({ success: true, likes: book.likes.length });
+  } catch (error) {
+    console.error('Error unliking review:', error);
+    res.status(500).json({ success: false, message: 'Error unliking review' });
+  }
+});
 
 
 app.listen(port, () => {
