@@ -267,10 +267,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!thumbnail || isPlaceholder(thumbnail)) {
                 thumbnail = 'invalid-url.jpg'; // This will trigger the onErrorFallback
             }
+            
             const isbn = Array.isArray(recommendation.isbn) && recommendation.isbn.length > 0
             ? recommendation.isbn[0]
-            : 'no-isbn';
-    
+            : null;
             recommendationElement.innerHTML = `
                 <div class="relative group book-card">
                     <a href="../html/book.html?isbn=${isbn}" class="block relative overflow-hidden rounded-lg shadow-lg hover:shadow-2xl transition duration-300 ease-in-out group">

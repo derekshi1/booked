@@ -274,6 +274,33 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
+app.post('/api/auth/change-username', async (req, res) => {
+  const { oldUsername, newUsername } = req.body;
+
+  try {
+    // Find the user by the old username
+    const user = await User.findOne({ username: oldUsername });
+    if (!user) {
+      return res.status(404).send('User not found');
+    }
+
+    // Check if the new username is already taken
+    const existingUser = await User.findOne({ username: newUsername });
+    if (existingUser) {
+      return res.status(400).send('Username is already taken');
+    }
+
+    // Update the username
+    user.username = newUsername;
+    await user.save();
+
+    res.status(200).send('Username updated successfully');
+  } catch (err) {
+    console.error('Error updating username:', err);
+    res.status(500).send('Internal server error');
+  }
+});
+
 
 // Create a new book
 app.post('/books', async (req, res) => {

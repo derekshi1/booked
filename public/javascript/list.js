@@ -37,14 +37,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const visibility = document.getElementById('visibility').value;
         const description = document.getElementById('description').value;
 
-        if (!listName || !tags || !visibility || !description) {
+        if (!listName || !visibility || !description) {
             alert("Please fill out all fields.");
             return;
         }
 
         // Store these values if you need to send them later
         localStorage.setItem("listName", listName);
-        localStorage.setItem("tags", tags);
+        localStorage.setItem("tags", JSON.stringify(tags.split(','))); // Convert comma-separated string into an array
         localStorage.setItem("visibility", visibility);
         localStorage.setItem("description", description);
 
@@ -104,6 +104,7 @@ function displaySuggestions(suggestions) {
         console.error('Suggestions box not found');
     }
 }
+let selectedBooks = JSON.parse(localStorage.getItem('selectedBooks')) || [];
 
 function addBookToList(book) {
     const selectedBooksContainer = document.getElementById('selectedBooksContainer');
@@ -113,18 +114,50 @@ function addBookToList(book) {
     selectedBooksContainer.classList.remove('hidden');
     selectedBooksHeader.classList.remove('hidden');
     bookItem.classList.add('flex', 'items-center', 'p-2', 'bg-white', 'shadow', 'rounded', 'mb-2');
+    bookItem.dataset.isbn = book.isbn;
 
     bookItem.innerHTML = `
         <img src="${book.thumbnail}" alt="${book.title}" class="w-10 h-14 mr-3 rounded">
-        <div>
+        <div class="relative flex-1">
+            <button class="remove-book-button absolute top-0 right-0 text-red-500 font-bold rounded-full w-6 h-6 flex items-center justify-center hover:bg-gray-200">×</button>
             <p class="font-semibold">${book.title}</p>
             <p class="text-sm text-gray-600">by ${book.authors}</p>
         </div>
+
     `;
 
-    // Append the book item to the selected books container
     selectedBooksContainer.appendChild(bookItem);
+
+    selectedBooks.push(book);
+    localStorage.setItem('selectedBooks', JSON.stringify(selectedBooks));
+    bookItem.querySelector('.remove-book-button').addEventListener('click', () => {
+        removeBookFromList(book.isbn);
+    });
 }
+function removeBookFromList(isbn) {
+    // Remove the book from the array
+    selectedBooks = selectedBooks.filter(book => book.isbn !== isbn);
+
+    // Save the updated array to localStorage
+    localStorage.setItem('selectedBooks', JSON.stringify(selectedBooks));
+    console.log("Removed book. Updated selectedBooks:", selectedBooks);
+
+    // Remove the book from the DOM
+    const bookItem = document.querySelector(`[data-isbn="${isbn}"]`);
+    if (bookItem) {
+        bookItem.remove();
+    }
+
+    // Hide the container and header if no books are left
+    const selectedBooksContainer = document.getElementById('selectedBooksContainer');
+    const selectedBooksHeader = document.getElementById('selectedBooksHeader');
+    if (selectedBooks.length === 0) {
+        selectedBooksContainer.classList.add('hidden');
+        selectedBooksHeader.classList.add('hidden');
+    }
+}
+
+
 
 function clearSuggestions() {
     const suggestionsBox = document.getElementById('listSuggestionsBox');
@@ -150,6 +183,7 @@ createListFinalButton.addEventListener('click', async () => {
     const tags = JSON.parse(localStorage.getItem("tags"));
     const visibility = localStorage.getItem("visibility");
     const description = localStorage.getItem("description");
+    const selectedBooks = JSON.parse(localStorage.getItem("selectedBooks"))
 
     const listData = {
         listName,

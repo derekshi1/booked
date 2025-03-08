@@ -45,6 +45,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.log('Social tab created:', socialLink); // Log creation of social tab
 
 
+
+    const chatLink = document.createElement('a');
+    chatLink.href = '../html/chat.html';
+    chatLink.id = 'chatTab';
+    chatLink.classList.add('ml-4', 'font-bold','text-green-900', 'text-lg', 'px-4', 'py-2', 'rounded', 'mr-8');
+    chatLink.textContent = 'Booked Chatbot';
+
+
     const notificationBadge = document.createElement('span');
     notificationBadge.id = 'notificationBadge'; // Give it the ID for styling
     notificationBadge.textContent = ''; // Set default content to an empty string
@@ -56,6 +64,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     logoAndHomeContainer.appendChild(homeLink);
     logoAndHomeContainer.appendChild(listsLink);
     logoAndHomeContainer.appendChild(socialLink);
+    logoAndHomeContainer.appendChild(chatLink)
+
     console.log('Social tab appended to logoAndHomeContainer');
 
     await updateSocialTabNotification();

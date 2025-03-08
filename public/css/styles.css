@@ -223,9 +223,16 @@ body {
 
 .username-container {
     display: flex;
-    flex-direction: column;
-    align-items: flex-start;
+    flex-direction: row;
+    align-items: center;
     justify-content: center; /* Center content vertically */
+}
+#editUsernameButton img {
+  filter: brightness(0) invert(1); /* Makes the pencil icon white */
+}
+
+#editUsernameButton:hover img {
+  filter: brightness(1); /* Adds hover effect for the pencil icon */
 }
 
 .username-container h1 {
