@@ -150,11 +150,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         })
                         .then(response => response.json())
                         .then(data => {
-                            if (data.success) {
-                                alert('Book added to Currently Reading!');
-                            } else {
-                                alert('Failed to add book to Currently Reading: ' + data.message);
-                            }
+                            alert("Book successfully added to Currently Reading!")
                         })
                         .catch(error => {
                             console.error('Error adding book to Currently Reading:', error);

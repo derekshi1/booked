@@ -5,7 +5,45 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // If no username is specified in the URL, use the logged-in username
     const username = profileUsername || loggedInUsername;
-
+    //editing username
+    document.getElementById('editUsernameButton').addEventListener('click', () => {
+        document.getElementById('changeUsernameModal').classList.remove('hidden');
+      });
+      
+      document.getElementById('cancelChangeUsername').addEventListener('click', () => {
+        document.getElementById('changeUsernameModal').classList.add('hidden');
+      });
+      
+      document.getElementById('changeUsernameForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+      
+        const newUsername = document.getElementById('newUsernameInput').value;
+        const currentUsername = localStorage.getItem('username');
+      
+        const response = await fetch('/api/auth/change-username', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ oldUsername: currentUsername, newUsername }),
+        });
+      
+        const messageEl = document.getElementById('changeUsernameMessage');
+        if (response.ok) {
+          messageEl.textContent = 'Username updated successfully';
+          messageEl.style.color = 'green';
+          document.getElementById('usernameDisplay').textContent = newUsername;
+          localStorage.setItem('username', newUsername);
+          setTimeout(() => {
+            document.getElementById('changeUsernameModal').classList.add('hidden');
+          }, 2000);
+        } else {
+          const error = await response.text();
+          messageEl.textContent = error;
+          messageEl.style.color = 'red';
+        }
+      });
+      
     if (username) {
         const booksLink = document.getElementById('booksLink');
         booksLink.href = `../html/library.html?username=${username}`;
@@ -338,6 +376,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       const reviews = await fetchUserReviews(username);
       const bins = prepareHistogramData(reviews);
       renderHistogram(bins);
+
+
 });
 
 
