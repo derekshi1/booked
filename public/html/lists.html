@@ -1,17 +1,62 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml">
+<!DOCTYPE html>
+<html lang="en">
 <head>
-    <meta http-equiv="content-type" content="text/html; charset=utf-8"/>
-    <title>Booked</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Book Lists - Booked</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Indie+Flower&display=swap" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
-    <script src="https://www.google.com/books/jsapi.js"></script>
-    <script defer src="../javascript/register.js"></script>
     <script defer src="../javascript/header.js"></script>
-    <script defer src="../javascript/index.js"></script>
-    <script defer src="../javascript/list.js"> </script>
-    <link href="../css/styles.css" rel="stylesheet"> 
+    <script defer src="../javascript/lists.js"></script>
+    <link href="../css/styles.css" rel="stylesheet">
+    <style>
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: 15% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 500px;
+            border-radius: 0.5rem;
+        }
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .close:hover {
+            color: #000;
+        }
+        .loading {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.8);
+        }
+        .loading-content {
+            position: relative;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+        }
+    </style>
 </head>
 <body>
     <header class="custom-header text-green-900 py-4">
@@ -24,77 +69,34 @@
             </div>
         </div>
     </header>
-    <main class="w-full mt-8 px-4">
-        <h1 class="text-3xl font-bold mb-4 text-white">Create an AI-generated List</h1>
-        <div class="relative mb-4">
-            <input type="text" id="aiSearchInput" placeholder="Create an AI List" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-900">
-        </div>
-        <div class="bg-white p-4 rounded-lg shadow-md mb-4">
-            <h2 class="text-xl font-bold mb-2">How to Use</h2>
-            <p class="mb-2">You can create a list using the following keywords:</p>
-            <ul class="list-disc list-inside mb-2">
-                <li><strong>new</strong> - To get the newest books</li>
-                <li><strong>old</strong> - To get older books</li>
-                <li><strong>less/more than xxx pages</strong> - To filter by page count</li>
-                <li><strong>after/before xxxx years</strong> - To filter by publication year</li>
-                <li><strong>include categories!</strong> - Specify genres like romance, fiction, mystery, etc.</li>
-            </ul>
-            <p>Example queries:</p>
-            <ul class="list-disc list-inside">
-                <li>new fiction books less than 300 pages</li>
-                <li>old romance books</li>
-                <li>mystery books before 2000</li>
-            </ul>
-        </div>
-        <div id="aiSuggestionsBox" class="mt-4 text-white grid-container"></div>
-    </main>
-    <button id="createListButton" class="btn-grey text-xl text-white">Create New List</button>
-<div id="createListModal" class="hidden fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50">
-    <div class="bg-white rounded-lg p-6 relative" style="width: 80vw; max-width: 800px;"> <!-- Inline width style -->
-        <button id="cancelButton" class="absolute top-2 right-4 text-gray-500 hover:text-gray-700 text-xxl font-bold">&times;</button>
 
-        <!-- Step 1: List Details -->
-        <div id="step1" class="modal-step">
-            <h2 class="text-xl font-bold mb-4">Create New List</h2>
-            <label for="listName" class="block mb-2">List Name</label>
-            <input type="text" id="listName" class="border p-2 w-full mb-4" placeholder="Enter list name">
-
-            <label for="tags" class="block mb-2">Tags</label>
-            <input type="text" id="tags" class="border p-2 w-full mb-4" placeholder="Enter tags (comma-separated)">
-
-            <label for="visibility" class="block mb-2">Who can view?</label>
-            <select id="visibility" class="border p-2 w-full mb-4">
-                <option value="public">Public</option>
-                <option value="private">Private</option>
-                <option value="friends">Friends Only</option>
-            </select>
-
-            <label for="description" class="block mb-2">Description</label>
-            <textarea id="description" class="border p-2 w-full mb-4" placeholder="Enter description"></textarea>
-         
-            <button id="nextButton" class="bg-blue-500 text-white p-2 rounded w-full">Next</button>
-        
-        </div>
-
-        <!-- Step 2: Add Books -->
-        <div id="step2" class="modal-step hidden">
-            <h2 class="text-xl font-bold mb-4">Add Books to List</h2>
-            <input type="text" id="titleInput" class="border p-2 w-full mb-4" placeholder="Search for books to add">
-
-            <div id="listSuggestionsBox" class="border p-2 bg-gray-100 max-h-48 overflow-y-auto mb-4 hidden"></div>
-
-            <h3 id="selectedBooksHeader" class="text-lg font-bold mb-2 hidden">Selected Books</h3>
-            <div id="selectedBooksContainer" class="border p-2 bg-gray-100 rounded mb-4 hidden"></div>
-
-            <div class="flex space-x-2">
-                <button id="backButton" class="bg-gray-500 text-white p-2 rounded w-1/2">Back</button>
-                <button id="createListFinalButton" class="bg-blue-500 text-white p-2 rounded w-1/2">Create List</button>
+    <!-- Main Content -->
+    <main class="container mx-auto mt-8">
+        <div class="px-4 py-6 sm:px-0">
+            <div class="flex justify-between items-center mb-8">
+                <h1 class="text-3xl font-bold text-white">My Book Lists</h1>
+                <div class="flex space-x-4">
+                    <button onclick="showCreateListModal()" class="bg-green-900 hover:bg-green-800 text-white font-bold py-2 px-4 rounded flex items-center">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                        </svg>
+                        Create List
+                    </button>
+                </div>
+            </div>
+            <div id="lists-container" class="space-y-6">
+                <!-- Lists will be dynamically inserted here -->
             </div>
         </div>
+    </main>
+
+    <!-- Loading Overlay -->
+    <div id="loading" class="loading">
+        <div class="loading-content">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-green-900 mx-auto"></div>
+            <p class="mt-4 text-gray-600">Loading...</p>
+        </div>
     </div>
-</div>
 
-
-    
 </body>
-</html>
+</html> 

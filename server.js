@@ -1872,6 +1872,151 @@ app.post('/api/library/review/:reviewId/unlike', async (req, res) => {
   }
 });
 
+// Create a new list
+app.post('/api/lists/create', async (req, res) => {
+  const { username, listName, tags, visibility, description, books } = req.body;
+
+  try {
+      const newList = new UserList({
+          username,
+          listName,
+          tags,
+          visibility,
+          description,
+          books,
+          createdAt: new Date()
+      });
+
+      await newList.save();
+      res.status(201).json({ success: true, list: newList });
+  } catch (error) {
+      console.error('Error creating list:', error);
+      res.status(500).json({ success: false, message: 'Failed to create list' });
+  }
+});
+
+// Get user's lists
+app.get('/api/users/:username/lists', async (req, res) => {
+  const { username } = req.params;
+
+  try {
+      const lists = await UserList.find({ username }).sort({ createdAt: -1 });
+      res.status(200).json({ success: true, lists });
+  } catch (error) {
+      console.error('Error fetching lists:', error);
+      res.status(500).json({ success: false, message: 'Failed to fetch lists' });
+  }
+});
+
+// Delete a list
+app.delete('/api/lists/:listId', async (req, res) => {
+  const { listId } = req.params;
+  const { username } = req.body;
+
+  try {
+      const list = await UserList.findOne({ _id: listId, username });
+      if (!list) {
+          return res.status(404).json({ success: false, message: 'List not found' });
+      }
+
+      await UserList.findByIdAndDelete(listId);
+      res.status(200).json({ success: true });
+  } catch (error) {
+      console.error('Error deleting list:', error);
+      res.status(500).json({ success: false, message: 'Failed to delete list' });
+  }
+});
+
+app.get('/api/sample-books', async (req, res) => {
+  try {
+    // Generate a random search term from this list of common words
+    const searchTerms = ['love', 'mystery', 'adventure', 'science', 'history', 'fantasy'];
+    const randomTerm = searchTerms[Math.floor(Math.random() * searchTerms.length)];
+    
+    const response = await fetch(
+      `https://www.googleapis.com/books/v1/volumes?q=${randomTerm}&maxResults=10&langRestrict=en`
+    );
+    const data = await response.json();
+    
+    // Format the books data
+    const books = data.items.map(item => ({
+      title: item.volumeInfo.title,
+      authors: item.volumeInfo.authors || ['Unknown Author'],
+      thumbnail: item.volumeInfo.imageLinks?.thumbnail || '',
+      isbn: item.volumeInfo.industryIdentifiers?.[0]?.identifier || ''
+    }));
+
+    res.json({ success: true, books });
+  } catch (error) {
+    console.error('Error fetching sample books:', error);
+    res.status(500).json({ success: false, message: 'Error fetching sample books' });
+  }
+});
+
+// Add book to list
+app.post('/api/lists/:listId/books', async (req, res) => {
+    const { listId } = req.params;
+    const { username, book } = req.body;
+
+    try {
+        const list = await UserList.findOne({ _id: listId, username });
+        if (!list) {
+            return res.status(404).json({ success: false, message: 'List not found' });
+        }
+
+        list.books.push(book);
+        await list.save();
+
+        res.json({ success: true, list });
+    } catch (error) {
+        console.error('Error adding book to list:', error);
+        res.status(500).json({ success: false, message: 'Failed to add book to list' });
+    }
+});
+
+// Remove book from list
+app.delete('/api/lists/:listId/books/:isbn', async (req, res) => {
+    const { listId, isbn } = req.params;
+    const { username } = req.body;
+
+    try {
+        const list = await UserList.findOne({ _id: listId, username });
+        if (!list) {
+            return res.status(404).json({ success: false, message: 'List not found' });
+        }
+
+        list.books = list.books.filter(book => book.isbn !== isbn);
+        await list.save();
+
+        res.json({ success: true, list });
+    } catch (error) {
+        console.error('Error removing book from list:', error);
+        res.status(500).json({ success: false, message: 'Failed to remove book from list' });
+    }
+});
+
+// Update list
+app.put('/api/lists/:listId', async (req, res) => {
+    const { listId } = req.params;
+    const { username, listName, tags, visibility, description } = req.body;
+
+    try {
+        const list = await UserList.findOneAndUpdate(
+            { _id: listId, username },
+            { listName, tags, visibility, description },
+            { new: true }
+        );
+
+        if (!list) {
+            return res.status(404).json({ success: false, message: 'List not found' });
+        }
+
+        res.json({ success: true, list });
+    } catch (error) {
+        console.error('Error updating list:', error);
+        res.status(500).json({ success: false, message: 'Failed to update list' });
+    }
+});
 
 app.listen(port, () => {
   console.log(`Server listening at http://localhost:${port}`);

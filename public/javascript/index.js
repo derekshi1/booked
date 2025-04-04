@@ -546,8 +546,50 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
         
-}      else{
-    renderPlaceholderRecommendations();
+} else {
+    // Fetch and display blurred sample books for non-logged-in users
+    fetch('/api/sample-books')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                recommendationsContainer.innerHTML = `
+                    <div class="relative">
+                        <div class="filter blur-md flex overflow-x-auto space-x-4 p-4 scrollbar-hide">
+                            ${data.books.map(book => `
+                                <div class="recommendation-card p-4 bg-gray-100 rounded shadow">
+                                    <div class="relative group">
+                                        <div class="block relative overflow-hidden rounded-lg shadow-lg hover:shadow-2xl transition duration-300 ease-in-out group">
+                                            <img 
+                                                src="${book.thumbnail}" 
+                                                alt="${book.title}" 
+                                                class="w-full h-72 object-cover"
+                                            />
+                                            <div class="absolute bottom-0 left-0 w-full p-4 bg-black bg-opacity-60 text-white">
+                                                <h2 class="text-lg font-bold">${book.title}</h2>
+                                                <p class="text-gray-300">by ${book.authors.join(', ')}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                        
+                        <div class="absolute inset-0 flex items-center justify-center z-10">
+                            <a href="../html/login.html" class="px-6 py-3 bg-blue-600 text-white rounded-lg shadow-lg hover:bg-blue-700 transition-colors duration-200 font-semibold text-lg">
+                                Login to View Recommendations
+                            </a>
+                        </div>
+                    </div>
+                `;
+            } else {
+                // Fallback to static placeholder if API call fails
+                renderPlaceholderRecommendations();
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching sample books:', error);
+            renderPlaceholderRecommendations();
+        });
 }
     const showArrow = (arrowButton) => {
         arrowButton.classList.add('visible');
