@@ -25,6 +25,23 @@ async function loadUserLists() {
     }
 }
 
+// Add this new function to fetch friends' lists
+async function loadFriendsLists() {
+    try {
+        const username = localStorage.getItem('username');
+        const response = await fetch(`/api/users/${username}/friends-lists`);
+        const data = await response.json();
+        if (data.success) {
+            return data.friendsLists;
+        }
+        return [];
+    } catch (error) {
+        console.error('Error loading friends lists:', error);
+        showToast('Failed to load friends\' lists', 'error');
+        return [];
+    }
+}
+
 // Create a new list
 async function createList(listName, description = '') {
     try {
@@ -132,7 +149,7 @@ async function deleteList(listId) {
         });
 
         if (response.ok) {
-            userLists = userLists.filter(list => list.id !== listId);
+            userLists = userLists.filter(list => list._id !== listId);
             renderLists();
             showToast('List deleted successfully', 'success');
         } else {
@@ -149,90 +166,149 @@ function renderLists() {
     const listsContainer = document.getElementById('lists-container');
     if (!listsContainer) return;
 
-    // Create new list button
-    const createListButton = document.createElement('button');
-    createListButton.className = 'bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded mb-4 flex items-center';
-    createListButton.innerHTML = `
-        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-        </svg>
-        Create New List
-    `;
-    createListButton.onclick = showCreateListModal;
     listsContainer.innerHTML = '';
-    listsContainer.appendChild(createListButton);
-
-    if (userLists.length === 0) {
-        const emptyState = document.createElement('div');
-        emptyState.className = 'text-center py-12 bg-white rounded-lg shadow-md';
-        emptyState.innerHTML = `
-            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
-            </svg>
-            <h3 class="mt-2 text-sm font-medium text-gray-900">No lists yet</h3>
-            <p class="mt-1 text-sm text-gray-500">Get started by creating a new list.</p>
-        `;
-        listsContainer.appendChild(emptyState);
-        return;
-    }
-
-    // Render each list
+    
+    // Create container for user's lists
+    const userListsSection = document.createElement('div');
+    userListsSection.className = 'mb-8';
+    
+    // Create grid container for user's lists
+    const userGridContainer = document.createElement('div');
+    userGridContainer.className = 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6';
+    
+    // Render user's lists
     userLists.forEach(list => {
-        const listElement = createListElement(list);
-        listsContainer.appendChild(listElement);
+        const listElement = createListElement(list, false);
+        userGridContainer.appendChild(listElement);
+    });
+
+    userListsSection.appendChild(userGridContainer);
+    listsContainer.appendChild(userListsSection);
+
+    // Create and append friends' lists section
+    loadFriendsLists().then(friendsLists => {
+        if (friendsLists.length > 0) {
+            // Create friends' lists section
+            const friendsListsSection = document.createElement('div');
+            friendsListsSection.className = 'mt-12';
+            
+            // Store friends' lists data for later use
+            friendsListsSection.dataset.friendsLists = JSON.stringify(friendsLists);
+            
+            // Add section title
+            const sectionTitle = document.createElement('h2');
+            sectionTitle.className = 'text-2xl font-bold text-white mb-6';
+            sectionTitle.textContent = "Friends' Lists";
+            friendsListsSection.appendChild(sectionTitle);
+
+            // Create grid container for friends' lists
+            const friendsGridContainer = document.createElement('div');
+            friendsGridContainer.className = 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6';
+
+            // Render friends' lists
+            friendsLists.forEach(list => {
+                const listElement = createListElement(list, true);
+                friendsGridContainer.appendChild(listElement);
+            });
+
+            friendsListsSection.appendChild(friendsGridContainer);
+            listsContainer.appendChild(friendsListsSection);
+        }
     });
 }
 
-// Create a list element
-function createListElement(list) {
+// Update createListElement to handle both user's lists and friends' lists
+function createListElement(list, isFriendsList) {
     const listDiv = document.createElement('div');
-    listDiv.className = 'bg-white rounded-lg shadow-md p-4 mb-4';
+    listDiv.className = 'bg-white rounded-lg shadow-md p-4 mb-4 hover:shadow-xl transition-shadow duration-300';
+    listDiv.style.width = '300px';
     
-    listDiv.innerHTML = `
-        <div class="flex justify-between items-center mb-4">
-            <div>
-                <h3 class="text-xl font-bold">${list.listName}</h3>
-                <p class="text-sm text-gray-500">Created ${new Date(list.createdAt).toLocaleDateString()}</p>
-            </div>
-            <div class="flex space-x-2">
-                <button class="text-blue-500 hover:text-blue-700" onclick="editList('${list.id}')">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
-                    </svg>
-                </button>
-                <button class="text-red-500 hover:text-red-700" onclick="deleteList('${list.id}')">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                    </svg>
-                </button>
-            </div>
-        </div>
-        <p class="text-gray-600 mb-4">${list.description || 'No description'}</p>
-        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            ${list.books.map(book => createBookCard(book, list._id)).join('')}
-        </div>
-    `;
-    
-    return listDiv;
-}
+    const bookCovers = list.books.slice(0, 4).map(book => book.thumbnail || 'https://via.placeholder.com/128x192?text=No+Image');
+    while (bookCovers.length < 4) {
+        bookCovers.push('https://via.placeholder.com/128x192?text=Empty');
+    }
 
-// Create a book card for a list
-function createBookCard(book, listId) {
-    return `
-        <div class="relative group">
-            <img src="${book.thumbnail || 'https://via.placeholder.com/128x192?text=No+Image'}" 
-                 alt="${book.title}" 
-                 class="w-full h-64 object-cover rounded-lg shadow-md">
-            <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-all duration-200 rounded-lg flex items-center justify-center">
-                <button class="text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200" 
-                        onclick="removeBookFromList('${listId}', '${book.isbn}')">
-                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                    </svg>
-                </button>
+    const username = localStorage.getItem('username');
+    const isLiked = list.likes?.includes(username);
+
+    listDiv.innerHTML = `
+        <div>
+            <!-- Book covers grid with hover effect -->
+            <div class="relative group cursor-pointer mb-4" onclick="showListModal('${list._id}')">
+                <div class="grid grid-cols-2 gap-2 aspect-square">
+                    ${bookCovers.map(cover => `
+                        <div class="relative w-full h-full">
+                            <img src="${cover}" 
+                                 alt="Book cover" 
+                                 class="w-full h-full object-cover rounded-md">
+                        </div>
+                    `).join('')}
+                </div>
+
+                <!-- Hover overlay - different for user's lists and friend's lists -->
+                <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-all duration-200 rounded-lg flex items-center justify-center">
+                    ${isFriendsList ? `
+                        <!-- Friend's list hover overlay -->
+                        <div class="opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                            <div class="text-white text-center">
+                                <svg class="w-8 h-8 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                </svg>
+                                <span class="text-sm font-medium">View List</span>
+                            </div>
+                        </div>
+                    ` : `
+                        <!-- User's list hover overlay with edit/delete buttons -->
+                        <div class="opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex space-x-2">
+                            <button class="text-white bg-blue-500 hover:bg-blue-600 p-2 rounded" 
+                                    onclick="event.stopPropagation(); editList('${list._id}')">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                </svg>
+                            </button>
+                            <button class="text-white bg-red-500 hover:bg-red-600 p-2 rounded" 
+                                    onclick="event.stopPropagation(); deleteList('${list._id}')">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    `}
+                </div>
+            </div>
+
+            <!-- List information below the grid -->
+            <div class="text-center">
+                ${isFriendsList ? `
+                    <p class="text-sm text-gray-500 mb-1">Created by ${list.username}</p>
+                ` : ''}
+                <h3 class="text-xl font-bold mb-2 cursor-pointer hover:text-blue-600" 
+                    onclick="showListModal('${list._id}')">${list.listName}</h3>
+                <div class="flex items-center justify-center space-x-4">
+                    <p class="text-sm text-gray-500">${list.books.length} book${list.books.length !== 1 ? 's' : ''}</p>
+                    <div class="flex items-center">
+                        <button onclick="toggleListLike(event, '${list._id}')" 
+                                class="flex items-center space-x-1 transition-colors duration-200 hover:text-red-500 ${isLiked ? 'text-red-500' : 'text-gray-400'}">
+                            <svg class="w-5 h-5" 
+                                 fill="${isLiked ? 'currentColor' : 'none'}" 
+                                 stroke="currentColor" 
+                                 viewBox="0 0 24 24">
+                                <path stroke-linecap="round" 
+                                      stroke-linejoin="round" 
+                                      stroke-width="2" 
+                                      d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z">
+                                </path>
+                            </svg>
+                            <span class="text-sm">${list.likes?.length || 0}</span>
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     `;
+
+    return listDiv;
 }
 
 // Show create list modal
@@ -278,9 +354,13 @@ function showCreateListModal(existingList = null) {
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Add Books</label>
                     <div class="relative">
-                        <input type="text" id="bookSearchInput" placeholder="Search for books..."
+                        <input type="text" 
+                               id="bookSearchInput" 
+                               placeholder="Search for books..."
                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                        <div id="searchResults" class="absolute z-10 w-full bg-white mt-1 rounded-md shadow-lg max-h-60 overflow-y-auto"></div>
+                        <div id="searchResults" 
+                             class="absolute z-10 w-full bg-white mt-1 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                        </div>
                     </div>
                     <div id="selectedBooksContainer" class="mt-4 hidden">
                         <label class="block text-sm font-medium text-gray-700 mb-2">Selected Books</label>
@@ -306,6 +386,42 @@ function showCreateListModal(existingList = null) {
     // Setup search functionality immediately after adding the modal
     setupBookSearch();
     
+    // If editing an existing list, populate the selected books
+    if (existingList && existingList.books) {
+        const selectedBooksContainer = document.getElementById('selectedBooksContainer');
+        const selectedBooks = document.getElementById('selectedBooks');
+        
+        // Show the container and add existing books
+        selectedBooksContainer.classList.remove('hidden');
+        existingList.books.forEach(book => {
+            const bookElement = document.createElement('div');
+            bookElement.className = 'flex items-center p-2 bg-white rounded shadow-sm mb-2';
+            bookElement.dataset.isbn = book.isbn;
+            bookElement.innerHTML = `
+                <img src="${book.thumbnail}" alt="${book.title}" class="w-12 h-16 object-cover mr-3 rounded">
+                <div class="flex-1">
+                    <div class="font-semibold">${book.title}</div>
+                    <div class="text-sm text-gray-600">${book.authors}</div>
+                </div>
+                <button class="ml-2 text-red-500 hover:text-red-700">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            `;
+
+            // Add remove functionality
+            bookElement.querySelector('button').addEventListener('click', () => {
+                bookElement.remove();
+                if (selectedBooks.children.length === 0) {
+                    selectedBooksContainer.classList.add('hidden');
+                }
+            });
+
+            selectedBooks.appendChild(bookElement);
+        });
+    }
+    
     modal.querySelector('#list-form').addEventListener('submit', async (e) => {
         e.preventDefault();
         const formData = new FormData(e.target);
@@ -330,9 +446,14 @@ function showCreateListModal(existingList = null) {
         };
 
         try {
-            // For new list creation, always use the create endpoint
-            const response = await fetch('/api/lists/create', {
-                method: 'POST',
+            const endpoint = existingList 
+                ? `/api/lists/${existingList._id}`  // Update existing list
+                : '/api/lists/create';              // Create new list
+            
+            const method = existingList ? 'PUT' : 'POST';
+
+            const response = await fetch(endpoint, {
+                method: method,
                 headers: {
                     'Content-Type': 'application/json'
                 },
@@ -341,15 +462,15 @@ function showCreateListModal(existingList = null) {
 
             const data = await response.json();
             if (data.success) {
-                showToast('List created successfully!', 'success');
+                showToast(existingList ? 'List updated successfully!' : 'List created successfully!', 'success');
                 loadUserLists();
                 modal.remove();
             } else {
-                showToast(data.message || 'Failed to create list', 'error');
+                showToast(data.message || 'Failed to save list', 'error');
             }
         } catch (error) {
-            console.error('Error creating list:', error);
-            showToast('Failed to create list', 'error');
+            console.error('Error saving list:', error);
+            showToast('Failed to save list', 'error');
         }
     });
 }
@@ -357,7 +478,7 @@ function showCreateListModal(existingList = null) {
 // Show toast notification
 function showToast(message, type = 'success') {
     const toast = document.createElement('div');
-    toast.className = `fixed bottom-4 right-4 px-6 py-3 rounded-lg text-white ${
+    toast.className = `fixed bottom-8 right-4 px-6 py-3 rounded-lg text-white ${
         type === 'success' ? 'bg-green-500' : 'bg-red-500'
     } shadow-lg z-50`;
     toast.textContent = message;
@@ -387,37 +508,75 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Initialize lists
     loadUserLists();
-
-    // Create list button event listener
-    document.querySelector('button[onclick="showCreateListModal()"]').addEventListener('click', showCreateListModal);
 });
 
 function setupBookSearch() {
     const searchInput = document.getElementById('bookSearchInput');
     const searchResults = document.getElementById('searchResults');
     
+    console.log('Search Input:', searchInput); // Debug log
+    console.log('Search Results:', searchResults); // Debug log
+    
     if (!searchInput || !searchResults) {
         console.error('Search elements not found');
         return;
     }
 
-    let timeoutId;
+    // Add immediate visual feedback for the search results container
+    searchResults.style.display = 'none';
+    searchResults.style.position = 'absolute';
+    searchResults.style.zIndex = '50';
+    searchResults.style.width = '100%';
+    searchResults.style.maxHeight = '300px';
+    searchResults.style.overflowY = 'auto';
+    searchResults.style.backgroundColor = 'white';
+    searchResults.style.border = '1px solid #e5e7eb';
+    searchResults.style.borderRadius = '0.375rem';
+    searchResults.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1)';
+
     searchInput.addEventListener('input', (e) => {
-        clearTimeout(timeoutId);
-        timeoutId = setTimeout(() => {
-            handleBookSearch(e.target.value);
-        }, 500);
+        console.log('Input event fired:', e.target.value); // Debug log
+        const query = e.target.value.trim();
+        
+        if (query.length < 2) {
+            searchResults.style.display = 'none';
+            return;
+        }
+
+        // Show loading state
+        searchResults.style.display = 'block';
+        searchResults.innerHTML = '<div class="p-4 text-gray-500">Searching...</div>';
+
+        // Debounce the search
+        clearTimeout(searchInput.timeout);
+        searchInput.timeout = setTimeout(() => {
+            handleBookSearch(query);
+        }, 300);
+    });
+
+    // Ensure the search container is visible when focusing on input
+    searchInput.addEventListener('focus', () => {
+        if (searchInput.value.trim().length >= 2) {
+            searchResults.style.display = 'block';
+        }
+    });
+
+    // Prevent clicks within the search results from closing it
+    searchResults.addEventListener('click', (e) => {
+        e.stopPropagation();
     });
 
     // Close search results when clicking outside
     document.addEventListener('click', (e) => {
         if (!searchInput.contains(e.target) && !searchResults.contains(e.target)) {
-            searchResults.innerHTML = '';
+            searchResults.style.display = 'none';
         }
     });
 }
 
 async function handleBookSearch(query) {
+    console.log('Handling search for query:', query); // Debug log
+    
     if (!query || query.length < 2) {
         clearSearchResults();
         return;
@@ -425,10 +584,14 @@ async function handleBookSearch(query) {
 
     try {
         const suggestions = await fetchBookSuggestions(query);
+        console.log('Received suggestions:', suggestions); // Debug log
         displayBookSuggestions(suggestions);
     } catch (error) {
         console.error('Error searching books:', error);
-        showToast('Error searching books', 'error');
+        const searchResults = document.getElementById('searchResults');
+        if (searchResults) {
+            searchResults.innerHTML = '<div class="p-4 text-red-500">Error searching books</div>';
+        }
     }
 }
 
@@ -451,23 +614,34 @@ function displayBookSuggestions(suggestions) {
     if (!searchResults) return;
 
     searchResults.innerHTML = '';
+    
+    // Make sure the container is visible and properly positioned
     searchResults.style.display = 'block';
+    searchResults.style.position = 'absolute';
+    searchResults.style.zIndex = '50';
+    searchResults.style.width = '100%';
+    searchResults.style.maxHeight = '300px';
+    searchResults.style.overflowY = 'auto';
+    searchResults.style.backgroundColor = 'white';
+    searchResults.style.border = '1px solid #e5e7eb';
+    searchResults.style.borderRadius = '0.375rem';
+    searchResults.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1)';
     
     if (suggestions.length === 0) {
-        searchResults.innerHTML = '<div class="p-2 text-gray-500">No books found</div>';
+        searchResults.innerHTML = '<div class="p-4 text-gray-500">No books found</div>';
         return;
     }
 
     suggestions.forEach(book => {
         const bookElement = document.createElement('div');
-        bookElement.className = 'flex items-center p-2 border-b hover:bg-gray-100 cursor-pointer';
+        bookElement.className = 'flex items-center p-3 border-b hover:bg-gray-50 cursor-pointer transition-colors duration-200';
         bookElement.innerHTML = `
             <img src="${book.thumbnail}" alt="${book.title}" class="w-12 h-16 object-cover mr-3 rounded">
-            <div class="flex-1">
-                <div class="font-semibold text-sm">${book.title}</div>
-                <div class="text-xs text-gray-600">${book.authors}</div>
+            <div class="flex-1 min-w-0">
+                <div class="font-semibold text-sm truncate">${book.title}</div>
+                <div class="text-xs text-gray-600 truncate">${book.authors}</div>
             </div>
-            <button class="ml-2 px-3 py-1 bg-green-900 text-white rounded hover:bg-green-800 text-sm">
+            <button class="ml-2 px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 transition-colors duration-200 text-sm flex-shrink-0">
                 Add
             </button>
         `;
@@ -475,6 +649,7 @@ function displayBookSuggestions(suggestions) {
         bookElement.querySelector('button').addEventListener('click', (e) => {
             e.stopPropagation();
             handleBookSelection(book);
+            searchResults.style.display = 'none'; // Hide results after selection
         });
 
         searchResults.appendChild(bookElement);
@@ -543,14 +718,122 @@ function clearSearchResults() {
 }
 
 function editList(listId) {
-    const list = document.querySelector(`[data-list-id="${listId}"]`);
-    if (!list) return;
-
-    showCreateListModal(list.dataset); // Pass the existing list data
+    // Find the list in userLists array using the listId
+    const list = userLists.find(list => list._id === listId);
+    if (!list) {
+        showToast('List not found', 'error');
+        return;
+    }
+    
+    // Show the modal with the existing list data
+    showCreateListModal(list);
 }
 
 // Make functions available globally
 window.editList = editList;
 window.deleteList = deleteList;
 window.removeBookFromList = removeBookFromList;
-window.showCreateListModal = showCreateListModal; 
+window.showCreateListModal = showCreateListModal;
+
+function showListModal(listId) {
+    // First try to find the list in user's lists
+    let list = userLists.find(l => l._id === listId);
+    
+    // If not found in user's lists, try to find it in friends' lists
+    if (!list) {
+        // We need to get the list from the friends' lists that we loaded
+        const friendsListsContainer = document.querySelector('[data-friends-lists]');
+        if (friendsListsContainer) {
+            const friendsList = JSON.parse(friendsListsContainer.dataset.friendsLists)
+                .find(l => l._id === listId);
+            if (friendsList) {
+                list = friendsList;
+            }
+        }
+    }
+
+    if (!list) return;
+
+    const modal = document.createElement('div');
+    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+    
+    modal.innerHTML = `
+        <div class="bg-white rounded-lg p-6 w-[800px] max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-6">
+                <div>
+                    <h2 class="text-2xl font-bold">${list.listName}</h2>
+                    ${list.username && list.username !== localStorage.getItem('username') 
+                        ? `<p class="text-sm text-gray-500 mt-1">Created by ${list.username}</p>` 
+                        : ''}
+                </div>
+                <button onclick="this.closest('.fixed').remove()" class="text-gray-500 hover:text-gray-700">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            ${list.description ? `<p class="text-gray-600 mb-4">${list.description}</p>` : ''}
+            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                ${list.books.map(book => `
+                    <div class="flex flex-col items-center p-2 border rounded">
+                        <img src="${book.thumbnail}" alt="${book.title}" class="w-32 h-48 object-cover mb-2">
+                        <h3 class="text-sm font-semibold text-center">${book.title}</h3>
+                        <p class="text-xs text-gray-500 text-center">${book.authors}</p>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+}
+
+async function toggleListLike(event, listId) {
+    event.stopPropagation(); // Prevent modal from opening when clicking like button
+    const username = localStorage.getItem('username');
+    
+    // Find the list in either userLists or friendsLists
+    let list = userLists.find(l => l._id === listId);
+    if (!list) {
+        const friendsListsContainer = document.querySelector('[data-friends-lists]');
+        if (friendsListsContainer) {
+            const friendsLists = JSON.parse(friendsListsContainer.dataset.friendsLists);
+            list = friendsLists.find(l => l._id === listId);
+        }
+    }
+    
+    if (!list) return;
+
+    const isLiked = list.likes?.includes(username);
+    const endpoint = `/api/lists/${listId}/${isLiked ? 'unlike' : 'like'}`;
+
+    try {
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ username })
+        });
+
+        const data = await response.json();
+        if (data.success) {
+            // Update the likes array in the list object
+            if (isLiked) {
+                list.likes = list.likes.filter(user => user !== username);
+            } else {
+                if (!list.likes) list.likes = [];
+                list.likes.push(username);
+            }
+            
+            // Only call loadUserLists() which internally calls renderLists()
+            await loadUserLists();
+            
+            // Show success message
+            showToast(isLiked ? 'Removed like from list' : 'Liked list', 'success');
+        }
+    } catch (error) {
+        console.error('Error toggling list like:', error);
+        showToast('Failed to update like', 'error');
+    }
+} 

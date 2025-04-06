@@ -43,6 +43,7 @@ const userListSchema = new mongoose.Schema({
     description: String,
     thumbnail: String,
   }],
+  likes: [String], // Array of usernames who liked the list
   createdDate: { type: Date, default: Date.now }
 });
 
@@ -1998,12 +1999,19 @@ app.delete('/api/lists/:listId/books/:isbn', async (req, res) => {
 // Update list
 app.put('/api/lists/:listId', async (req, res) => {
     const { listId } = req.params;
-    const { username, listName, tags, visibility, description } = req.body;
+    const { username, listName, tags, visibility, description, books } = req.body;
 
     try {
         const list = await UserList.findOneAndUpdate(
             { _id: listId, username },
-            { listName, tags, visibility, description },
+            { 
+                listName, 
+                tags, 
+                visibility, 
+                description,
+                books, // Include the updated books array
+                updatedAt: new Date()
+            },
             { new: true }
         );
 
@@ -2020,4 +2028,109 @@ app.put('/api/lists/:listId', async (req, res) => {
 
 app.listen(port, () => {
   console.log(`Server listening at http://localhost:${port}`);
+});
+
+// Like a list
+app.post('/api/lists/:listId/like', async (req, res) => {
+    const { listId } = req.params;
+    const { username } = req.body;
+
+    try {
+        const list = await UserList.findById(listId);
+        if (!list) {
+            return res.status(404).json({ success: false, message: 'List not found' });
+        }
+
+        // Initialize likes array if it doesn't exist
+        if (!list.likes) {
+            list.likes = [];
+        }
+
+        // Check if user has already liked the list
+        if (list.likes.includes(username)) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'You have already liked this list' 
+            });
+        }
+
+        // Add the like
+        list.likes.push(username);
+        await list.save();
+
+        res.json({ 
+            success: true, 
+            likes: list.likes.length,
+            message: 'List liked successfully' 
+        });
+    } catch (error) {
+        console.error('Error liking list:', error);
+        res.status(500).json({ success: false, message: 'Failed to like list' });
+    }
+});
+
+// Unlike a list
+app.post('/api/lists/:listId/unlike', async (req, res) => {
+    const { listId } = req.params;
+    const { username } = req.body;
+
+    try {
+        const list = await UserList.findById(listId);
+        if (!list) {
+            return res.status(404).json({ success: false, message: 'List not found' });
+        }
+
+        // Initialize likes array if it doesn't exist
+        if (!list.likes) {
+            list.likes = [];
+        }
+
+        // Check if user has liked the list
+        if (!list.likes.includes(username)) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'You have not liked this list' 
+            });
+        }
+
+        // Remove the like
+        list.likes = list.likes.filter(user => user !== username);
+        await list.save();
+
+        res.json({ 
+            success: true, 
+            likes: list.likes.length,
+            message: 'List unliked successfully' 
+        });
+    } catch (error) {
+        console.error('Error unliking list:', error);
+        res.status(500).json({ success: false, message: 'Failed to unlike list' });
+    }
+});
+
+// Add this new endpoint to get friends' lists
+app.get('/api/users/:username/friends-lists', async (req, res) => {
+    const { username } = req.params;
+
+    try {
+        // Find the user and populate their friends
+        const user = await User.findOne({ username }).populate('friends');
+        if (!user) {
+            return res.status(404).json({ success: false, message: 'User not found' });
+        }
+
+        // Get the usernames of all friends
+        const friendUsernames = user.friends.map(friend => friend.username);
+
+        // Find all public and friends-only lists from friends
+        const friendsLists = await UserList.find({
+            username: { $in: friendUsernames },
+            visibility: { $in: ['public', 'friends'] }
+        }).sort({ createdAt: -1 });
+
+        res.status(200).json({ success: true, friendsLists });
+    } catch (error) {
+        console.error('Error fetching friends\' lists:', error);
+        res.status(500).json({ success: false, message: 'Failed to fetch friends\' lists' });
+    }
 });
