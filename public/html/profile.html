@@ -83,18 +83,54 @@
                         <canvas id="categoryChart" class="border border-gray-300 rounded-lg w-full h-full max-w-md"></canvas>
                     </div>
 
-                    <!-- Histogram for Review Ratings -->
-                    <div class="w-1/2 pl-4">
-                        <canvas id="ratingsHistogram" class="border border-gray-300 rounded-lg w-full h-full max-w-md"></canvas>
+                    <!-- Currently Reading Section (replacing histogram) -->
+                    <div class="w-1/2 pl-4 overflow-y-auto">
+                        <h3 class="text-xl font-bold mb-4">Currently Reading</h3>
+                        <div id="currentlyReadingList" class="space-y-4">
+                            <!-- Currently reading books will be displayed here -->
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
         
+       
+        
         <!-- Top 5 Books Section Below -->
         <div class="top5-container mt-8">
             <h2 class="text-2xl font-bold text-white mb-4">Top 5 Books:</h2>
             <div id="top5Grid" class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-8 ml-14">
+            </div>
+        </div>
+
+
+         <!-- Add this after the stats-placeholder div and before the top5-container -->
+         <div class="reading-calendar-container mt-8 bg-gray-800 p-6 rounded-lg shadow-md">
+            <h2 class="text-2xl font-bold text-white mb-4">Reading Calendar</h2>
+            <div class="flex items-center justify-between mb-4">
+                <button id="prevMonth" class="text-white bg-blue-600 px-4 py-2 rounded hover:bg-blue-700">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                    </svg>
+                </button>
+                <h3 id="currentMonthYear" class="text-xl text-white"></h3>
+                <button id="nextMonth" class="text-white bg-blue-600 px-4 py-2 rounded hover:bg-blue-700">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="grid grid-cols-7 gap-1 mb-2">
+                <div class="text-center text-gray-400">Sun</div>
+                <div class="text-center text-gray-400">Mon</div>
+                <div class="text-center text-gray-400">Tue</div>
+                <div class="text-center text-gray-400">Wed</div>
+                <div class="text-center text-gray-400">Thu</div>
+                <div class="text-center text-gray-400">Fri</div>
+                <div class="text-center text-gray-400">Sat</div>
+            </div>
+            <div id="calendarGrid" class="grid grid-cols-7 gap-1">
+                <!-- Calendar squares will be generated here -->
             </div>
         </div>
     </main>

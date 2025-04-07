@@ -111,7 +111,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 alert('Book removed from your current reads!');
                 await fetchAndDisplayCurrentReads(); // Refresh current reads
             } else {
-                alert(`Failed to remove book: ${data.message}`);
+                alert(`Failed to end current read: ${data.message}`);
             }
         } catch (error) {
             console.error('Error ending current read:', error);
@@ -232,7 +232,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
     
             bookDiv.innerHTML = `
-                <div class="relative group book-card library-card" style="border: 4px solid ${getGradientColor(book.rating)};">
+                <div class="relative group book-card" style="box-shadow: ${getGlowColor(book.rating)}">
                     <a href="../html/book.html?isbn=${book.isbn}" class="block relative overflow-hidden rounded-lg shadow-lg hover:shadow-2xl transition duration-300 ease-in-out group">
                         <img src="${book.thumbnail}" alt="${book.title}" class="w-full h-full object-cover rounded-t-lg">
                         <div class="absolute bottom-0 left-0 w-full p-4 bg-black bg-opacity-60 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-in-out">
@@ -240,9 +240,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                             <p class="text-gray-300">by ${book.authors}</p>
                         </div>
                     </a>
-                    ${additionalInfo} <!-- Display either review date or rating -->
+                    ${additionalInfo}
                     ${isOwnLibrary || !isOwnLibrary ? `<button class="comment-button ease-in-out-transition absolute top-0 right-0 mt-2 mr-2 text-xs bg-blue-500 text-white px-2 py-1 rounded" data-isbn="${book.isbn}" data-title="${book.title}"></button>` : ''}
-                    ${isOwnLibrary ? `<button class="comment-button ease-in-out-transition absolute top-0 right-0 mt-2 mr-2 text-xs bg-blue-500 text-white px-2 py-1 rounded" data-isbn="${book.isbn}" data-title="${book.title}"></button>` : ''}
                     ${username === loggedInUsername ? 
                         `<button onclick="removeFromLibrary('${username}', '${book.isbn}')" class="absolute top-0 left-0 mt-2 ml-2 text-xs bg-red-700 text-white px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-in-out">Remove</button>` 
                         : ''}
@@ -638,4 +637,21 @@ async function removeFromReadingList(username, isbn) {
         console.error('Error removing book from reading list:', error);
         alert('Error removing book from reading list.');
     }
+}
+
+function getGlowColor(value) {
+    if (value === undefined || value === null) {
+        return 'none'; // No glow for books without ratings
+    }
+
+    let color;
+    if (value <= 33) {
+        color = 'rgba(102, 0, 0, 0.5)'; // Dark red glow
+    } else if (value <= 66) {
+        color = 'rgba(255, 193, 37, 0.5)'; // Yellow glow
+    } else {
+        color = 'rgba(32, 154, 32, 0.5)'; // Green glow
+    }
+
+    return `0 0 15px ${color}, 0 0 20px ${color}`; // Subtle double glow effect
 }

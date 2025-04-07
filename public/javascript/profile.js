@@ -287,97 +287,243 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Call the pieChart function
     pieChart();
-
-
-    async function fetchUserReviews(username) {
+    async function fetchCurrentlyReading(username) {
         try {
-          // Make a GET request to fetch the ratings
-          const response = await fetch(`/api/library/${username}/ratings`);
+            const response = await fetch(`/api/library/${username}/currently-reading`);
           if (!response.ok) {
-            throw new Error('Failed to fetch user ratings');
+                throw new Error('Failed to fetch currently reading books');
           }
-      
           const data = await response.json();
-          const ratings = data.ratings || [];
-          console.log("Fetched Ratings:", ratings);
-          return ratings;
+            return data.currentlyReading || [];
         } catch (error) {
-          console.error('Error fetching ratings:', error);
+            console.error('Error fetching currently reading books:', error);
           return [];
         }
       }
       
+    function renderCurrentlyReading(books) {
+        const container = document.getElementById('currentlyReadingList');
+        if (!container) return;
+    
+        if (books.length === 0) {
+            container.innerHTML = '<p class="text-gray-400">No books currently being read</p>';
+            return;
+        }
+    
+        container.innerHTML = books.map(book => {
+            const startDate = new Date(book.startDate);
+            const endDate = book.endDate ? new Date(book.endDate) : new Date();
+            const daysReading = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
+    
+            return `
+                <div class="flex items-center space-x-4 bg-gray-700 p-3 rounded-lg">
+                    <img src="${book.thumbnail}" alt="${book.title}" class="w-16 h-24 object-cover rounded">
+                    <div class="flex-1">
+                        <h4 class="font-semibold text-sm">${book.title}</h4>
+                        <p class="text-gray-400 text-xs">${book.authors}</p>
+                        <p class="text-gray-400 text-xs mt-1">Started: ${startDate.toLocaleDateString()}</p>
+                        ${book.endDate ? 
+                            `<p class="text-green-400 text-xs">Completed: ${new Date(book.endDate).toLocaleDateString()}</p>` :
+                            `<p class="text-gray-400 text-xs">Reading for: ${daysReading} days</p>`
+                        }
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+    const currentlyReadingBooks = await fetchCurrentlyReading(username);
+    renderCurrentlyReading(currentlyReadingBooks);
+    // Global variables for calendar
+    let currentDate = new Date();
+    let readingData = [];
 
-      
-  
-      // Function to prepare histogram data
-      function prepareHistogramData(ratings) {
-        // Initialize bins for ranges: 0-19, 20-39, 40-59, 60-79, 80-100
-        const bins = [0, 0, 0, 0, 0];
-      
-        // Count the occurrences of each rating and place them in the appropriate bin
-        ratings.forEach(rating => {
-            if (rating >= 0 && rating < 20) {
-              bins[0]++;
-            } else if (rating >= 20 && rating < 40) {
-              bins[1]++;
-            } else if (rating >= 40 && rating < 60) {
-              bins[2]++;
-            } else if (rating >= 60 && rating < 80) {
-              bins[3]++;
-            } else if (rating >= 80 && rating <= 100) {
-              bins[4]++;
+    async function fetchReadingData(username) {
+        try {
+            const response = await fetch(`/api/library/${username}/reading-history`);
+            if (!response.ok) {
+                throw new Error('Failed to fetch reading history');
             }
-          });
-      
-        return bins;
-      }
-      
-      // Function to render the histogram using Chart.js
-      function renderHistogram(bins) {
-        const ctx = document.getElementById('ratingsHistogram').getContext('2d');
-        new Chart(ctx, {
-            type: 'bar',
-            data: {
-              labels: ['0-19', '20-39', '40-59', '60-79', '80-100'],
-              datasets: [{
-                label: 'Number of Reviews',
-                data: bins,
-                backgroundColor: 'rgba(75, 192, 192, 0.6)',
-                borderColor: 'rgba(75, 192, 192, 1)',
-                borderWidth: 1
-              }]
-            },
-            options: {
-              scales: {
-                x: {
-                  ticks: {
-                    color: 'white' // Color for x-axis labels
-                  }
-                },
-                y: {
-                  ticks: {
-                    color: 'white' // Color for y-axis labels
-                  }
+            const data = await response.json();
+            return data.readingHistory || [];
+        } catch (error) {
+            console.error('Error fetching reading history:', error);
+            return [];
+        }
+    }
+
+    function generateCalendar(year, month) {
+        const firstDay = new Date(year, month, 1);
+        const lastDay = new Date(year, month + 1, 0);
+        const startingDay = firstDay.getDay();
+        const totalDays = lastDay.getDate();
+        
+        const calendarGrid = document.getElementById('calendarGrid');
+        const currentMonthYear = document.getElementById('currentMonthYear');
+        
+        // Update month/year display
+        currentMonthYear.textContent = new Date(year, month).toLocaleDateString('default', { 
+            month: 'long', 
+            year: 'numeric' 
+        });
+        
+        // Clear existing calendar
+        calendarGrid.innerHTML = '';
+        
+        // Add empty cells for days before the first of the month
+        for (let i = 0; i < startingDay; i++) {
+            const emptyCell = document.createElement('div');
+            emptyCell.className = 'h-12 bg-gray-700 rounded-lg opacity-50';
+            calendarGrid.appendChild(emptyCell);
+        }
+        
+        // Add cells for each day
+        for (let day = 1; day <= totalDays; day++) {
+            const cell = document.createElement('div');
+            const currentCellDate = new Date(year, month, day);
+            
+            // Find books being read on this date
+            const booksOnThisDay = readingData.filter(book => {
+                const startDate = new Date(book.startDate);
+                const endDate = book.endDate ? new Date(book.endDate) : new Date();
+                return currentCellDate >= startDate && currentCellDate <= endDate;
+            });
+            
+            cell.className = 'h-12 relative bg-gray-700 rounded-lg transition-all duration-200 hover:bg-gray-600';
+            
+            // Add day number
+            const dayNumber = document.createElement('div');
+            dayNumber.className = 'absolute top-1 left-1 text-xs text-gray-400';
+            dayNumber.textContent = day;
+            cell.appendChild(dayNumber);    
+            
+            if (booksOnThisDay.length > 0) {
+                const bookIndicator = document.createElement('div');
+                bookIndicator.className = 'absolute bottom-1 right-1 flex gap-1';
+                
+                // Create dots for up to 3 books with tooltips
+                booksOnThisDay.slice(0, 3).forEach(book => {
+                    const dotContainer = document.createElement('div');
+                    dotContainer.className = 'relative group';
+                    
+                    const dot = document.createElement('div');
+                    // A book is only completed if it has an endDate
+                    const isCompleted = book.endDate !== null && book.endDate !== undefined;
+                    const colorClass = isCompleted ? 'bg-green-500' : 'bg-blue-500';
+                    dot.className = `w-2 h-2 rounded-full ${colorClass} hover:scale-125 transition-transform duration-200`;
+                    
+                    // Create tooltip with book cover
+                    const tooltip = document.createElement('div');
+                    tooltip.className = 'absolute bottom-full right-0 mb-2 hidden group-hover:block w-64 bg-gray-900 text-white text-xs rounded p-2 shadow-lg z-50';
+                    
+                    // Calculate reading duration
+                    const startDate = new Date(book.startDate);
+                    const endDate = book.endDate ? new Date(book.endDate) : new Date();
+                    const daysReading = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
+                    
+                    tooltip.innerHTML = `
+                        <div class="flex gap-3">
+                            <img src="${book.thumbnail}" alt="${book.title}" class="w-16 h-24 object-cover rounded">
+                            <div class="flex-1">
+                                <div class="text-sm font-semibold mb-1">${book.title}</div>
+                                <div class="text-xs text-gray-300">by ${book.authors}</div>
+                                <div class="text-xs mt-1">Started: ${startDate.toLocaleDateString()}</div>
+                                ${isCompleted ? 
+                                    `<div class="text-xs text-green-500">Completed: ${new Date(book.endDate).toLocaleDateString()}</div>` :
+                                    `<div class="text-xs text-blue-400"> Currently Reading: ${daysReading} days</div>`
+                                }
+                            </div>
+                        </div>
+                    `;
+                    
+                    // Add arrow to tooltip
+                    const arrow = document.createElement('div');
+                    arrow.className = 'absolute bottom-0 right-1 transform translate-y-full';
+                    arrow.innerHTML = `
+                        <svg class="text-gray-900 h-2 w-2" viewBox="0 0 8 4">
+                            <path fill="currentColor" d="M4 4L0 0h8L4 4z"/>
+                        </svg>
+                    `;
+                    tooltip.appendChild(arrow);
+                    
+                    dotContainer.appendChild(dot);
+                    dotContainer.appendChild(tooltip);
+                    bookIndicator.appendChild(dotContainer);
+                });
+                
+                // If there are more books than shown
+                if (booksOnThisDay.length > 3) {
+                    const moreIndicator = document.createElement('div');
+                    moreIndicator.className = 'relative group';
+                    
+                    const moreDot = document.createElement('div');
+                    moreDot.className = 'w-2 h-2 rounded-full bg-gray-400 hover:scale-125 transition-transform duration-200';
+                    
+                    const moreTooltip = document.createElement('div');
+                    moreTooltip.className = 'absolute bottom-full right-0 mb-2 hidden group-hover:block w-64 bg-gray-900 text-white text-xs rounded p-2 shadow-lg z-50';
+                    
+                    // Show all remaining books in the tooltip with thumbnails
+                    const remainingBooks = booksOnThisDay.slice(3);
+                    moreTooltip.innerHTML = `
+                        <div class="text-sm font-semibold mb-2">${remainingBooks.length} more book${remainingBooks.length > 1 ? 's' : ''}:</div>
+                        ${remainingBooks.map(book => {
+                            const isCompleted = book.endDate !== null && book.endDate !== undefined;
+                            return `
+                                <div class="flex gap-2 mb-2 pb-2 border-b border-gray-700 last:border-0">
+                                    <img src="${book.thumbnail}" alt="${book.title}" class="w-12 h-16 object-cover rounded">
+                                    <div class="flex-1">
+                                        <div class="font-medium text-xs">${book.title}</div>
+                                        <div class="text-gray-300 text-xs">by ${book.authors}</div>
+                                        <div class="text-xs ${isCompleted ? 'text-green-500' : 'text-blue-400'}">
+                                            ${isCompleted ? 'Completed' : 'Currently Reading'}
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
+                    `;
+                    
+                    const moreArrow = document.createElement('div');
+                    moreArrow.className = 'absolute bottom-0 right-1 transform translate-y-full';
+                    moreArrow.innerHTML = `
+                        <svg class="text-gray-900 h-2 w-2" viewBox="0 0 8 4">
+                            <path fill="currentColor" d="M4 4L0 0h8L4 4z"/>
+                        </svg>
+                    `;
+                    moreTooltip.appendChild(moreArrow);
+                    
+                    moreIndicator.appendChild(moreDot);
+                    moreIndicator.appendChild(moreTooltip);
+                    bookIndicator.appendChild(moreIndicator);
                 }
-              },
-              plugins: {
-                legend: {
-                  labels: {
-                    color: 'white' // Color for legend text
-                  }
-                }
-              }
+                
+                cell.appendChild(bookIndicator);
             }
-          });
-          
-      }
-      
-      const reviews = await fetchUserReviews(username);
-      const bins = prepareHistogramData(reviews);
-      renderHistogram(bins);
+            
+            calendarGrid.appendChild(cell);
+        }
+    }
 
+    function initializeCalendar() {
+        const prevMonthBtn = document.getElementById('prevMonth');
+        const nextMonthBtn = document.getElementById('nextMonth');
+        
+        prevMonthBtn.addEventListener('click', () => {
+            currentDate.setMonth(currentDate.getMonth() - 1);
+            generateCalendar(currentDate.getFullYear(), currentDate.getMonth());
+        });
+        
+        nextMonthBtn.addEventListener('click', () => {
+            currentDate.setMonth(currentDate.getMonth() + 1);
+            generateCalendar(currentDate.getFullYear(), currentDate.getMonth());
+        });
+        
+        // Initial calendar generation
+        generateCalendar(currentDate.getFullYear(), currentDate.getMonth());
+    }
 
+    // Initialize reading calendar
+    readingData = await fetchReadingData(username);
+    initializeCalendar();
 });
 
 
@@ -404,3 +550,5 @@ async function removeFromTop5(username, isbn) {
         alert('Error removing book from top 5.');
     }
 }
+
+

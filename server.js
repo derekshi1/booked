@@ -88,7 +88,7 @@ const bookSchema = new mongoose.Schema({
   isbn: String,
   imageUrl: String,
   categories: [String],
-  pageCount: Number
+  pageCount: Number,
 });
 const Book = mongoose.model('Book', bookSchema);
 
@@ -104,7 +104,7 @@ const userLibrarySchema = new mongoose.Schema({
     pageCount: Number,
     review: String,
     rating: Number,
-    reviewDate: Date, // Ensure this field exists
+    reviewDate: Date,
     visibility: { type: String, enum: ['private', 'friends', 'public'], default: 'public' },
     likes: [String]
   }],
@@ -129,7 +129,6 @@ const userLibrarySchema = new mongoose.Schema({
     pageCount: Number,
     review: String,
     rating: Number,
-
   }],
   currentlyReading: {
     books: [{
@@ -140,8 +139,22 @@ const userLibrarySchema = new mongoose.Schema({
       thumbnail: String,
       categories: [String],
       pageCount: Number,
-      startDate: { type: Date, default: Date.now } // Tracks when the user started reading the book
-    }]  }
+      startDate: { type: Date, default: Date.now },
+      endDate: { type: Date, default: null }
+    }]
+  },
+  // Add this new field to track reading history
+  readingHistory: [{
+    isbn: String,
+    title: String,
+    authors: String,
+    description: String,
+    thumbnail: String,
+    categories: [String],
+    pageCount: Number,
+    startDate: Date,
+    endDate: Date
+  }]
 });
 const UserLibrary = mongoose.model('UserLibrary', userLibrarySchema);
 
@@ -1696,15 +1709,12 @@ app.post('/api/check-friendship-status', async (req, res) => {
 //add to your own current reading
 app.post('/api/library/currently-reading/add', async (req, res) => {
   try {
-    // Extract the username from the request body
     const { username, isbn, title, authors, description, thumbnail, categories, pageCount } = req.body;
 
-    // Validate input data
     if (!username || !isbn || !title) {
       return res.status(400).json({ error: 'Username, ISBN, and Title are required.' });
     }
 
-    // Find the user's library
     const userLibrary = await UserLibrary.findOne({ username });
 
     if (!userLibrary) {
@@ -1718,6 +1728,10 @@ app.post('/api/library/currently-reading/add', async (req, res) => {
       return res.status(400).json({ error: 'Book is already in your Currently Reading list.' });
     }
 
+    // Set the start date to the current date (beginning of the day)
+    const startDate = new Date();
+    startDate.setHours(0, 0, 0, 0);
+
     // Add the book to Currently Reading
     userLibrary.currentlyReading.books.push({
       isbn,
@@ -1727,13 +1741,33 @@ app.post('/api/library/currently-reading/add', async (req, res) => {
       thumbnail,
       categories,
       pageCount,
-      startDate: new Date(), // Add current date
+      startDate,
     });
 
-    // Save the updated library
+    // Also add to reading history immediately
+    if (!userLibrary.readingHistory) {
+      userLibrary.readingHistory = [];
+    }
+
+    // Add to reading history with the same start date
+    userLibrary.readingHistory.push({
+      isbn,
+      title,
+      authors,
+      description,
+      thumbnail,
+      categories,
+      pageCount,
+      startDate,
+      endDate: null // null endDate indicates still reading
+    });
+
     await userLibrary.save();
 
-    res.status(200).json({ message: 'Book added to Currently Reading!', currentlyReading: userLibrary.currentlyReading.books });
+    res.status(200).json({ 
+      message: 'Book added to Currently Reading!', 
+      currentlyReading: userLibrary.currentlyReading.books 
+    });
   } catch (error) {
     console.error('Error in /api/library/currently-reading/add:', error.message);
     res.status(500).json({ error: 'Internal server error.' });
@@ -1776,39 +1810,48 @@ app.get('/api/library/:username/currently-reading', async (req, res) => {
 });
 app.post('/api/library/:username/currently-reading/end', async (req, res) => {
   try {
-    const { username } = req.params; // Extract username from the request params
-    const { isbn } = req.body; // Extract ISBN from the request body
+    const { username } = req.params;
+    const { isbn } = req.body;
 
-    // Validate input
     if (!isbn) {
       return res.status(400).json({ success: false, message: 'ISBN is required to end currently reading.' });
     }
 
-    // Find the user's library
     const userLibrary = await UserLibrary.findOne({ username });
 
     if (!userLibrary) {
       return res.status(404).json({ success: false, message: 'User library not found.' });
     }
 
-    // Check if the book exists in the currently reading list
+    // Find the book in currently reading
     const bookIndex = userLibrary.currentlyReading.books.findIndex(book => book.isbn === isbn);
 
     if (bookIndex === -1) {
       return res.status(400).json({ success: false, message: 'Book not found in Currently Reading list.' });
     }
 
+    // Set end date to current date (beginning of the day)
+    const endDate = new Date();
+    endDate.setHours(0, 0, 0, 0);
+
+    // Find and update the corresponding entry in reading history
+    const historyIndex = userLibrary.readingHistory.findIndex(book => book.isbn === isbn && !book.endDate);
+    if (historyIndex !== -1) {
+      userLibrary.readingHistory[historyIndex].endDate = endDate;
+    }
+
+    // Remove from currently reading
     userLibrary.currentlyReading.books.splice(bookIndex, 1);
 
     await userLibrary.save();
 
     res.status(200).json({
       success: true,
-      message: 'Book removed from Currently Reading list.',
+      message: 'Reading ended successfully.',
       currentlyReading: userLibrary.currentlyReading.books
     });
   } catch (error) {
-    console.error('Error in /api/library/:username/currently-reading/end:', error.message);
+    console.error('Error ending currently reading:', error.message);
     res.status(500).json({ success: false, message: 'Internal server error.' });
   }
 });
@@ -2133,4 +2176,30 @@ app.get('/api/users/:username/friends-lists', async (req, res) => {
         console.error('Error fetching friends\' lists:', error);
         res.status(500).json({ success: false, message: 'Failed to fetch friends\' lists' });
     }
+});
+
+// Add this to your server.js or appropriate route file
+app.get('/api/library/:username/reading-history', async (req, res) => {
+  try {
+    const { username } = req.params;
+    const userLibrary = await UserLibrary.findOne({ username });
+
+    if (!userLibrary) {
+      return res.status(404).json({ success: false, message: 'User library not found' });
+    }
+
+    // Get all reading history entries
+    const readingHistory = (userLibrary.readingHistory || []).map(book => ({
+      ...book.toObject(),
+      isActive: !book.endDate // Book is active if it doesn't have an end date
+    }));
+
+    res.json({
+      success: true,
+      readingHistory
+    });
+  } catch (error) {
+    console.error('Error fetching reading history:', error);
+    res.status(500).json({ success: false, message: 'Error fetching reading history' });
+  }
 });

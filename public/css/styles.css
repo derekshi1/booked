@@ -1171,4 +1171,16 @@ body, main {
 }
 
 
+/* Add these styles to your CSS file */
+.group:hover .group-hover\:block {
+    display: block;
+}
 
+.group:hover .group-hover\:scale-125 {
+    transform: scale(1.25);
+}
+
+/* Ensure tooltips appear above other elements */
+.z-50 {
+    z-index: 50;
+}
