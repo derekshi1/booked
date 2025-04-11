@@ -2203,3 +2203,98 @@ app.get('/api/library/:username/reading-history', async (req, res) => {
     res.status(500).json({ success: false, message: 'Error fetching reading history' });
   }
 });
+
+// Current unified search endpoint needs to be modified to:
+// 1. Ensure proper ordering (users -> lists -> books)
+// 2. Filter out books without thumbnails
+// 3. Combine results in the desired order
+
+app.get('/api/unified-search', async (req, res) => {
+    const { query, type } = req.query;
+    const results = {
+        books: [],
+        lists: [],
+        users: []
+    };
+
+    try {
+        // Search for users first
+        if (!type || type === 'users') {
+            const users = await User.find({
+                username: { $regex: query, $options: 'i' }
+            }).limit(5);
+
+            results.users = users.map(user => ({
+                type: 'user',
+                username: user.username,
+                profilePicture: user.profilePicture
+            }));
+        }
+
+        // Then search for lists
+        if (!type || type === 'lists') {
+            const lists = await UserList.find({
+                $or: [
+                    { listName: { $regex: query, $options: 'i' } },
+                    { description: { $regex: query, $options: 'i' } }
+                ],
+                visibility: 'public'
+            }).limit(5);
+
+            results.lists = lists.map(list => ({
+                type: 'list',
+                id: list._id,
+                name: list.listName,
+                description: list.description,
+                username: list.username,
+                bookCount: list.books.length,
+                thumbnail: list.books[0]?.thumbnail || 'https://via.placeholder.com/128x192?text=No+Image'
+            }));
+        }
+
+        // Finally search for books
+        if (!type || type === 'books') {
+            const apiKey = 'AIzaSyCFDaqjpgA8K_NqqCw93xorS3zumc_52u8';
+            const googleBooksResponse = await fetch(
+                `https://www.googleapis.com/books/v1/volumes?q=${query}&key=${apiKey}&maxResults=20` // Increased to 10 since we'll filter some out
+            );
+            const booksData = await googleBooksResponse.json();
+            
+            if (booksData.items) {
+                // Filter out books without thumbnails and map the results
+                results.books = booksData.items
+                    .filter(item => item.volumeInfo.imageLinks?.thumbnail)
+                    .slice(0, 15) // Keep only first 5 books that have thumbnails
+                    .map(item => ({
+                        type: 'book',
+                        title: item.volumeInfo.title,
+                        authors: item.volumeInfo.authors || ['Unknown'],
+                        thumbnail: item.volumeInfo.imageLinks.thumbnail,
+                        isbn: item.volumeInfo.industryIdentifiers?.[0]?.identifier || '',
+                        description: item.volumeInfo.description || ''
+                    }));
+            }
+        }
+
+        // Combine results in the desired order: users -> lists -> books
+        const combinedResults = [
+            ...results.users,
+            ...results.lists,
+            ...results.books
+        ];
+
+        res.json({
+            success: true,
+            results: {
+                users: results.users,
+                lists: results.lists,
+                books: results.books,
+                combined: combinedResults
+            }
+        });
+
+    } catch (error) {
+        console.error('Error in unified search:', error);
+        res.status(500).json({ success: false, message: 'Error performing search' });
+    }
+});

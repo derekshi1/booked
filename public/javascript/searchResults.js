@@ -2,7 +2,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const params = new URLSearchParams(window.location.search);
     const query = params.get('query');
     if (query) {
-        fetchBooks(query);
+        fetchSearchResults(query);
     }
    // MutationObserver to watch for changes and add id and name attributes
    const observer = new MutationObserver((mutations) => {
@@ -26,49 +26,146 @@ observer.observe(document.body, {
 });
 });
 
-function fetchBooks(query) {
-    apiKey = 'AIzaSyCFDaqjpgA8K_NqqCw93xorS3zumc_52u8'
+async function fetchSearchResults(query) {
+    try {
+        // Fetch unified search results
+        const response = await fetch(`/api/unified-search?query=${encodeURIComponent(query)}`);
+        const data = await response.json();
 
-    var apiUrl = `https://www.googleapis.com/books/v1/volumes?q=intitle:${query}&key=${apiKey}`;
+        if (data.success) {
+            displaySearchResults(data.results);
+        } else {
+            displayError('Failed to fetch search results');
+        }
+    } catch (error) {
+        console.error('Error fetching search results:', error);
+        displayError('An error occurred while fetching search results');
+    }
+}
 
-    fetch(apiUrl)
-        .then(response => response.json())
-        .then(data => {
-            var resultsDiv = document.getElementById('results');
-            resultsDiv.innerHTML = '';  // Clear previous results
-            if (data.totalItems > 0) {
-                data.items.forEach((item) => {
-                    var book = item.volumeInfo;
-                    if (book.previewLink) {  // Ensure the book has a preview
-                        var isbn = getISBN(book.industryIdentifiers);
-                        var thumbnail = book.imageLinks ? book.imageLinks.thumbnail : 'https://via.placeholder.com/128x192?text=No+Image';
-                        var categories = book.categories ? book.categories.join(', ') : 'Unknown';  // Get categories
-                        var bookItem = document.createElement('div');
-                        bookItem.classList.add('bg-white', 'rounded', 'shadow', 'p-4', 'flex', 'items-start', 'cursor-pointer');
-                        bookItem.innerHTML = `
-                            <a href="../html/book.html?isbn=${isbn}" class="block w-full">
-                                <div class="bg-white rounded shadow p-4 flex items-start hover:bg-gray-200 transition duration-300">
-                                    <img src="${thumbnail}" alt="${book.title}" class="w-32 h-48 mr-4">
-                                    <div>
-                                        <h2 class="text-xl font-bold mb-2">${book.title}</h2>
-                                        <p class="text-gray-700 mb-2">by ${book.authors ? book.authors.join(', ') : 'Unknown'}</p>
-                                        <p class="text-gray-700 mb-2"><strong>Categories:</strong> ${categories}</p>
-                                        <p class="text-gray-600 mb-4">${book.description ? book.description : 'No description available'}</p>
-                                    </div>
-                                </div>
-                            </a>
-                        `;
-                        resultsDiv.appendChild(bookItem);
-                    }
-                });
-            } else {
-                resultsDiv.innerHTML = '<p>No books found for the given title.</p>';
-            }
-        })
-        .catch(error => {
-            console.error('Error fetching book data:', error);
-            alert('Error fetching book data.');
+function displaySearchResults(results) {
+    const resultsDiv = document.getElementById('results');
+    resultsDiv.innerHTML = ''; // Clear previous results
+
+    // Create sections for each type
+    const sections = {
+        users: createSection('Users'),
+        lists: createSection('Lists'),
+        books: createSection('Books')
+    };
+
+    // Add results to their respective sections
+    if (results.users && results.users.length > 0) {
+        results.users.forEach(user => {
+            const userCard = createUserCard(user);
+            sections.users.content.appendChild(userCard);
         });
+        resultsDiv.appendChild(sections.users.container);
+    }
+
+    if (results.lists && results.lists.length > 0) {
+        results.lists.forEach(list => {
+            const listCard = createListCard(list);
+            sections.lists.content.appendChild(listCard);
+        });
+        resultsDiv.appendChild(sections.lists.container);
+    }
+
+    if (results.books && results.books.length > 0) {
+        results.books.forEach(book => {
+            const bookCard = createBookCard(book);
+            sections.books.content.appendChild(bookCard);
+        });
+        resultsDiv.appendChild(sections.books.container);
+    }
+
+    // If no results found
+    if (!results.users.length && !results.lists.length && !results.books.length) {
+        resultsDiv.innerHTML = '<p class="text-white text-center">No results found</p>';
+    }
+}
+
+function createSection(title) {
+    const container = document.createElement('div');
+    container.className = 'mb-8';
+    
+    const heading = document.createElement('h2');
+    heading.className = 'text-2xl font-bold mb-4 text-white';
+    heading.textContent = title;
+    
+    const content = document.createElement('div');
+    content.className = 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4';
+    
+    container.appendChild(heading);
+    container.appendChild(content);
+    
+    return { container, content };
+}
+
+function createUserCard(user) {
+    const card = document.createElement('div');
+    card.className = `
+        bg-white rounded-lg shadow-md p-4 flex items-center space-x-4 
+        cursor-pointer transform transition-all duration-300 
+        hover:shadow-xl hover:scale-105 hover:bg-gray-50
+        hover:border-green-500 hover:border-2 border-2 border-transparent
+    `;
+    card.onclick = () => window.location.href = `../html/profile.html?username=${user.username}`;
+    card.innerHTML = `
+        <img src="${user.profilePicture}" alt="${user.username}" class="w-12 h-12 rounded-full">
+        <div>
+            <h3 class="font-bold text-lg">${user.username}</h3>
+        </div>
+    `;
+    return card;
+}
+
+function createListCard(list) {
+    const card = document.createElement('div');
+    card.className = `
+        bg-white rounded-lg shadow-md p-4 
+        cursor-pointer transform transition-all duration-300 
+        hover:shadow-xl hover:scale-105 hover:bg-gray-50
+        hover:border-green-500 hover:border-2 border-2 border-transparent
+    `;
+    card.onclick = () => window.location.href = `../html/lists.html?list=${list.id}`;
+    card.innerHTML = `
+        <div class="flex items-start space-x-4">
+            <img src="${list.thumbnail}" alt="${list.name}" class="w-20 h-28 object-cover rounded">
+            <div>
+                <h3 class="font-bold text-lg">${list.name}</h3>
+                <p class="text-gray-600">by ${list.username}</p>
+                <p class="text-sm text-gray-500">${list.bookCount} books</p>
+            </div>
+        </div>
+    `;
+    return card;
+}
+
+function createBookCard(book) {
+    const card = document.createElement('div');
+    card.className = `
+        bg-white rounded-lg shadow-md p-4 
+        cursor-pointer transform transition-all duration-300 
+        hover:shadow-xl hover:scale-105 hover:bg-gray-50
+        hover:border-green-500 hover:border-2 border-2 border-transparent
+    `;
+    card.onclick = () => window.location.href = `../html/book.html?isbn=${book.isbn}`;
+    card.innerHTML = `
+        <div class="flex items-start space-x-4">
+            <img src="${book.thumbnail}" alt="${book.title}" class="w-20 h-28 object-cover rounded">
+            <div>
+                <h3 class="font-bold text-lg">${book.title}</h3>
+                <p class="text-gray-600">by ${book.authors.join(', ')}</p>
+            </div>
+        </div>
+    `;
+    return card;
+}
+
+function displayError(message) {
+    const resultsDiv = document.getElementById('results');
+    resultsDiv.innerHTML = `<p class="text-red-500 text-center">${message}</p>`;
 }
 
 function getISBN(identifiers) {

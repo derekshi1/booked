@@ -316,163 +316,199 @@ function showCreateListModal(existingList = null) {
     const modal = document.createElement('div');
     modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
     
-    modal.innerHTML = `
-        <div class="bg-white rounded-lg p-6 w-96">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-xl font-bold">${existingList ? 'Edit List' : 'Create New List'}</h2>
-                <button onclick="this.closest('.fixed').remove()" class="text-gray-500 hover:text-gray-700">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                    </svg>
-                </button>
-            </div>
-            <form id="list-form" class="space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">List Name</label>
-                    <input type="text" name="listName" required value="${existingList?.listName || ''}"
-                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+    // Step 1: List Details
+    function showStep1() {
+        modal.innerHTML = `
+    <div class="bg-white rounded-lg p-6 overflow-y-auto max-h-[90vh]" style="width: 40vw; max-width: 90vw;">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-bold">${existingList ? 'Edit List' : 'Create New List'}</h2>
+                    <button onclick="this.closest('.fixed').remove()" class="text-gray-500 hover:text-gray-700">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
                 </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Tags (comma-separated)</label>
-                    <input type="text" name="tags" value="${existingList?.tags?.join(',') || ''}"
-                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Visibility</label>
-                    <select name="visibility" required
-                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                        <option value="public" ${existingList?.visibility === 'public' ? 'selected' : ''}>Public</option>
-                        <option value="friends" ${existingList?.visibility === 'friends' ? 'selected' : ''}>Friends Only</option>
-                        <option value="private" ${existingList?.visibility === 'private' ? 'selected' : ''}>Private</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Description</label>
-                    <textarea name="description"
-                              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">${existingList?.description || ''}</textarea>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Add Books</label>
-                    <div class="relative">
-                        <input type="text" 
-                               id="bookSearchInput" 
-                               placeholder="Search for books..."
+                <form id="list-details-form" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">List Name</label>
+                        <input type="text" name="listName" required value="${existingList?.listName || ''}"
                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                        <div id="searchResults" 
-                             class="absolute z-10 w-full bg-white mt-1 rounded-md shadow-lg max-h-60 overflow-y-auto">
-                        </div>
                     </div>
-                    <div id="selectedBooksContainer" class="mt-4 hidden">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Selected Books</label>
-                        <div id="selectedBooks" class="space-y-2 max-h-60 overflow-y-auto"></div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Description</label>
+                        <textarea name="description" rows="4"
+                                  class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">${existingList?.description || ''}</textarea>
                     </div>
-                </div>
-                <div class="flex justify-end space-x-2">
-                    <button type="button" onclick="this.closest('.fixed').remove()"
-                            class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200">
-                        Cancel
-                    </button>
-                    <button type="submit"
-                            class="px-4 py-2 text-sm font-medium text-white bg-blue-500 rounded-md hover:bg-blue-600">
-                        ${existingList ? 'Save Changes' : 'Create List'}
-                    </button>
-                </div>
-            </form>
-        </div>
-    `;
-    
-    document.body.appendChild(modal);
-    
-    // Setup search functionality immediately after adding the modal
-    setupBookSearch();
-    
-    // If editing an existing list, populate the selected books
-    if (existingList && existingList.books) {
-        const selectedBooksContainer = document.getElementById('selectedBooksContainer');
-        const selectedBooks = document.getElementById('selectedBooks');
-        
-        // Show the container and add existing books
-        selectedBooksContainer.classList.remove('hidden');
-        existingList.books.forEach(book => {
-            const bookElement = document.createElement('div');
-            bookElement.className = 'flex items-center p-2 bg-white rounded shadow-sm mb-2';
-            bookElement.dataset.isbn = book.isbn;
-            bookElement.innerHTML = `
-                <img src="${book.thumbnail}" alt="${book.title}" class="w-12 h-16 object-cover mr-3 rounded">
-                <div class="flex-1">
-                    <div class="font-semibold">${book.title}</div>
-                    <div class="text-sm text-gray-600">${book.authors}</div>
-                </div>
-                <button class="ml-2 text-red-500 hover:text-red-700">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                    </svg>
-                </button>
-            `;
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Visibility</label>
+                        <select name="visibility" required
+                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                            <option value="public" ${existingList?.visibility === 'public' ? 'selected' : ''}>Public</option>
+                            <option value="friends" ${existingList?.visibility === 'friends' ? 'selected' : ''}>Friends Only</option>
+                            <option value="private" ${existingList?.visibility === 'private' ? 'selected' : ''}>Private</option>
+                        </select>
+                    </div>
+                    <div class="flex justify-end space-x-2">
+                        <button type="button" onclick="this.closest('.fixed').remove()"
+                                class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200">
+                            Cancel
+                        </button>
+                        <button type="submit"
+                                class="px-4 py-2 text-sm font-medium text-white bg-blue-500 rounded-md hover:bg-blue-600">
+                            Next: Add Books
+                        </button>
+                    </div>
+                </form>
+            </div>
+        `;
 
-            // Add remove functionality
-            bookElement.querySelector('button').addEventListener('click', () => {
-                bookElement.remove();
-                if (selectedBooks.children.length === 0) {
-                    selectedBooksContainer.classList.add('hidden');
-                }
+        modal.querySelector('#list-details-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            showStep2({
+                listName: formData.get('listName'),
+                description: formData.get('description'),
+                visibility: formData.get('visibility')
             });
-
-            selectedBooks.appendChild(bookElement);
         });
     }
-    
-    modal.querySelector('#list-form').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const formData = new FormData(e.target);
-        const username = localStorage.getItem('username');
-        
-        // Get selected books from the selectedBooks container
-        const selectedBooksContainer = document.getElementById('selectedBooks');
-        const selectedBooks = Array.from(selectedBooksContainer?.children || []).map(bookElement => ({
-            isbn: bookElement.dataset.isbn,
-            title: bookElement.querySelector('.font-semibold').textContent,
-            authors: bookElement.querySelector('.text-gray-600').textContent,
-            thumbnail: bookElement.querySelector('img').src
-        }));
 
-        const listData = {
-            username,
-            listName: formData.get('listName'),
-            tags: formData.get('tags').split(',').map(tag => tag.trim()).filter(Boolean),
-            visibility: formData.get('visibility'),
-            description: formData.get('description'),
-            books: selectedBooks
-        };
+    // Step 2: Add/Edit Books
+    function showStep2(listDetails) {
+        modal.innerHTML = `
+    <div class="bg-white rounded-lg p-6 overflow-y-auto max-h-[90vh]" style="width: 40vw; max-width: 90vw;">
+                <div class="flex justify-between items-center mb-4">
+                    <div>
+                        <h2 class="text-xl font-bold">${existingList ? 'Edit List' : 'Create New List'}</h2>
+                        <p class="text-sm text-gray-500 mt-1">Adding books to "${listDetails.listName}"</p>
+                    </div>
+                    <button onclick="this.closest('.fixed').remove()" class="text-gray-500 hover:text-gray-700">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Search and Add Books</label>
+                        <div class="relative">
+                            <input type="text" 
+                                   id="bookSearchInput" 
+                                   placeholder="Search for books..."
+                                   class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                            <div id="searchResults" 
+                                 class="absolute z-10 w-full bg-white mt-1 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                            </div>
+                        </div>
+                    </div>
+                    <div id="selectedBooksContainer" class="mt-4 ${existingList?.books?.length ? '' : 'hidden'}">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Selected Books</label>
+                        <div id="selectedBooks" class="space-y-2 max-h-[300px] overflow-y-auto"></div>
+                    </div>
+                    <div class="flex justify-end space-x-2 mt-4">
+                        <button type="button" onclick="showStep1()"
+                                class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200">
+                            Back
+                        </button>
+                        <button type="button" onclick="saveList()"
+                                class="px-4 py-2 text-sm font-medium text-white bg-blue-500 rounded-md hover:bg-blue-600">
+                            ${existingList ? 'Save Changes' : 'Create List'}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
 
-        try {
-            const endpoint = existingList 
-                ? `/api/lists/${existingList._id}`  // Update existing list
-                : '/api/lists/create';              // Create new list
-            
-            const method = existingList ? 'PUT' : 'POST';
+        setupBookSearch();
 
-            const response = await fetch(endpoint, {
-                method: method,
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(listData)
+        // If editing, populate existing books
+        if (existingList?.books) {
+            const selectedBooks = document.getElementById('selectedBooks');
+            existingList.books.forEach(book => {
+                const bookElement = createBookElement(book);
+                selectedBooks.appendChild(bookElement);
             });
-
-            const data = await response.json();
-            if (data.success) {
-                showToast(existingList ? 'List updated successfully!' : 'List created successfully!', 'success');
-                loadUserLists();
-                modal.remove();
-            } else {
-                showToast(data.message || 'Failed to save list', 'error');
-            }
-        } catch (error) {
-            console.error('Error saving list:', error);
-            showToast('Failed to save list', 'error');
         }
-    });
+
+        // Add save functionality
+        window.saveList = async () => {
+            const username = localStorage.getItem('username');
+            const selectedBooksContainer = document.getElementById('selectedBooks');
+            const selectedBooks = Array.from(selectedBooksContainer?.children || []).map(bookElement => ({
+                isbn: bookElement.dataset.isbn,
+                title: bookElement.querySelector('.font-semibold').textContent,
+                authors: bookElement.querySelector('.text-gray-600').textContent,
+                thumbnail: bookElement.querySelector('img').src
+            }));
+
+            const listData = {
+                username,
+                ...listDetails,
+                books: selectedBooks
+            };
+
+            try {
+                const endpoint = existingList 
+                    ? `/api/lists/${existingList._id}`
+                    : '/api/lists/create';
+                
+                const method = existingList ? 'PUT' : 'POST';
+
+                const response = await fetch(endpoint, {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(listData)
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    showToast(existingList ? 'List updated successfully!' : 'List created successfully!', 'success');
+                    loadUserLists();
+                    modal.remove();
+                } else {
+                    showToast(data.message || 'Failed to save list', 'error');
+                }
+            } catch (error) {
+                console.error('Error saving list:', error);
+                showToast('Failed to save list', 'error');
+            }
+        };
+    }
+
+    // Helper function to create book element
+    function createBookElement(book) {
+        const bookElement = document.createElement('div');
+        bookElement.className = 'flex items-center p-2 bg-white rounded shadow-sm mb-2';
+        bookElement.dataset.isbn = book.isbn;
+        bookElement.innerHTML = `
+            <img src="${book.thumbnail}" alt="${book.title}" class="w-12 h-16 object-cover mr-3 rounded">
+            <div class="flex-1">
+                <div class="font-semibold">${book.title}</div>
+                <div class="text-sm text-gray-600">${book.authors}</div>
+            </div>
+            <button class="ml-2 text-red-500 hover:text-red-700">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        `;
+
+        bookElement.querySelector('button').addEventListener('click', () => {
+            bookElement.remove();
+            const selectedBooks = document.getElementById('selectedBooks');
+            if (selectedBooks.children.length === 0) {
+                document.getElementById('selectedBooksContainer').classList.add('hidden');
+            }
+        });
+
+        return bookElement;
+    }
+
+    // Start with step 1
+    showStep1();
+    document.body.appendChild(modal);
 }
 
 // Show toast notification
@@ -741,7 +777,6 @@ function showListModal(listId) {
     
     // If not found in user's lists, try to find it in friends' lists
     if (!list) {
-        // We need to get the list from the friends' lists that we loaded
         const friendsListsContainer = document.querySelector('[data-friends-lists]');
         if (friendsListsContainer) {
             const friendsList = JSON.parse(friendsListsContainer.dataset.friendsLists)
@@ -758,27 +793,45 @@ function showListModal(listId) {
     modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
     
     modal.innerHTML = `
-        <div class="bg-white rounded-lg p-6 w-[800px] max-h-[90vh] overflow-y-auto">
+        <div class="bg-white rounded-lg p-6 w-[1000px] max-h-[85vh] overflow-y-auto">
             <div class="flex justify-between items-center mb-6">
                 <div>
                     <h2 class="text-2xl font-bold">${list.listName}</h2>
                     ${list.username && list.username !== localStorage.getItem('username') 
                         ? `<p class="text-sm text-gray-500 mt-1">Created by ${list.username}</p>` 
                         : ''}
+                    ${list.description ? `<p class="text-gray-600 mt-2">${list.description}</p>` : ''}
                 </div>
-                <button onclick="this.closest('.fixed').remove()" class="text-gray-500 hover:text-gray-700">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                    </svg>
-                </button>
+                <div class="flex items-center space-x-4">
+                    <div class="flex items-center">
+                        <button onclick="toggleListLike(event, '${list._id}')" 
+                                class="flex items-center space-x-1 transition-colors duration-200 hover:text-red-500 ${list.likes?.includes(localStorage.getItem('username')) ? 'text-red-500' : 'text-gray-400'}">
+                            <svg class="w-6 h-6" 
+                                 fill="${list.likes?.includes(localStorage.getItem('username')) ? 'currentColor' : 'none'}" 
+                                 stroke="currentColor" 
+                                 viewBox="0 0 24 24">
+                                <path stroke-linecap="round" 
+                                      stroke-linejoin="round" 
+                                      stroke-width="2" 
+                                      d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z">
+                                </path>
+                            </svg>
+                            <span class="text-sm">${list.likes?.length || 0}</span>
+                        </button>
+                    </div>
+                    <button onclick="this.closest('.fixed').remove()" class="text-gray-500 hover:text-gray-700">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
             </div>
-            ${list.description ? `<p class="text-gray-600 mb-4">${list.description}</p>` : ''}
-            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                 ${list.books.map(book => `
-                    <div class="flex flex-col items-center p-2 border rounded">
-                        <img src="${book.thumbnail}" alt="${book.title}" class="w-32 h-48 object-cover mb-2">
-                        <h3 class="text-sm font-semibold text-center">${book.title}</h3>
-                        <p class="text-xs text-gray-500 text-center">${book.authors}</p>
+                    <div class="flex flex-col items-center p-4 border rounded-lg hover:shadow-lg transition-shadow duration-200">
+                        <img src="${book.thumbnail}" alt="${book.title}" class="w-32 h-48 object-cover mb-3 rounded-md shadow">
+                        <h3 class="text-sm font-semibold text-center line-clamp-2 mb-1">${book.title}</h3>
+                        <p class="text-xs text-gray-500 text-center line-clamp-1">${book.authors}</p>
                     </div>
                 `).join('')}
             </div>

@@ -81,7 +81,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     userSection.innerHTML = `
         <div class="search-container relative">
             <img src="https://cdn-icons-png.flaticon.com/512/54/54481.png" alt="Search" class="search-icon w-6 h-6" id="expandSearchIcon">
-            <input type="text" id="titleInput" placeholder="Search for books" class="search-input">
+            <input type="text" id="titleInput" placeholder="Search for books, authors, users, lists..." class="search-input">
             <img src="https://cdn-icons-png.flaticon.com/512/1828/1828778.png" alt="Close" class="close-icon w-6 h-6" id="closeSearchIcon">
             <div id="suggestionsBox" class="suggestions"></div> <!-- Suggestions Box -->
         </div>
@@ -186,15 +186,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
 async function fetchSuggestions(query) {
-    const apiKey = 'AIzaSyCFDaqjpgA8K_NqqCw93xorS3zumc_52u8'
-    const response = await fetch(`https://www.googleapis.com/books/v1/volumes?q=intitle:${query}&key=${apiKey}`);
-    const data = await response.json();
-    return data.items.map(item => ({
-        title: item.volumeInfo.title,
-        authors: item.volumeInfo.authors ? item.volumeInfo.authors.join(', ') : 'Unknown',
-        thumbnail: item.volumeInfo.imageLinks ? item.volumeInfo.imageLinks.thumbnail : 'https://via.placeholder.com/128x192?text=No+Image',
-        isbn: item.volumeInfo.industryIdentifiers ? item.volumeInfo.industryIdentifiers[0].identifier : null
-    }));
+    try {
+        const response = await fetch(`/api/unified-search?query=${encodeURIComponent(query)}`);
+        const data = await response.json();
+        
+        if (!data.success) {
+            throw new Error(data.message);
+        }
+
+        return data.results.combined;
+    } catch (error) {
+        console.error('Error fetching suggestions:', error);
+        return [];
+    }
 }
 
 async function updateSocialTabNotification() {
@@ -226,50 +230,102 @@ async function updateSocialTabNotification() {
 
 
 function displaySuggestions(suggestions) {
-    
     const suggestionsBox = document.getElementById('suggestionsBox');
+    
+    if (!suggestionsBox) {
+        console.error('Suggestions box not found');
+        return;
+    }
 
-    if (suggestionsBox) {
-        console.log('Displaying suggestions:', suggestions); // Debug log
-        suggestionsBox.innerHTML = '';
-        if (suggestions.length > 0) {
-            suggestionsBox.style.display = 'block'; // Show the suggestions box
-            suggestions.forEach(suggestion => {
-                const suggestionItem = document.createElement('div');
-                suggestionItem.classList.add('suggestion-item', 'flex', 'items-center', 'cursor-pointer', 'hover:bg-gray-200', 'p-2');
-                suggestionItem.innerHTML = `
-                    <div class="flex items-center suggestion-link" data-isbn="${suggestion.isbn}">
-                            <a href="../html/book.html?isbn=${suggestion.isbn}" class="block relative overflow-hidden rounded-lg shadow-lg hover:shadow-2xl transition duration-300 ease-in-out group">
+    suggestionsBox.innerHTML = '';
+    
+    if (suggestions.length > 0) {
+        suggestionsBox.style.display = 'block';
+        
+        suggestions.forEach(suggestion => {
+            const suggestionItem = document.createElement('div');
+            suggestionItem.classList.add(
+                'suggestion-item',
+                'flex',
+                'items-center',
+                'cursor-pointer',
+                'hover:bg-gray-200',
+                'p-2'
+            );
+
+            // Different display format based on result type
+            switch (suggestion.type) {
+                case 'book':
+                    suggestionItem.innerHTML = `
+                        <div class="flex items-center w-full">
+                            <a href="../html/book.html?isbn=${suggestion.isbn}" class="flex items-center w-full">
                                 <img src="${suggestion.thumbnail}" alt="${suggestion.title}" class="w-8 h-12 mr-2 rounded">
-                                <span>${suggestion.title} by ${suggestion.authors}</span>
+                                <div>
+                                    <div class="font-semibold">${suggestion.title}</div>
+                                    <div class="text-sm text-gray-600">Book by ${suggestion.authors.join(', ')}</div>
+                                </div>
                             </a>
                         </div>
-                `;
-                suggestionItem.addEventListener('click', (e) => {
-                    preventCollapse = true;
-                    e.stopPropagation(); // Prevents any parent handlers from interfering
-                    console.log('Suggestion clicked:', suggestion.title);
-                    window.location.href = `../html/book.html?isbn=${suggestion.isbn}`;
-                });             
-                suggestionsBox.appendChild(suggestionItem);
+                    `;
+                    break;
+
+                case 'list':
+                    suggestionItem.innerHTML = `
+                        <div class="flex items-center w-full">
+                            <a href="../html/lists.html?list=${suggestion.id}" class="flex items-center w-full">
+                                <img src="${suggestion.thumbnail}" alt="List thumbnail" class="w-8 h-12 mr-2 rounded">
+                                <div>
+                                    <div class="font-semibold">${suggestion.name}</div>
+                                    <div class="text-sm text-gray-600">List by ${suggestion.username} • ${suggestion.bookCount} books</div>
+                                </div>
+                            </a>
+                        </div>
+                    `;
+                    break;
+
+                case 'user':
+                    suggestionItem.innerHTML = `
+                        <div class="flex items-center w-full">
+                            <a href="../html/profile.html?username=${suggestion.username}" class="flex items-center w-full">
+                                <img src="${suggestion.profilePicture}" alt="Profile picture" class="w-8 h-8 mr-2 rounded-full">
+                                <div class="font-semibold">${suggestion.username}</div>
+                            </a>
+                        </div>
+                    `;
+                    break;
+            }
+
+            suggestionItem.addEventListener('click', (e) => {
+                preventCollapse = true;
+                e.stopPropagation();
             });
 
-            const showAllLink = document.createElement('div');
-            showAllLink.classList.add('suggestion-item', 'flex', 'items-center', 'justify-center', 'cursor-pointer', 'hover:bg-gray-200', 'p-2');
-            showAllLink.innerHTML = `<span>Show all results for "${document.getElementById('titleInput').value}"</span>`;
-            showAllLink.addEventListener('click', (e) => {
-                e.stopPropagation();
-                e.preventDefault();
-                console.log('Show all results clicked'); // Debug log
-                searchBookByTitle();
-                clearSuggestions(); // Hide the suggestions box when 'Show all results' is clicked
-            });
-            suggestionsBox.appendChild(showAllLink);
-        } else {
+            suggestionsBox.appendChild(suggestionItem);
+        });
+
+        // Add "Show all results" link
+        const showAllLink = document.createElement('div');
+        showAllLink.classList.add(
+            'suggestion-item',
+            'flex',
+            'items-center',
+            'justify-center',
+            'cursor-pointer',
+            'hover:bg-gray-200',
+            'p-2',
+            'text-blue-600',
+            'font-semibold'
+        );
+        showAllLink.innerHTML = `<span>Show all results for "${document.getElementById('titleInput').value}"</span>`;
+        showAllLink.addEventListener('click', (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            searchBookByTitle(); // You might want to update this function name to something more generic
             clearSuggestions();
-        }
+        });
+        suggestionsBox.appendChild(showAllLink);
     } else {
-        console.error('Suggestions box not found');
+        clearSuggestions();
     }
 }
 });
@@ -299,8 +355,9 @@ function loadBook(isbn) {
 }
 function handleSearch(event) {
     if (event.key === 'Enter') {
-        searchBookByTitle();
-        event.preventDefault();
+        const query = event.target.value;
+        // Modify to include users and lists in search results
+        window.location.href = `../html/searched.html?query=${encodeURIComponent(query)}`;
     }
 }
 

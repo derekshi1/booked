@@ -51,15 +51,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         const friendsLink = document.getElementById('friendsLink');
         friendsLink.href = `../html/friends.html?username=${username}`;
         if (username === loggedInUsername) {
-            // Show the logout button if it's the user's own profile
+            // Show the logout button and edit button if it's the user's own profile
             document.getElementById('logoutButton').style.display = 'inline-block';
-            document.getElementById('logoutButton').addEventListener('click', () => {
-                localStorage.removeItem('username');
-                window.location.href = '../html/index.html';
-            });
+            document.getElementById('editUsernameButton').style.display = 'inline-block';
         } else {
-            // Hide the logout button if viewing someone else's profile
+            // Hide both logout and edit buttons if viewing someone else's profile
             document.getElementById('logoutButton').style.display = 'none';
+            document.getElementById('editUsernameButton').style.display = 'none';
 
             // Check and display friendship status
             try {
@@ -68,13 +66,22 @@ document.addEventListener('DOMContentLoaded', async () => {
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ username: loggedInUsername, friendUsername: username }),
+                    body: JSON.stringify({ 
+                        username: loggedInUsername, 
+                        friendUsername: username 
+                    }),
                 });
 
                 const data = await response.json();
 
                 if (data.success) {
-                    const friendStatusSection = document.getElementById('friendStatusSection');
+                    const friendStatusSection = document.createElement('div');
+                    friendStatusSection.id = 'friendStatusSection';
+                    friendStatusSection.className = 'mt-2'; // Add some margin top for spacing
+
+                    // Insert the friend status section after the username display
+                    const usernameDisplay = document.getElementById('usernameDisplay');
+                    usernameDisplay.parentNode.insertBefore(friendStatusSection, usernameDisplay.nextSibling);
 
                     if (data.status === 'friend') {
                         friendStatusSection.innerHTML = `
@@ -99,10 +106,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                                 </svg>
                                 Add Friend
-                            </button>
-                        `;
+                            </button>`;
 
-                        // Handle add friend button click
+                        // Add friend button click handler
                         document.getElementById('addFriendButton').addEventListener('click', async () => {
                             try {
                                 const addFriendResponse = await fetch('/api/add-friend', {
@@ -110,18 +116,22 @@ document.addEventListener('DOMContentLoaded', async () => {
                                     headers: {
                                         'Content-Type': 'application/json',
                                     },
-                                    body: JSON.stringify({ username: loggedInUsername, friendUsername: username }),
+                                    body: JSON.stringify({ 
+                                        username: loggedInUsername, 
+                                        friendUsername: username 
+                                    }),
                                 });
 
                                 const addFriendData = await addFriendResponse.json();
                                 if (addFriendData.success) {
                                     friendStatusSection.innerHTML = `
-                                    <span class="friend-status-badge bg-yellow-500 text-white py-1 px-2 rounded-full text-sm flex items-center">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553 4.553M4 4l16 16" />
-                                        </svg>
-                                        Pending
-                                    </span>`;                                } else {
+                                        <span class="friend-status-badge bg-yellow-500 text-white py-1 px-2 rounded-full text-sm flex items-center">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553 4.553M4 4l16 16" />
+                                            </svg>
+                                            Pending
+                                        </span>`;
+                                } else {
                                     alert('Failed to send friend request');
                                 }
                             } catch (error) {
@@ -316,18 +326,20 @@ document.addEventListener('DOMContentLoaded', async () => {
             const daysReading = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
     
             return `
-                <div class="flex items-center space-x-4 bg-gray-700 p-3 rounded-lg">
-                    <img src="${book.thumbnail}" alt="${book.title}" class="w-16 h-24 object-cover rounded">
-                    <div class="flex-1">
-                        <h4 class="font-semibold text-sm">${book.title}</h4>
-                        <p class="text-gray-400 text-xs">${book.authors}</p>
-                        <p class="text-gray-400 text-xs mt-1">Started: ${startDate.toLocaleDateString()}</p>
-                        ${book.endDate ? 
-                            `<p class="text-green-400 text-xs">Completed: ${new Date(book.endDate).toLocaleDateString()}</p>` :
-                            `<p class="text-gray-400 text-xs">Reading for: ${daysReading} days</p>`
-                        }
+                <a href="../html/book.html?isbn=${book.isbn}" class="block relative overflow-hidden transition-transform duration-300 ease-in-out group h-full">
+                    <div class="flex items-center space-x-4 bg-gray-700 p-3 rounded-lg transform group-hover:scale-105 transition-transform duration-300">
+                        <img src="${book.thumbnail}" alt="${book.title}" class="w-16 h-24 object-cover rounded">
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-sm text-white">${book.title}</h4>
+                            <p class="text-gray-400 text-xs">${book.authors}</p>
+                            <p class="text-gray-400 text-xs mt-1">Started: ${startDate.toLocaleDateString()}</p>
+                            ${book.endDate ? 
+                                `<p class="text-green-400 text-xs">Completed: ${new Date(book.endDate).toLocaleDateString()}</p>` :
+                                `<p class="text-gray-400 text-xs">Reading for: ${daysReading} days</p>`
+                            }
+                        </div>
                     </div>
-                </div>
+                </a>
             `;
         }).join('');
     }
