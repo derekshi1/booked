@@ -89,9 +89,26 @@ document.addEventListener('DOMContentLoaded', async () => {
     `;
     if (username) {
         userSection.innerHTML += `
-            <div class="flex flex-col items-center">
-                <img src="../profile.png" alt="Profile" class="w-6 h-6 mb-1 cursor-pointer" onclick="window.location.href='../html/profile.html'">
-                <span class="text-green-900 font-bold username" onclick="window.location.href='../html/profile.html'">${username}</span>
+            <div class="flex items-center space-x-4">
+                <div class="relative">
+                    <div class="notification-bell cursor-pointer">
+                        <img src="https://cdn-icons-png.flaticon.com/512/3602/3602145.png" alt="Notifications" class="w-6 h-6">
+                        <span id="notificationCount" class="notification-badge hidden"></span>
+                    </div>
+                    <div id="notificationDropdown" class="notification-dropdown hidden">
+                        <div class="notification-header flex justify-between items-center p-2 border-b">
+                            <span class="font-bold">Notifications</span>
+                            <button id="markAllRead" class="text-sm text-blue-500 hover:text-blue-700">Mark all as read</button>
+                        </div>
+                        <div id="notificationList" class="notification-list max-h-96 overflow-y-auto">
+                            <!-- Notifications will be populated here -->
+                        </div>
+                    </div>
+                </div>
+                <div class="flex flex-col items-center">
+                    <img src="../profile.png" alt="Profile" class="w-6 h-6 mb-1 cursor-pointer" onclick="window.location.href='../html/profile.html'">
+                    <span class="text-green-900 font-bold username" onclick="window.location.href='../html/profile.html'">${username}</span>
+                </div>
             </div>
         `;
     } else {
@@ -408,6 +425,138 @@ function clearSuggestions() {
     } else {
         console.error("Suggestions box element not found");
     }
+}
+
+if (username) {
+    const notificationBell = document.querySelector('.notification-bell');
+    const notificationDropdown = document.getElementById('notificationDropdown');
+    const notificationCount = document.getElementById('notificationCount');
+    const markAllReadBtn = document.getElementById('markAllRead');
+    
+    // Toggle notification dropdown
+    notificationBell.addEventListener('click', (e) => {
+        e.stopPropagation();
+        notificationDropdown.classList.toggle('hidden');
+        if (!notificationDropdown.classList.contains('hidden')) {
+            fetchNotifications();
+        }
+    });
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!notificationDropdown.contains(e.target) && !notificationBell.contains(e.target)) {
+            notificationDropdown.classList.add('hidden');
+        }
+    });
+
+    // Mark all notifications as read
+    markAllReadBtn.addEventListener('click', async () => {
+        try {
+            const response = await fetch(`/api/activities/mark-read/${username}`, {
+                method: 'POST'
+            });
+            
+            if (response.ok) {
+                const notificationItems = document.querySelectorAll('.notification-item.unread');
+                notificationItems.forEach(item => item.classList.remove('unread'));
+                notificationCount.classList.add('hidden');
+                updateNotificationCount();
+            }
+        } catch (error) {
+            console.error('Error marking notifications as read:', error);
+        }
+    });
+
+    // Function to format time ago
+    function formatTimeAgo(timestamp) {
+        const now = new Date();
+        const date = new Date(timestamp);
+        const seconds = Math.floor((now - date) / 1000);
+        
+        if (seconds < 60) return 'just now';
+        const minutes = Math.floor(seconds / 60);
+        if (minutes < 60) return `${minutes}m ago`;
+        const hours = Math.floor(minutes / 60);
+        if (hours < 24) return `${hours}h ago`;
+        const days = Math.floor(hours / 24);
+        if (days < 30) return `${days}d ago`;
+        const months = Math.floor(days / 30);
+        return `${months}mo ago`;
+    }
+
+    // Function to fetch and display notifications
+    async function fetchNotifications() {
+        try {
+            const response = await fetch(`/api/friends-activities/${username}`);
+            const data = await response.json();
+            
+            if (data.success) {
+                const notificationList = document.getElementById('notificationList');
+                notificationList.innerHTML = '';
+                
+                data.activities.forEach(activity => {
+                    const notificationItem = document.createElement('div');
+                    notificationItem.classList.add('notification-item');
+                    if (!activity.isRead) {
+                        notificationItem.classList.add('unread');
+                    }
+                    
+                    let notificationText = '';
+                    if (activity.action === 'became friends with') {
+                        notificationText = `<strong>${activity.username}</strong> became friends with you`;
+                    } else if (activity.action.includes('liked')) {
+                        notificationText = `<strong>${activity.username}</strong> liked your ${activity.action.split(' ')[1]}`;
+                    } else {
+                        notificationText = `<strong>${activity.username}</strong> ${activity.action} <em>${activity.bookTitle}</em>`;
+                    }
+                    
+                    notificationItem.innerHTML = `
+                        <div class="flex items-center justify-between">
+                            <div class="flex-grow">
+                                <p>${notificationText}</p>
+                                <span class="time">${formatTimeAgo(activity.timestamp)}</span>
+                            </div>
+                            ${activity.thumbnail ? `
+                                <img src="${activity.thumbnail}" alt="${activity.bookTitle}" class="w-10 h-14 object-cover rounded ml-2">
+                            ` : ''}
+                        </div>
+                    `;
+                    
+                    notificationList.appendChild(notificationItem);
+                });
+                
+                updateNotificationCount();
+            }
+        } catch (error) {
+            console.error('Error fetching notifications:', error);
+        }
+    }
+
+    // Function to update notification count
+    async function updateNotificationCount() {
+        try {
+            const response = await fetch(`/api/activities/unread-count/${username}`);
+            const data = await response.json();
+            
+            if (data.success) {
+                const count = data.unreadCount;
+                if (count > 0) {
+                    notificationCount.textContent = count > 99 ? '99+' : count;
+                    notificationCount.classList.remove('hidden');
+                } else {
+                    notificationCount.classList.add('hidden');
+                }
+            }
+        } catch (error) {
+            console.error('Error updating notification count:', error);
+        }
+    }
+
+    // Initial fetch of notification count
+    updateNotificationCount();
+    
+    // Update notifications every minute
+    setInterval(updateNotificationCount, 60000);
 }
 
 
