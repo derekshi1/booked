@@ -440,7 +440,46 @@ app.post('/api/library/add', async (req, res) => {
   }
 });
 
-
+//chat bot 
+app.post('/api/chat', (req, res) => {
+  const { message } = req.body;
+  if (!message) {
+    return res.status(400).json({ error: 'No message provided' });
+  }
+ 
+ 
+  const pythonProcess = spawn(process.platform === 'win32' ? 'python' : 'python3', ['public/functions/chatbot.py']);
+ 
+ 
+  let result = '';
+ 
+ 
+  pythonProcess.stdin.write(JSON.stringify({ message }) + '\n');
+  pythonProcess.stdin.end();
+ 
+ 
+  pythonProcess.stdout.on('data', (data) => {
+    result += data.toString();
+  });
+ 
+ 
+  pythonProcess.stdout.on('end', () => {
+    try {
+      const parsed = JSON.parse(result);
+      res.json(parsed);
+    } catch (err) {
+      console.error('Chatbot response parsing error:', err);
+      console.error('Raw chatbot output:', result);
+      res.status(500).json({ error: 'Invalid JSON from chatbot' });
+    }
+  });
+ 
+ 
+  pythonProcess.stderr.on('data', (err) => {
+    console.error('Chatbot stderr:', err.toString());
+  });
+ });
+ 
 
 // Remove book from user's library
 app.post('/api/library/remove', async (req, res) => {
