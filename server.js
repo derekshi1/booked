@@ -43,6 +43,7 @@ const userListSchema = new mongoose.Schema({
     description: String,
     thumbnail: String,
   }],
+  likes: [String], // Array of usernames who liked the list
   createdDate: { type: Date, default: Date.now }
 });
 
@@ -87,7 +88,7 @@ const bookSchema = new mongoose.Schema({
   isbn: String,
   imageUrl: String,
   categories: [String],
-  pageCount: Number
+  pageCount: Number,
 });
 const Book = mongoose.model('Book', bookSchema);
 
@@ -103,7 +104,7 @@ const userLibrarySchema = new mongoose.Schema({
     pageCount: Number,
     review: String,
     rating: Number,
-    reviewDate: Date, // Ensure this field exists
+    reviewDate: Date,
     visibility: { type: String, enum: ['private', 'friends', 'public'], default: 'public' },
     likes: [String]
   }],
@@ -128,7 +129,6 @@ const userLibrarySchema = new mongoose.Schema({
     pageCount: Number,
     review: String,
     rating: Number,
-
   }],
   currentlyReading: {
     books: [{
@@ -139,8 +139,22 @@ const userLibrarySchema = new mongoose.Schema({
       thumbnail: String,
       categories: [String],
       pageCount: Number,
-      startDate: { type: Date, default: Date.now } // Tracks when the user started reading the book
-    }]  }
+      startDate: { type: Date, default: Date.now },
+      endDate: { type: Date, default: null }
+    }]
+  },
+  // Add this new field to track reading history
+  readingHistory: [{
+    isbn: String,
+    title: String,
+    authors: String,
+    description: String,
+    thumbnail: String,
+    categories: [String],
+    pageCount: Number,
+    startDate: Date,
+    endDate: Date
+  }]
 });
 const UserLibrary = mongoose.model('UserLibrary', userLibrarySchema);
 
@@ -1695,15 +1709,12 @@ app.post('/api/check-friendship-status', async (req, res) => {
 //add to your own current reading
 app.post('/api/library/currently-reading/add', async (req, res) => {
   try {
-    // Extract the username from the request body
     const { username, isbn, title, authors, description, thumbnail, categories, pageCount } = req.body;
 
-    // Validate input data
     if (!username || !isbn || !title) {
       return res.status(400).json({ error: 'Username, ISBN, and Title are required.' });
     }
 
-    // Find the user's library
     const userLibrary = await UserLibrary.findOne({ username });
 
     if (!userLibrary) {
@@ -1717,6 +1728,10 @@ app.post('/api/library/currently-reading/add', async (req, res) => {
       return res.status(400).json({ error: 'Book is already in your Currently Reading list.' });
     }
 
+    // Set the start date to the current date (beginning of the day)
+    const startDate = new Date();
+    startDate.setHours(0, 0, 0, 0);
+
     // Add the book to Currently Reading
     userLibrary.currentlyReading.books.push({
       isbn,
@@ -1726,13 +1741,33 @@ app.post('/api/library/currently-reading/add', async (req, res) => {
       thumbnail,
       categories,
       pageCount,
-      startDate: new Date(), // Add current date
+      startDate,
     });
 
-    // Save the updated library
+    // Also add to reading history immediately
+    if (!userLibrary.readingHistory) {
+      userLibrary.readingHistory = [];
+    }
+
+    // Add to reading history with the same start date
+    userLibrary.readingHistory.push({
+      isbn,
+      title,
+      authors,
+      description,
+      thumbnail,
+      categories,
+      pageCount,
+      startDate,
+      endDate: null // null endDate indicates still reading
+    });
+
     await userLibrary.save();
 
-    res.status(200).json({ message: 'Book added to Currently Reading!', currentlyReading: userLibrary.currentlyReading.books });
+    res.status(200).json({ 
+      message: 'Book added to Currently Reading!', 
+      currentlyReading: userLibrary.currentlyReading.books 
+    });
   } catch (error) {
     console.error('Error in /api/library/currently-reading/add:', error.message);
     res.status(500).json({ error: 'Internal server error.' });
@@ -1775,39 +1810,48 @@ app.get('/api/library/:username/currently-reading', async (req, res) => {
 });
 app.post('/api/library/:username/currently-reading/end', async (req, res) => {
   try {
-    const { username } = req.params; // Extract username from the request params
-    const { isbn } = req.body; // Extract ISBN from the request body
+    const { username } = req.params;
+    const { isbn } = req.body;
 
-    // Validate input
     if (!isbn) {
       return res.status(400).json({ success: false, message: 'ISBN is required to end currently reading.' });
     }
 
-    // Find the user's library
     const userLibrary = await UserLibrary.findOne({ username });
 
     if (!userLibrary) {
       return res.status(404).json({ success: false, message: 'User library not found.' });
     }
 
-    // Check if the book exists in the currently reading list
+    // Find the book in currently reading
     const bookIndex = userLibrary.currentlyReading.books.findIndex(book => book.isbn === isbn);
 
     if (bookIndex === -1) {
       return res.status(400).json({ success: false, message: 'Book not found in Currently Reading list.' });
     }
 
+    // Set end date to current date (beginning of the day)
+    const endDate = new Date();
+    endDate.setHours(0, 0, 0, 0);
+
+    // Find and update the corresponding entry in reading history
+    const historyIndex = userLibrary.readingHistory.findIndex(book => book.isbn === isbn && !book.endDate);
+    if (historyIndex !== -1) {
+      userLibrary.readingHistory[historyIndex].endDate = endDate;
+    }
+
+    // Remove from currently reading
     userLibrary.currentlyReading.books.splice(bookIndex, 1);
 
     await userLibrary.save();
 
     res.status(200).json({
       success: true,
-      message: 'Book removed from Currently Reading list.',
+      message: 'Reading ended successfully.',
       currentlyReading: userLibrary.currentlyReading.books
     });
   } catch (error) {
-    console.error('Error in /api/library/:username/currently-reading/end:', error.message);
+    console.error('Error ending currently reading:', error.message);
     res.status(500).json({ success: false, message: 'Internal server error.' });
   }
 });
@@ -1872,7 +1916,385 @@ app.post('/api/library/review/:reviewId/unlike', async (req, res) => {
   }
 });
 
+// Create a new list
+app.post('/api/lists/create', async (req, res) => {
+  const { username, listName, tags, visibility, description, books } = req.body;
+
+  try {
+      const newList = new UserList({
+          username,
+          listName,
+          tags,
+          visibility,
+          description,
+          books,
+          createdAt: new Date()
+      });
+
+      await newList.save();
+      res.status(201).json({ success: true, list: newList });
+  } catch (error) {
+      console.error('Error creating list:', error);
+      res.status(500).json({ success: false, message: 'Failed to create list' });
+  }
+});
+
+// Get user's lists
+app.get('/api/users/:username/lists', async (req, res) => {
+  const { username } = req.params;
+
+  try {
+      const lists = await UserList.find({ username }).sort({ createdAt: -1 });
+      res.status(200).json({ success: true, lists });
+  } catch (error) {
+      console.error('Error fetching lists:', error);
+      res.status(500).json({ success: false, message: 'Failed to fetch lists' });
+  }
+});
+
+// Delete a list
+app.delete('/api/lists/:listId', async (req, res) => {
+  const { listId } = req.params;
+  const { username } = req.body;
+
+  try {
+      const list = await UserList.findOne({ _id: listId, username });
+      if (!list) {
+          return res.status(404).json({ success: false, message: 'List not found' });
+      }
+
+      await UserList.findByIdAndDelete(listId);
+      res.status(200).json({ success: true });
+  } catch (error) {
+      console.error('Error deleting list:', error);
+      res.status(500).json({ success: false, message: 'Failed to delete list' });
+  }
+});
+
+app.get('/api/sample-books', async (req, res) => {
+  try {
+    // Generate a random search term from this list of common words
+    const searchTerms = ['love', 'mystery', 'adventure', 'science', 'history', 'fantasy'];
+    const randomTerm = searchTerms[Math.floor(Math.random() * searchTerms.length)];
+    
+    const response = await fetch(
+      `https://www.googleapis.com/books/v1/volumes?q=${randomTerm}&maxResults=10&langRestrict=en`
+    );
+    const data = await response.json();
+    
+    // Format the books data
+    const books = data.items.map(item => ({
+      title: item.volumeInfo.title,
+      authors: item.volumeInfo.authors || ['Unknown Author'],
+      thumbnail: item.volumeInfo.imageLinks?.thumbnail || '',
+      isbn: item.volumeInfo.industryIdentifiers?.[0]?.identifier || ''
+    }));
+
+    res.json({ success: true, books });
+  } catch (error) {
+    console.error('Error fetching sample books:', error);
+    res.status(500).json({ success: false, message: 'Error fetching sample books' });
+  }
+});
+
+// Add book to list
+app.post('/api/lists/:listId/books', async (req, res) => {
+    const { listId } = req.params;
+    const { username, book } = req.body;
+
+    try {
+        const list = await UserList.findOne({ _id: listId, username });
+        if (!list) {
+            return res.status(404).json({ success: false, message: 'List not found' });
+        }
+
+        list.books.push(book);
+        await list.save();
+
+        res.json({ success: true, list });
+    } catch (error) {
+        console.error('Error adding book to list:', error);
+        res.status(500).json({ success: false, message: 'Failed to add book to list' });
+    }
+});
+
+// Remove book from list
+app.delete('/api/lists/:listId/books/:isbn', async (req, res) => {
+    const { listId, isbn } = req.params;
+    const { username } = req.body;
+
+    try {
+        const list = await UserList.findOne({ _id: listId, username });
+        if (!list) {
+            return res.status(404).json({ success: false, message: 'List not found' });
+        }
+
+        list.books = list.books.filter(book => book.isbn !== isbn);
+        await list.save();
+
+        res.json({ success: true, list });
+    } catch (error) {
+        console.error('Error removing book from list:', error);
+        res.status(500).json({ success: false, message: 'Failed to remove book from list' });
+    }
+});
+
+// Update list
+app.put('/api/lists/:listId', async (req, res) => {
+    const { listId } = req.params;
+    const { username, listName, tags, visibility, description, books } = req.body;
+
+    try {
+        const list = await UserList.findOneAndUpdate(
+            { _id: listId, username },
+            { 
+                listName, 
+                tags, 
+                visibility, 
+                description,
+                books, // Include the updated books array
+                updatedAt: new Date()
+            },
+            { new: true }
+        );
+
+        if (!list) {
+            return res.status(404).json({ success: false, message: 'List not found' });
+        }
+
+        res.json({ success: true, list });
+    } catch (error) {
+        console.error('Error updating list:', error);
+        res.status(500).json({ success: false, message: 'Failed to update list' });
+    }
+});
 
 app.listen(port, () => {
   console.log(`Server listening at http://localhost:${port}`);
+});
+
+// Like a list
+app.post('/api/lists/:listId/like', async (req, res) => {
+    const { listId } = req.params;
+    const { username } = req.body;
+
+    try {
+        const list = await UserList.findById(listId);
+        if (!list) {
+            return res.status(404).json({ success: false, message: 'List not found' });
+        }
+
+        // Initialize likes array if it doesn't exist
+        if (!list.likes) {
+            list.likes = [];
+        }
+
+        // Check if user has already liked the list
+        if (list.likes.includes(username)) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'You have already liked this list' 
+            });
+        }
+
+        // Add the like
+        list.likes.push(username);
+        await list.save();
+
+        res.json({ 
+            success: true, 
+            likes: list.likes.length,
+            message: 'List liked successfully' 
+        });
+    } catch (error) {
+        console.error('Error liking list:', error);
+        res.status(500).json({ success: false, message: 'Failed to like list' });
+    }
+});
+
+// Unlike a list
+app.post('/api/lists/:listId/unlike', async (req, res) => {
+    const { listId } = req.params;
+    const { username } = req.body;
+
+    try {
+        const list = await UserList.findById(listId);
+        if (!list) {
+            return res.status(404).json({ success: false, message: 'List not found' });
+        }
+
+        // Initialize likes array if it doesn't exist
+        if (!list.likes) {
+            list.likes = [];
+        }
+
+        // Check if user has liked the list
+        if (!list.likes.includes(username)) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'You have not liked this list' 
+            });
+        }
+
+        // Remove the like
+        list.likes = list.likes.filter(user => user !== username);
+        await list.save();
+
+        res.json({ 
+            success: true, 
+            likes: list.likes.length,
+            message: 'List unliked successfully' 
+        });
+    } catch (error) {
+        console.error('Error unliking list:', error);
+        res.status(500).json({ success: false, message: 'Failed to unlike list' });
+    }
+});
+
+// Add this new endpoint to get friends' lists
+app.get('/api/users/:username/friends-lists', async (req, res) => {
+    const { username } = req.params;
+
+    try {
+        // Find the user and populate their friends
+        const user = await User.findOne({ username }).populate('friends');
+        if (!user) {
+            return res.status(404).json({ success: false, message: 'User not found' });
+        }
+
+        // Get the usernames of all friends
+        const friendUsernames = user.friends.map(friend => friend.username);
+
+        // Find all public and friends-only lists from friends
+        const friendsLists = await UserList.find({
+            username: { $in: friendUsernames },
+            visibility: { $in: ['public', 'friends'] }
+        }).sort({ createdAt: -1 });
+
+        res.status(200).json({ success: true, friendsLists });
+    } catch (error) {
+        console.error('Error fetching friends\' lists:', error);
+        res.status(500).json({ success: false, message: 'Failed to fetch friends\' lists' });
+    }
+});
+
+// Add this to your server.js or appropriate route file
+app.get('/api/library/:username/reading-history', async (req, res) => {
+  try {
+    const { username } = req.params;
+    const userLibrary = await UserLibrary.findOne({ username });
+
+    if (!userLibrary) {
+      return res.status(404).json({ success: false, message: 'User library not found' });
+    }
+
+    // Get all reading history entries
+    const readingHistory = (userLibrary.readingHistory || []).map(book => ({
+      ...book.toObject(),
+      isActive: !book.endDate // Book is active if it doesn't have an end date
+    }));
+
+    res.json({
+      success: true,
+      readingHistory
+    });
+  } catch (error) {
+    console.error('Error fetching reading history:', error);
+    res.status(500).json({ success: false, message: 'Error fetching reading history' });
+  }
+});
+
+// Current unified search endpoint needs to be modified to:
+// 1. Ensure proper ordering (users -> lists -> books)
+// 2. Filter out books without thumbnails
+// 3. Combine results in the desired order
+
+app.get('/api/unified-search', async (req, res) => {
+    const { query, type } = req.query;
+    const results = {
+        books: [],
+        lists: [],
+        users: []
+    };
+
+    try {
+        // Search for users first
+        if (!type || type === 'users') {
+            const users = await User.find({
+                username: { $regex: query, $options: 'i' }
+            }).limit(5);
+
+            results.users = users.map(user => ({
+                type: 'user',
+                username: user.username,
+                profilePicture: user.profilePicture
+            }));
+        }
+
+        // Then search for lists
+        if (!type || type === 'lists') {
+            const lists = await UserList.find({
+                $or: [
+                    { listName: { $regex: query, $options: 'i' } },
+                    { description: { $regex: query, $options: 'i' } }
+                ],
+                visibility: 'public'
+            }).limit(5);
+
+            results.lists = lists.map(list => ({
+                type: 'list',
+                id: list._id,
+                name: list.listName,
+                description: list.description,
+                username: list.username,
+                bookCount: list.books.length,
+                thumbnail: list.books[0]?.thumbnail || 'https://via.placeholder.com/128x192?text=No+Image'
+            }));
+        }
+
+        // Finally search for books
+        if (!type || type === 'books') {
+            const apiKey = 'AIzaSyCFDaqjpgA8K_NqqCw93xorS3zumc_52u8';
+            const googleBooksResponse = await fetch(
+                `https://www.googleapis.com/books/v1/volumes?q=${query}&key=${apiKey}&maxResults=20` // Increased to 10 since we'll filter some out
+            );
+            const booksData = await googleBooksResponse.json();
+            
+            if (booksData.items) {
+                // Filter out books without thumbnails and map the results
+                results.books = booksData.items
+                    .filter(item => item.volumeInfo.imageLinks?.thumbnail)
+                    .slice(0, 15) // Keep only first 5 books that have thumbnails
+                    .map(item => ({
+                        type: 'book',
+                        title: item.volumeInfo.title,
+                        authors: item.volumeInfo.authors || ['Unknown'],
+                        thumbnail: item.volumeInfo.imageLinks.thumbnail,
+                        isbn: item.volumeInfo.industryIdentifiers?.[0]?.identifier || '',
+                        description: item.volumeInfo.description || ''
+                    }));
+            }
+        }
+
+        // Combine results in the desired order: users -> lists -> books
+        const combinedResults = [
+            ...results.users,
+            ...results.lists,
+            ...results.books
+        ];
+
+        res.json({
+            success: true,
+            results: {
+                users: results.users,
+                lists: results.lists,
+                books: results.books,
+                combined: combinedResults
+            }
+        });
+
+    } catch (error) {
+        console.error('Error in unified search:', error);
+        res.status(500).json({ success: false, message: 'Error performing search' });
+    }
 });

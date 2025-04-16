@@ -48,14 +48,54 @@ document.addEventListener('DOMContentLoaded', async () => {
                     </div>
                 </button>
 
-                <!-- Dropdown Menu -->
-                <div id="dropdownMenu" class="dropdown-menu hidden absolute top-full left-0 mt-2 w-40 bg-white rounded-md shadow-lg z-1000">
-                    <ul class="menu-list">
-                        <li><button id="addToLibraryButton" class="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100">Add to Library</button></li>
-                        <li><button id="addToReadingListButton" class="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100">Add to Reading List</button></li>
-                        <li><button id="addToTop5Button" class="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100">Add to Top 5</button></li>
-                        <li><button id="addToCurrentlyReadingButton" class="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100">Add to Currently Reading</button></li>
-                    </ul>
+                <!-- Dropdown Menu Overlay -->
+                <div id="dropdownMenu" class="hidden fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50">
+                    <div class="bg-white rounded-lg shadow-xl w-80 transform transition-all duration-300 scale-95 opacity-0">
+                        <div class="py-2">
+                            <div class="px-4 py-3 border-b border-gray-100 flex justify-between items-center">
+                                <h3 class="text-lg font-semibold text-gray-700">Add to...</h3>
+                                <button id="closeDropdown" class="text-gray-400 hover:text-gray-500 transition-colors duration-200">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                    </svg>
+                                </button>
+                            </div>
+                            <ul class="menu-list py-2">
+                                <li>
+                                    <button id="addToLibraryButton" class="w-full text-left px-4 py-3 text-gray-700 hover:bg-green-50 flex items-center gap-3 transition-colors duration-200">
+                                        <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
+                                        </svg>
+                                        <span>Library</span>
+                                    </button>
+                                </li>
+                                <li>
+                                    <button id="addToReadingListButton" class="w-full text-left px-4 py-3 text-gray-700 hover:bg-green-50 flex items-center gap-3 transition-colors duration-200">
+                                        <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
+                                        </svg>
+                                        <span>Reading List</span>
+                                    </button>
+                                </li>
+                                <li>
+                                    <button id="addToTop5Button" class="w-full text-left px-4 py-3 text-gray-700 hover:bg-green-50 flex items-center gap-3 transition-colors duration-200">
+                                        <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"></path>
+                                        </svg>
+                                        <span>Top 5</span>
+                                    </button>
+                                </li>
+                                <li>
+                                    <button id="addToCurrentlyReadingButton" class="w-full text-left px-4 py-3 text-gray-700 hover:bg-green-50 flex items-center gap-3 transition-colors duration-200">
+                                        <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                                        </svg>
+                                        <span>Currently Reading</span>
+                                    </button>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -100,12 +140,14 @@ document.addEventListener('DOMContentLoaded', async () => {
            
         
             addButton.addEventListener('click', () => {
-                console.log('addButton clicked!');
-
-                dropdownMenu.classList.toggle('hidden');
-                dropdownMenu.style.display = 'block';
-
-
+                const dropdownMenu = document.getElementById('dropdownMenu');
+                dropdownMenu.classList.remove('hidden');
+                // Add animation classes after a brief delay
+                setTimeout(() => {
+                    const menuContent = dropdownMenu.querySelector('.bg-white');
+                    menuContent.classList.remove('scale-95', 'opacity-0');
+                    menuContent.classList.add('scale-100', 'opacity-100');
+                }, 10);
             });
             const addToCurrentlyReadingButton = document.getElementById('addToCurrentlyReadingButton');
 
@@ -180,8 +222,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 dropdownMenu.classList.add('hidden'); // Hide menu after action
             });
             window.addEventListener('click', (event) => {
-                if (!addButton.contains(event.target) && !dropdownMenu.contains(event.target)) {
-                    dropdownMenu.style.display = 'none';
+                const dropdownMenu = document.getElementById('dropdownMenu');
+                if (event.target === dropdownMenu) {
+                    const menuContent = dropdownMenu.querySelector('.bg-white');
+                    menuContent.classList.add('scale-95', 'opacity-0');
+                    setTimeout(() => {
+                        dropdownMenu.classList.add('hidden');
+                    }, 200);
                 }
             });
             dropdownMenu.addEventListener('click', (event) => {
@@ -203,6 +250,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         } else {
         bookDetails.innerHTML = '<p>ISBN not provided.</p>';
     }
+
+    // After the bookDetails.innerHTML section, add this event listener setup:
+    document.querySelector('#closeDropdown').addEventListener('click', () => {
+        const dropdownMenu = document.getElementById('dropdownMenu');
+        dropdownMenu.classList.add('hidden');
+    });
 });
 async function displayNoReviewMessage() {
     const reviewContainer = document.getElementById('reviewsContainer'); // Assuming there's a container for reviews
