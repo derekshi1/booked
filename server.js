@@ -1550,104 +1550,110 @@ app.get('/api/friends/:username', async (req, res) => {
 
 
 app.get('/api/friends-activities/:username', async (req, res) => {
-  const { username } = req.params;
-  try {
-      // Find the user and populate the friends field
-      const user = await User.findOne({ username }).populate('friends');
+    const { username } = req.params;
+    try {
+        const user = await User.findOne({ username }).populate('friends');
 
-      if (!user) {
-          console.log('User not found');
-          return res.status(404).json({ success: false, message: 'User not found' });
-      }
-
-      if (!Array.isArray(user.friends) || user.friends.length === 0) {
-          return res.status(200).json({ success: true, activities: [] });  // No friends, no activities
-      }
-
-      const friendsActivities = [];
-
-      for (const friend of user.friends) {
-        // Find the earliest "became friends" activity between the user and the friend
-        const friendshipActivity = await Activity.findOne({
-            userId: { $in: [user._id, friend._id] },
-            action: 'became friends with',
-            bookTitle: { $in: [user.username, friend.username] }
-        }).sort({ timestamp: 1 });  // Sort in ascending order to get the earliest
-    
-        for (const friend of user.friends) {
-          const activities = await Activity.find({
-            userId: friend._id,
-            $or: [
-              { visibility: 'public' },  // Public activities
-              { visibility: 'friends' },  // Friends-only activities
-              { visibility: 'private'}  // Private activities, but only for the owner
-            ]          
-          }).sort({ timestamp: -1 });  // Sort by most recent first 
-
-          // Group activities by book title
-          const groupedActivities = activities.reduce((acc, activity) => {
-            const key = activity.bookTitle;  // Use book title as the grouping key
-
-            if (!acc[key]) {
-              acc[key] = [];
-            }
-
-            acc[key].push(activity);
-            return acc;
-          }, {});
-
-          // Push the activities into the array and check if the user has read them
-           for (const bookTitle in groupedActivities) {
-        const bookActivities = groupedActivities[bookTitle];
-
-        const addedActivity = bookActivities.find(activity => activity.action === 'added to library');
-        const reviewedActivity = bookActivities.find(activity => activity.action === 'reviewed');
-
-        if (addedActivity && reviewedActivity) {
-          // Merge activities: prioritize review details but include both actions
-          friendsActivities.push({
-            username: friend.username,
-            action: 'added to library and reviewed',
-            bookTitle: addedActivity.bookTitle,
-            isbn: addedActivity.isbn,
-            thumbnail: addedActivity.thumbnail,
-            review: reviewedActivity.review, // Include the review from the review action
-            rating: reviewedActivity.rating, // Include rating
-            timestamp: reviewedActivity.timestamp, // Use the timestamp of the review (most recent action)
-            visibility: reviewedActivity.visibility,
-            isRead: reviewedActivity.readBy.includes(user._id) // Check if the logged-in user has read this activity
-          });
-        } else {
-          // If there's no review or added separately, just push individual activities
-          bookActivities.forEach(activity => {
-            friendsActivities.push({
-              username: friend.username,
-              action: activity.action,
-              bookTitle: activity.bookTitle,
-              isbn: activity.isbn,
-              thumbnail: activity.thumbnail,
-              review: activity.review || null,  // Include the review if available
-              rating: activity.rating || null,  // Include rating if available
-              timestamp: activity.timestamp,
-              visibility: activity.visibility,
-              isRead: activity.readBy.includes(user._id) // Check if the logged-in user has read this activity
-            });
-          });
+        if (!user) {
+            console.log('User not found');
+            return res.status(404).json({ success: false, message: 'User not found' });
         }
-      }
-    }
-    
-    }
-    
 
-      // Sort all activities by timestamp in descending order before sending the response
-      friendsActivities.sort((a, b) => b.timestamp - a.timestamp);
+        if (!Array.isArray(user.friends) || user.friends.length === 0) {
+            return res.status(200).json({ success: true, activities: [] });
+        }
 
-      res.json({ success: true, activities: friendsActivities });
-  } catch (error) {
-      console.error('Error getting friends\' activities:', error);
-      res.status(500).json({ success: false, message: 'Error getting friends\' activities' });
-  }
+        const friendsActivities = [];
+
+        // Single loop through friends
+        for (const friend of user.friends) {
+            // Get all activities for this friend
+            const activities = await Activity.find({
+                userId: friend._id,
+                $or: [
+                    { visibility: 'public' },
+                    { visibility: 'friends' },
+                    { 
+                        visibility: 'private',
+                        userId: friend._id
+                    }
+                ]
+            }).sort({ timestamp: -1 });
+
+            // Get the friend's library to access review data
+            const friendLibrary = await UserLibrary.findOne({ username: friend.username });
+            
+            console.log(`Activities found for friend ${friend.username}:`, activities);
+            console.log(`Library found for friend ${friend.username}:`, friendLibrary);
+
+            // Group activities by book
+            const bookActivities = {};
+            activities.forEach(activity => {
+                if (!bookActivities[activity.bookTitle]) {
+                    bookActivities[activity.bookTitle] = {
+                        added: null,
+                        reviewed: null,
+                        libraryBook: friendLibrary ? 
+                            friendLibrary.books.find(book => book.isbn === activity.isbn) : null
+                    };
+                }
+                
+                if (activity.action === 'added to library') {
+                    bookActivities[activity.bookTitle].added = activity;
+                } else if (activity.action === 'reviewed') {
+                    bookActivities[activity.bookTitle].reviewed = activity;
+                }
+            });
+
+            // Process each book's activities
+            Object.entries(bookActivities).forEach(([bookTitle, actions]) => {
+                console.log(`Processing book ${bookTitle} for friend ${friend.username}:`, actions);
+
+                if (actions.reviewed) {
+                    // Get the book data from the friend's library
+                    const libraryBook = actions.libraryBook;
+                    
+                    // If there's a review, create a combined activity with library data
+                    friendsActivities.push({
+                        username: friend.username,
+                        action: 'reviewed',
+                        bookTitle: bookTitle,
+                        isbn: actions.reviewed.isbn,
+                        thumbnail: actions.reviewed.thumbnail,
+                        review: libraryBook ? libraryBook.review : null,
+                        rating: libraryBook ? libraryBook.rating : null,
+                        timestamp: actions.reviewed.timestamp,
+                        visibility: libraryBook ? libraryBook.visibility : 'public',
+                        isRead: actions.reviewed.readBy.includes(user._id),
+                        likes: libraryBook ? libraryBook.likes : [],
+                        comments: libraryBook ? libraryBook.comments : []
+                    });
+                } else if (actions.added) {
+                    // If there's only an add action, include that
+                    friendsActivities.push({
+                        username: friend.username,
+                        action: 'added to library',
+                        bookTitle: bookTitle,
+                        isbn: actions.added.isbn,
+                        thumbnail: actions.added.thumbnail,
+                        timestamp: actions.added.timestamp,
+                        visibility: actions.added.visibility,
+                        isRead: actions.added.readBy.includes(user._id)
+                    });
+                }
+            });
+        }
+
+        // Sort all activities by timestamp
+        friendsActivities.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+        console.log('Final processed activities:', friendsActivities);
+
+        res.json({ success: true, activities: friendsActivities });
+    } catch (error) {
+        console.error('Error getting friends\' activities:', error);
+        res.status(500).json({ success: false, message: 'Error getting friends\' activities' });
+    }
 });
 
 app.get('/api/friend-requests/:username', async (req, res) => {
@@ -2298,3 +2304,68 @@ app.get('/api/unified-search', async (req, res) => {
         res.status(500).json({ success: false, message: 'Error performing search' });
     }
 });
+
+const fetchActivities = async () => {
+    try {
+        console.log('Fetching activities for user:', username);
+        const response = await fetch(`/api/friends-activities/${username}`);
+        
+        if (!response.ok) {
+            throw new Error(`Error fetching activities: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        
+        if (data.success) {
+            console.log('Raw response data:', data);
+            
+            // Log the first activity in detail if it exists
+            if (data.activities && data.activities.length > 0) {
+                console.log('First activity details:', {
+                    full: data.activities[0],
+                    keys: Object.keys(data.activities[0]),
+                    review: data.activities[0].review,
+                    rating: data.activities[0].rating,
+                    action: data.activities[0].action,
+                    bookTitle: data.activities[0].bookTitle
+                });
+
+                // Check each activity for review and rating
+                data.activities.forEach((activity, index) => {
+                    console.log(`Activity ${index} check:`, {
+                        hasReview: 'review' in activity,
+                        reviewValue: activity.review,
+                        hasRating: 'rating' in activity,
+                        ratingValue: activity.rating,
+                        action: activity.action
+                    });
+                });
+            }
+
+            // Transform the activities to ensure review and rating are properly handled
+            const processedActivities = data.activities.map(activity => ({
+                ...activity,
+                review: activity.review || null,
+                rating: activity.rating || null,
+                // Ensure all required properties are present
+                username: activity.username,
+                action: activity.action,
+                bookTitle: activity.bookTitle,
+                isbn: activity.isbn,
+                thumbnail: activity.thumbnail,
+                timestamp: activity.timestamp,
+                visibility: activity.visibility || 'public',
+                isRead: activity.isRead || false
+            }));
+
+            console.log('Processed activities:', processedActivities);
+
+            // Render the processed activities
+            renderActivitiesFeed(processedActivities);
+        } else {
+            console.error('Failed to fetch activities:', data.message);
+        }
+    } catch (error) {
+        console.error('Error in fetchActivities:', error);
+    }
+};

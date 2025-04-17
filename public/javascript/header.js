@@ -345,87 +345,6 @@ function displaySuggestions(suggestions) {
         clearSuggestions();
     }
 }
-});
-function expandSearch() {
-    const searchInput = document.getElementById('titleInput');
-    const closeIcon = document.querySelector('.close-icon');
-    const searchIcon = document.querySelector('.search-icon');  // Get the search icon element
-
-    searchInput.classList.add('expanded');
-    closeIcon.classList.add('visible');
-    searchIcon.classList.add('hidden');  // Hide the search icon
-
-    searchInput.focus();
-}
-function closeModal() {
-    document.getElementById('myModal').classList.add('hidden');
-    document.getElementById('myModal').classList.remove('flex');
-}
-function loadBook(isbn) {
-    if (isbn) {
-        initialize(isbn);
-        document.getElementById('myModal').classList.remove('hidden');
-        document.getElementById('myModal').classList.add('flex');
-    } else {
-        alert('ISBN not found.');
-    }
-}
-function handleSearch(event) {
-    if (event.key === 'Enter') {
-        const query = event.target.value;
-        // Modify to include users and lists in search results
-        window.location.href = `../html/searched.html?query=${encodeURIComponent(query)}`;
-    }
-}
-
-let preventCollapse = false;  // Flag to prevent collapse
-
-// Add a mousedown event listener to the suggestions box
-const suggestionsBox = document.getElementById('suggestionsBox');
-if (suggestionsBox) {
-    suggestionsBox.addEventListener('mousedown', () => {
-        preventCollapse = true;  // Set the flag when the user clicks inside the suggestions box
-    });
-}
-
-
-function collapseSearch() {
-    if (preventCollapse) {
-        preventCollapse = false;  // Reset the flag
-        return;  // Do not collapse the search if a suggestion is clicked
-    }
-    const searchInput = document.getElementById('titleInput');
-    const closeIcon = document.querySelector('.close-icon');
-    searchInput.classList.remove('expanded');
-    const searchIcon = document.querySelector('.search-icon');  // Get the search icon element
-    closeIcon.classList.remove('visible');
-    searchInput.value = '';  // Clear the input field
-    clearSuggestions(); // Hide the suggestions box
-    searchIcon.classList.remove('hidden');  // Show the search icon
-
-}
-function searchBookByTitle() {
-    const title = document.getElementById('titleInput').value;
-    window.location.href = `searched.html?query=${title}`;
-}
-
-window.onclick = function(event) {
-    var modal = document.getElementById('myModal');
-    if (event.target == modal) {
-        modal.classList.add('hidden');
-        modal.classList.remove('flex');
-    }
-}
-
-function clearSuggestions() {
-    const suggestionsBox = document.getElementById('suggestionsBox');
-    if (suggestionsBox) {
-        suggestionsBox.innerHTML = '';
-        suggestionsBox.style.display = 'none'; // Hide the suggestions box
-    } else {
-        console.error("Suggestions box element not found");
-    }
-}
 
 if (username) {
     const notificationBell = document.querySelector('.notification-bell');
@@ -559,4 +478,87 @@ if (username) {
     setInterval(updateNotificationCount, 60000);
 }
 
+
+
+});
+function expandSearch() {
+    const searchInput = document.getElementById('titleInput');
+    const closeIcon = document.querySelector('.close-icon');
+    const searchIcon = document.querySelector('.search-icon');  // Get the search icon element
+
+    searchInput.classList.add('expanded');
+    closeIcon.classList.add('visible');
+    searchIcon.classList.add('hidden');  // Hide the search icon
+
+    searchInput.focus();
+}
+function closeModal() {
+    document.getElementById('myModal').classList.add('hidden');
+    document.getElementById('myModal').classList.remove('flex');
+}
+function loadBook(isbn) {
+    if (isbn) {
+        initialize(isbn);
+        document.getElementById('myModal').classList.remove('hidden');
+        document.getElementById('myModal').classList.add('flex');
+    } else {
+        alert('ISBN not found.');
+    }
+}
+function handleSearch(event) {
+    if (event.key === 'Enter') {
+        const query = event.target.value;
+        // Modify to include users and lists in search results
+        window.location.href = `../html/searched.html?query=${encodeURIComponent(query)}`;
+    }
+}
+
+let preventCollapse = false;  // Flag to prevent collapse
+
+// Add a mousedown event listener to the suggestions box
+const suggestionsBox = document.getElementById('suggestionsBox');
+if (suggestionsBox) {
+    suggestionsBox.addEventListener('mousedown', () => {
+        preventCollapse = true;  // Set the flag when the user clicks inside the suggestions box
+    });
+}
+
+
+function collapseSearch() {
+    if (preventCollapse) {
+        preventCollapse = false;  // Reset the flag
+        return;  // Do not collapse the search if a suggestion is clicked
+    }
+    const searchInput = document.getElementById('titleInput');
+    const closeIcon = document.querySelector('.close-icon');
+    searchInput.classList.remove('expanded');
+    const searchIcon = document.querySelector('.search-icon');  // Get the search icon element
+    closeIcon.classList.remove('visible');
+    searchInput.value = '';  // Clear the input field
+    clearSuggestions(); // Hide the suggestions box
+    searchIcon.classList.remove('hidden');  // Show the search icon
+
+}
+function searchBookByTitle() {
+    const title = document.getElementById('titleInput').value;
+    window.location.href = `searched.html?query=${title}`;
+}
+
+window.onclick = function(event) {
+    var modal = document.getElementById('myModal');
+    if (event.target == modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+}
+
+function clearSuggestions() {
+    const suggestionsBox = document.getElementById('suggestionsBox');
+    if (suggestionsBox) {
+        suggestionsBox.innerHTML = '';
+        suggestionsBox.style.display = 'none'; // Hide the suggestions box
+    } else {
+        console.error("Suggestions box element not found");
+    }
+}
 
