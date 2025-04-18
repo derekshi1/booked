@@ -98,11 +98,32 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <div id="notificationDropdown" class="notification-dropdown hidden">
                         <div class="notification-header flex justify-between items-center p-2 border-b">
                             <span class="font-bold">Notifications</span>
-                            <button id="markAllRead" class="text-sm text-blue-500 hover:text-blue-700">Mark all as read</button>
+                            <button id="closeNotificationDropdown" class="absolute top-2 right-2 text-gray-500 hover:text-red-600 text-lg font-bold leading-none focus:outline-none">
+                                &times;
+                            </button>
+                        </div>
+                        <div id="friendRequestsSection" class="border-b">
+                            <div class="p-2 bg-gray-50">
+                                <span class="font-semibold">Friend Requests</span>
+                            </div>
+                            <div id="friendRequestsList" class="max-h-48 overflow-y-auto">
+                                <!-- Friend requests will be populated here -->
+                            </div>
                         </div>
                         <div id="notificationList" class="notification-list max-h-96 overflow-y-auto">
-                            <!-- Notifications will be populated here -->
+                            <!-- Other notifications will be populated here -->
                         </div>
+                        <div class="flex justify-center mt-2">
+                            <button id="showMoreNotifications" class="hidden text-sm text-green-700 hover:text-green-900 focus:outline-none text-center flex flex-col items-center">
+                                <span class="block">Show More</span>
+                                <span class="block mt-1">
+                                    <svg class="w-4 h-4 mx-auto" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                </span>
+                            </button>
+                        </div>
+
                     </div>
                 </div>
                 <div class="flex flex-col items-center">
@@ -116,6 +137,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             <a href="../html/login.html" class="ml-4 bg-green-900 text-black px-4 py-2 rounded">Login</a>
         `;
     }
+
+    document.getElementById('closeNotificationDropdown').addEventListener('click', () => {
+        document.getElementById('notificationDropdown').classList.add('hidden');
+    });
     const searchIcon = document.querySelector('.search-icon');  // Get the search icon element
     const searchInput = document.getElementById('titleInput');
     const closeIcon = document.getElementById('closeSearchIcon');
@@ -368,24 +393,6 @@ if (username) {
         }
     });
 
-    // Mark all notifications as read
-    markAllReadBtn.addEventListener('click', async () => {
-        try {
-            const response = await fetch(`/api/activities/mark-read/${username}`, {
-                method: 'POST'
-            });
-            
-            if (response.ok) {
-                const notificationItems = document.querySelectorAll('.notification-item.unread');
-                notificationItems.forEach(item => item.classList.remove('unread'));
-                notificationCount.classList.add('hidden');
-                updateNotificationCount();
-            }
-        } catch (error) {
-            console.error('Error marking notifications as read:', error);
-        }
-    });
-
     // Function to format time ago
     function formatTimeAgo(timestamp) {
         const now = new Date();
@@ -403,71 +410,167 @@ if (username) {
         return `${months}mo ago`;
     }
 
+    
+    
+let allActivities = [];
+let activitiesShown = 0;
+const NOTIFICATIONS_PER_PAGE = 10;
+
     // Function to fetch and display notifications
-    async function fetchNotifications() {
-        try {
-            const response = await fetch(`/api/friends-activities/${username}`);
-            const data = await response.json();
-            
-            if (data.success) {
-                const notificationList = document.getElementById('notificationList');
-                notificationList.innerHTML = '';
-                
-                data.activities.forEach(activity => {
-                    const notificationItem = document.createElement('div');
-                    notificationItem.classList.add('notification-item');
-                    if (!activity.isRead) {
-                        notificationItem.classList.add('unread');
-                    }
-                    
-                    let notificationText = '';
-                    if (activity.action === 'became friends with') {
-                        notificationText = `<strong>${activity.username}</strong> became friends with you`;
-                    } else if (activity.action.includes('liked')) {
-                        notificationText = `<strong>${activity.username}</strong> liked your ${activity.action.split(' ')[1]}`;
-                    } else {
-                        notificationText = `<strong>${activity.username}</strong> ${activity.action} <em>${activity.bookTitle}</em>`;
-                    }
-                    
-                    notificationItem.innerHTML = `
-                        <div class="flex items-center justify-between">
-                            <div class="flex-grow">
-                                <p>${notificationText}</p>
-                                <span class="time">${formatTimeAgo(activity.timestamp)}</span>
+    
+async function fetchNotifications() {
+    try {
+        const username = localStorage.getItem('username');
+        const friendRequestsResponse = await fetch(`/api/friend-requests/${username}`);
+        const friendRequestsData = await friendRequestsResponse.json();
+
+        const activitiesResponse = await fetch(`/api/friends-activities/${username}`);
+        const activitiesData = await activitiesResponse.json();
+
+        if (friendRequestsData.success && activitiesData.success) {
+            // Render Friend Requests
+            const friendRequestsList = document.getElementById('friendRequestsList');
+            friendRequestsList.innerHTML = '';
+
+            if (friendRequestsData.friendRequests.length === 0) {
+                friendRequestsList.innerHTML = `
+                    <div class="p-3 text-gray-500 text-sm text-center">
+                        No pending friend requests
+                    </div>
+                `;
+            } else {
+                friendRequestsData.friendRequests.forEach(request => {
+                    const requestElement = document.createElement('div');
+                    requestElement.classList.add(
+                        'p-3', 'border-b', 'hover:bg-gray-50', 'flex', 'items-center', 'justify-between'
+                    );
+                    requestElement.innerHTML = `
+                        <div class="flex items-center">
+                            <img src="../profile.png" alt="Profile" class="w-8 h-8 rounded-full mr-2">
+                            <div>
+                                <p class="font-semibold">${request.from.username}</p>
+                                <p class="text-sm text-gray-500">Sent you a friend request</p>
                             </div>
-                            ${activity.thumbnail ? `
-                                <img src="${activity.thumbnail}" alt="${activity.bookTitle}" class="w-10 h-14 object-cover rounded ml-2">
-                            ` : ''}
+                        </div>
+                        <div class="flex space-x-2">
+                            <button class="accept-friend-button px-3 py-1 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm"
+                                    data-request-id="${request._id}" 
+                                    data-friend-username="${request.from.username}">
+                                Accept
+                            </button>
                         </div>
                     `;
-                    
-                    notificationList.appendChild(notificationItem);
+                    friendRequestsList.appendChild(requestElement);
                 });
-                
-                updateNotificationCount();
+
+                const acceptButtons = friendRequestsList.querySelectorAll('.accept-friend-button');
+                acceptButtons.forEach(button => {
+                    button.addEventListener('click', async (e) => {
+                        const requestId = e.target.getAttribute('data-request-id');
+                        const friendUsername = e.target.getAttribute('data-friend-username');
+                        await acceptFriendRequest(requestId, friendUsername);
+                        fetchNotifications(); // Re-fetch after accepting
+                    });
+                });
             }
-        } catch (error) {
-            console.error('Error fetching notifications:', error);
+
+            // Prepare activity notifications
+            allActivities = activitiesData.activities;
+            activitiesShown = 0;
+            const notificationList = document.getElementById('notificationList');
+            notificationList.innerHTML = ''; // Clear
+            renderNextNotifications(); // Load the first batch
+
+            updateNotificationCount(friendRequestsData.friendRequests.length + allActivities.filter(a => !a.isRead).length);
+        }
+    } catch (error) {
+        console.error('Error fetching notifications:', error);
+    }
+}
+
+// Renders the next batch of activity notifications
+function renderNextNotifications() {
+    const notificationList = document.getElementById('notificationList');
+    const showMoreButton = document.getElementById('showMoreNotifications');
+    const nextBatch = allActivities.slice(activitiesShown, activitiesShown + NOTIFICATIONS_PER_PAGE);
+
+    nextBatch.forEach(activity => {
+        const notificationItem = document.createElement('div');
+        notificationItem.classList.add('notification-item', 'p-3', 'border-b', 'hover:bg-gray-50');
+        if (!activity.isRead) {
+            notificationItem.classList.add('unread');
+        }
+
+        let notificationText = '';
+        if (activity.action === 'became friends with') {
+            notificationText = `<strong>${activity.username}</strong> became friends with you`;
+        } else if (activity.action.includes('liked')) {
+            notificationText = `<strong>${activity.username}</strong> liked your ${activity.action.split(' ')[1]}`;
+        } else {
+            notificationText = `<strong>${activity.username}</strong> ${activity.action} <em>${activity.bookTitle}</em>`;
+        }
+
+        notificationItem.innerHTML = `
+            <div class="flex items-center justify-between">
+                <div class="flex-grow">
+                    <p>${notificationText}</p>
+                    <span class="text-sm text-gray-500">${formatTimeAgo(activity.timestamp)}</span>
+                </div>
+                ${activity.thumbnail ? `
+                    <img src="${activity.thumbnail}" alt="${activity.bookTitle}" class="w-10 h-14 object-cover rounded ml-2">
+                ` : ''}
+            </div>
+        `;
+        notificationList.appendChild(notificationItem);
+    });
+
+    activitiesShown += nextBatch.length;
+    document.getElementById('notificationList').scrollBy({ top: 300, behavior: 'smooth' });
+
+    // Show or hide the button
+    if (activitiesShown >= allActivities.length) {
+        showMoreButton.style.display = 'none';
+    } else {
+        showMoreButton.style.display = 'block';
+    }
+}
+
+// Click event for Show More button
+document.getElementById('showMoreNotifications').addEventListener('click', renderNextNotifications);
+    // Function to update notification count
+    async function updateNotificationCount(totalCount) {
+        const notificationCount = document.getElementById('notificationCount');
+        if (totalCount > 0) {
+            notificationCount.textContent = totalCount > 99 ? '99+' : totalCount;
+            notificationCount.classList.remove('hidden');
+        } else {
+            notificationCount.classList.add('hidden');
         }
     }
 
-    // Function to update notification count
-    async function updateNotificationCount() {
+    // Add the acceptFriendRequest function if it's not already defined
+    async function acceptFriendRequest(requestId, friendUsername) {
         try {
-            const response = await fetch(`/api/activities/unread-count/${username}`);
-            const data = await response.json();
+            const response = await fetch('/api/accept-friend', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ 
+                    username: localStorage.getItem('username'), 
+                    requestId, 
+                    friendUsername 
+                })
+            });
             
+            const data = await response.json();
             if (data.success) {
-                const count = data.unreadCount;
-                if (count > 0) {
-                    notificationCount.textContent = count > 99 ? '99+' : count;
-                    notificationCount.classList.remove('hidden');
-                } else {
-                    notificationCount.classList.add('hidden');
-                }
+                console.log('Friend request accepted successfully');
+            } else {
+                console.error('Failed to accept friend request:', data.message);
             }
         } catch (error) {
-            console.error('Error updating notification count:', error);
+            console.error('Error accepting friend request:', error);
         }
     }
 
@@ -561,4 +664,6 @@ function clearSuggestions() {
         console.error("Suggestions box element not found");
     }
 }
+
+
 
