@@ -1261,3 +1261,17 @@ body, main {
     opacity: 0.5;
     cursor: not-allowed;
 }
+
+.decline-friend-button {
+    background-color: #dc2626;
+    transition: background-color 0.2s;
+}
+
+.decline-friend-button:hover {
+    background-color: #b91c1c;
+}
+
+.decline-friend-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}

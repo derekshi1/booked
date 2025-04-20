@@ -1570,13 +1570,11 @@ app.get('/api/friends-activities/:username', async (req, res) => {
             // Get all activities for this friend
             const activities = await Activity.find({
                 userId: friend._id,
+                action: { $ne: 'nudge' },  // Exclude nudges
                 $or: [
                     { visibility: 'public' },
                     { visibility: 'friends' },
-                    { 
-                        visibility: 'private',
-                        userId: friend._id
-                    }
+                    { visibility: 'private', userId: friend._id }
                 ]
             }).sort({ timestamp: -1 });
 
@@ -2369,3 +2367,246 @@ const fetchActivities = async () => {
         console.error('Error in fetchActivities:', error);
     }
 };
+
+// Add this endpoint to server.js
+app.post('/api/decline-friend', async (req, res) => {
+    const { username, requestId } = req.body;
+
+    try {
+        const friendRequest = await FriendRequest.findById(requestId);
+
+        if (!friendRequest) {
+            return res.status(404).json({ success: false, message: 'Friend request not found' });
+        }
+
+        // Delete the friend request
+        await FriendRequest.findByIdAndDelete(requestId);
+
+        res.status(200).json({ success: true, message: 'Friend request declined' });
+    } catch (error) {
+        console.error('Error declining friend request:', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+});
+
+// Add this endpoint to server.js
+app.get('/api/likes-notifications/:username', async (req, res) => {
+    try {
+        const { username } = req.params;
+        const user = await User.findOne({ username });
+        
+        if (!user) {
+            return res.status(404).json({ success: false, message: 'User not found' });
+        }
+
+        // Get user's library to find reviews that have been liked
+        const userLibrary = await UserLibrary.findOne({ username });
+        const reviewLikes = [];
+
+        if (userLibrary && userLibrary.books) {
+            userLibrary.books.forEach(book => {
+                if (book.likes && book.likes.length > 0) {
+                    // Only include recent likes (e.g., within the last 30 days)
+                    const recentLikes = book.likes.slice(-5); // Get last 5 likes
+                    reviewLikes.push({
+                        type: 'review',
+                        bookTitle: book.title,
+                        isbn: book.isbn,
+                        thumbnail: book.thumbnail,
+                        likedBy: recentLikes,
+                        timestamp: new Date() // You might want to store timestamps for likes in your schema
+                    });
+                }
+            });
+        }
+
+        // Get user's lists that have been liked
+        const userLists = await UserList.find({ username });
+        const listLikes = [];
+
+        userLists.forEach(list => {
+            if (list.likes && list.likes.length > 0) {
+                const recentLikes = list.likes.slice(-5);
+                listLikes.push({
+                    type: 'list',
+                    listName: list.listName,
+                    listId: list._id,
+                    likedBy: recentLikes,
+                    timestamp: new Date() // You might want to store timestamps for likes in your schema
+                });
+            }
+        });
+
+        // Combine and sort all likes
+        const allLikes = [...reviewLikes, ...listLikes].sort((a, b) => 
+            b.timestamp - a.timestamp
+        );
+
+        res.json({ success: true, likes: allLikes });
+    } catch (error) {
+        console.error('Error fetching likes notifications:', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+});
+
+// Add this endpoint to server.js
+app.post('/api/nudge-friend', async (req, res) => {
+    const { fromUsername, toUsername } = req.body;
+
+    try {
+        const fromUser = await User.findOne({ username: fromUsername });
+        const toUser = await User.findOne({ username: toUsername });
+
+        if (!fromUser || !toUser) {
+            return res.status(404).json({ success: false, message: 'User not found' });
+        }
+
+        // Create a new activity for the nudge
+        const newActivity = new Activity({
+            userId: toUser._id, // The recipient
+            action: 'nudge',
+            bookTitle: fromUsername, // Using bookTitle to store the sender's username
+            timestamp: new Date(),
+            isRead: false,
+            type: 'nudge' // Add a type field to distinguish nudges
+        });
+
+        await newActivity.save();
+
+        res.status(200).json({ success: true, message: 'Nudge sent successfully' });
+    } catch (error) {
+        console.error('Error sending nudge:', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+});
+
+// Add this endpoint to server.js
+app.get('/api/nudge-notifications/:username', async (req, res) => {
+    try {
+        const { username } = req.params;
+        console.log('Fetching nudges for user:', username);
+
+        const user = await User.findOne({ username });
+        
+        if (!user) {
+            console.log('User not found:', username);
+            return res.status(404).json({ success: false, message: 'User not found' });
+        }
+
+        // Remove the type condition since we're only using action
+        const nudges = await Activity.find({
+            userId: user._id,
+            action: 'nudge'
+        })
+        .sort({ timestamp: -1 })
+        .limit(5);
+
+        console.log('Found nudges:', nudges);
+
+        const transformedNudges = nudges.map(nudge => ({
+            _id: nudge._id,
+            fromUsername: nudge.bookTitle, // We stored the sender's username in bookTitle
+            timestamp: nudge.timestamp,
+            isRead: nudge.isRead || false
+        }));
+
+        console.log('Transformed nudges:', transformedNudges);
+
+        res.json({ success: true, nudges: transformedNudges });
+    } catch (error) {
+        console.error('Error fetching nudge notifications:', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+});
+
+// Add this endpoint to mark notifications as read
+app.post('/api/mark-notifications-read', async (req, res) => {
+    const { username } = req.body;
+    try {
+        const user = await User.findOne({ username });
+        if (!user) {
+            return res.status(404).json({ success: false, message: 'User not found' });
+        }
+
+        // Mark all activities as read for this user
+        await Activity.updateMany(
+            { userId: { $in: user.friends }, readBy: { $ne: user._id } },
+            { $addToSet: { readBy: user._id } }
+        );
+
+        // Mark all friend requests as read
+        await FriendRequest.updateMany(
+            { to: user._id },
+            { $set: { isRead: true } }
+        );
+
+        res.status(200).json({ success: true, message: 'All notifications marked as read' });
+    } catch (error) {
+        console.error('Error marking notifications as read:', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+});
+
+// Add this endpoint to get suggested friends
+app.get('/api/suggested-friends/:username', async (req, res) => {
+    const { username } = req.params;
+    const { limit = 5, skip = 0 } = req.query;
+
+    try {
+        const user = await User.findOne({ username }).populate('friends');
+        if (!user) {
+            return res.status(404).json({ success: false, message: 'User not found' });
+        }
+
+        // Get user's current friends' IDs
+        const userFriendIds = user.friends.map(friend => friend._id);
+
+        // Get all users except the current user and their friends
+        const allOtherUsers = await User.find({
+            _id: { 
+                $nin: [...userFriendIds, user._id] 
+            }
+        }).populate('friends');
+
+        // Calculate mutual friends for each potential friend
+        const suggestedFriends = await Promise.all(allOtherUsers.map(async (potentialFriend) => {
+            const mutualFriends = potentialFriend.friends.filter(friend => 
+                userFriendIds.some(userFriend => userFriend.equals(friend))
+            );
+
+            return {
+                username: potentialFriend.username,
+                mutualFriendsCount: mutualFriends.length,
+                mutualFriends: mutualFriends.map(friend => friend.username).slice(0, 3) // Show up to 3 mutual friends
+            };
+        }));
+
+        // Sort by number of mutual friends and get the requested slice
+        const sortedSuggestions = suggestedFriends
+            .filter(friend => friend.mutualFriendsCount > 0) // Only show suggestions with mutual friends
+            .sort((a, b) => b.mutualFriendsCount - a.mutualFriendsCount)
+            .slice(skip, skip + parseInt(limit));
+
+        res.json({
+            success: true,
+            suggestions: sortedSuggestions,
+            hasMore: sortedSuggestions.length === parseInt(limit)
+        });
+    } catch (error) {
+        console.error('Error getting suggested friends:', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+});
+
+// Add endpoint to dismiss a friend suggestion
+app.post('/api/dismiss-friend-suggestion', async (req, res) => {
+    const { username, suggestedUsername } = req.body;
+    try {
+        // Here you could store dismissed suggestions in a new collection if you want to persist them
+        // For now, we'll just return success
+        res.json({ success: true, message: 'Suggestion dismissed' });
+    } catch (error) {
+        console.error('Error dismissing friend suggestion:', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+});
