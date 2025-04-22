@@ -1,25 +1,14 @@
 document.addEventListener('DOMContentLoaded', async () => { 
-    const searchFriendInput = document.getElementById('searchFriendInput');
-    const searchFriendButton = document.getElementById('searchFriendButton');
+
     const searchResults = document.getElementById('searchResults');
     const activitiesFeed = document.getElementById('activitiesFeed');
-    const clearSearchButton = document.getElementById('clearSearchButton');
     const username = localStorage.getItem('username');
-    const searchInput = document.getElementById('searchFriendInput');
-    const clearButton = document.getElementById('clearSearchButton');
     const reviewsButton = document.getElementById('reviewsSection');
     const subheaderButtons = document.querySelectorAll("nav button");
     const currentlyReadingButton = document.getElementById('currentlyReadingSection')
 
 
-    searchInput.addEventListener('input', () => {
-        clearButton.style.display = searchInput.value ? 'block' : 'none';
-    });
-
-    clearButton.addEventListener('click', () => {
-        searchInput.value = '';
-        clearButton.style.display = 'none';
-    });
+    
     await updateSocialTabNotification();
     const socialTabClicked = sessionStorage.getItem('socialTabClicked') === 'true';  // Check if tab was clicked
 
@@ -160,70 +149,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Call updateTimestamps every hour
     setInterval(updateTimestamps, 3600000);
-    const renderSearchResults = (results) => {
-        const username = localStorage.getItem('username');
-        console.log('Rendering search results', results);
-    
-        // Clear previous results
-        searchResults.innerHTML = '';
-    
-        // Filter out the current user's own username from the search results
-        const filteredResults = results.filter(user => user.username !== username);
-    
-        // If no results after filtering, display a "No user found" message
-       
-        const existingUsers = new Set();
-    
-        filteredResults.forEach(async (user) => {
-            if (existingUsers.has(user.username)) {
-                return; // Skip if this user is already rendered
-            }
-            existingUsers.add(user.username);
-    
-            const userElement = document.createElement('div');
-            userElement.classList.add('search-result', 'p-4', 'bg-gray-100', 'rounded', 'shadow', 'mb-2');
-    
-            let buttonContent = '';
-            let buttonDisabled = false;
-    
-            // Check if the user is already a friend or if a request is pending
-            const friendshipStatus = await checkFriendshipStatus(username, user.username);
-    
-            if (friendshipStatus === 'friend') {
-                buttonContent = 'Added';
-                buttonDisabled = true;
-            } else if (friendshipStatus === 'pending') {
-                buttonContent = 'Pending';
-                buttonDisabled = true;
-            } else {
-                buttonContent = 'Add Friend';
-            }
-            const buttonStyle = buttonDisabled ? 'p-2 bg-gray-500 text-white rounded' : 'p-2 bg-green-900 text-white rounded';
-    
-            userElement.innerHTML = `
-            <div class="flex justify-between items-center">
-                <div>
-                    <a href="../html/profile.html?username=${user.username}" class="text-blue-600 hover:underline">${user.username}</a>
-                </div>
-                <button class="${buttonStyle}" data-username="${user.username}" ${buttonDisabled ? 'disabled' : ''}>
-                    ${buttonContent}
-                </button>
-            </div>
-            `;
-            searchResults.appendChild(userElement);
-    
-            if (!buttonDisabled) {
-                const addFriendButton = userElement.querySelector('button');
-                addFriendButton.addEventListener('click', async (event) => {
-                    const friendUsername = event.target.getAttribute('data-username');
-                    console.log(`Adding friend: ${friendUsername}`);
-                    await sendFriendRequest(friendUsername);
-                    addFriendButton.textContent = 'Pending';
-                    addFriendButton.disabled = true;
-                });
-            }
-        });
-    };
+   
     
     const renderActivitiesFeed = (activities) => {
         console.log('All activities received:', activities);
@@ -614,60 +540,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     
     
-    let debounceTimeout;
-    let currentDisplayedUsers = [];
-    
-    const searchFriends = async (query) => {
-        clearTimeout(debounceTimeout);
-    
-        debounceTimeout = setTimeout(async () => {
-            if (!query) {
-                console.log('Search query is empty');
-                renderSearchResults([]); // Clear results if the query is empty
-                return;
-            }
-    
-            console.log(`Searching friends with query: ${query}`);
-            try {
-                const response = await fetch(`/api/search-users?query=${encodeURIComponent(query)}`);
-                const data = await response.json();
-                if (data.success) {
-                    console.log('Search results fetched successfully', data.users);
-    
-                    // Only render if the results have changed
-                    const newUsers = data.users.map(user => user.username).sort().join(',');
-                    const displayedUsers = currentDisplayedUsers.sort().join(',');
-    
-                        if (newUsers !== displayedUsers) {
-                        currentDisplayedUsers = data.users.map(user => user.username);
-                        renderSearchResults(data.users);
-                    }
-                } else {
-                    console.error('Failed to search users:', data.message);
-                    renderNoUserFound();
-                }
-            } catch (error) {
-                console.error('Error searching users:', error);
-                renderNoUserFound();
-            }
-        }, 300); // Adjust the debounce delay as needed
-    };
-    
-    searchFriendInput.addEventListener('input', (event) => {
-        const query = event.target.value.trim();
-        if (query) {
-            clearSearchButton.style.display = 'inline-block'; // Show the 'x' button
-        } else {
-            clearSearchButton.style.display = 'none'; // Hide the 'x' button
-        }
-        searchFriends(query); 
-    });
-    clearSearchButton.addEventListener('click', () => {
-        searchFriendInput.value = ''; // Clear the search input
-        clearSearchButton.style.display = 'none'; // Hide the 'x' button
-        renderSearchResults([]); // Clear the search results
-    });
-    
     const sendFriendRequest = async (friendUsername) => {
         console.log(`Sending request to add friend: ${friendUsername}`);
         try {
@@ -802,7 +674,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Initial fetch of friends' activities and friend requests
     fetchActivities();
-    fetchFriendRequests();
     
     activitiesFeed.addEventListener('click', async (event) => {
         const reviewLink = event.target.closest('.see-review-link');
@@ -865,7 +736,3 @@ const checkFriendshipStatus = async (username, friendUsername) => {
         return 'none';
     }
 };
-function renderNoUserFound() {
-    const searchResults = document.getElementById('searchResults');
-    searchResults.innerHTML = '<p class="text-red-600">No user found</p>';
-}

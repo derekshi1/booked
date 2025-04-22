@@ -39,39 +39,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const bypassLimit = urlParams.get('bypassLimit') === 'True';
     
 
-    const recommendationToggle = document.getElementById('recommendationToggle');
-    const forMeText = document.getElementById('toggleTextForMe');
-    const forGroupText = document.getElementById('toggleTextForGroup');
 
     // Ensure initial state is set to "For Me" when checked
-    if (recommendationToggle.checked) {
-        forMeText.classList.add('text-gray-400');
-        forGroupText.classList.remove('text-gray-400');
-        searchFriendsContainer.classList.add('hidden');
-    
-    } else {
-        forMeText.classList.remove('text-gray-400');
-        forGroupText.classList.add('text-gray-400');
-        searchFriendsContainer.classList.remove('hidden');
-    }
+  
 
     // Add event listener to toggle text when the checkbox is toggled
-    recommendationToggle.addEventListener('change', function() {
-        const isChecked = this.checked;
-
-        if (isChecked) {
-            forMeText.classList.add('text-gray-400');
-            forGroupText.classList.remove('text-gray-400');
-            searchFriendsContainer.classList.add('hidden');
-
-        } else {
-            forMeText.classList.remove('text-gray-400');
-            forGroupText.classList.add('text-gray-400');
-            searchFriendsContainer.classList.remove('hidden');
-
-        }
-    });
-    let selectedUsernames = [];
+   
 
     function toggleFriendSelection(username, element) {
         const index = selectedUsernames.indexOf(username);
@@ -502,28 +475,11 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         
             // Check the state of the toggle
-            const recommendationToggle = document.getElementById('recommendationToggle');
-            const isGroupMode = !recommendationToggle.checked; // Assuming "For a Group" is when it's unchecked
-        
+            
             try {
-                let response;
-                if (isGroupMode) {
-                    // If the toggle is set to "For a Group," fetch group recommendations
-                    if (selectedUsernames.length === 0) {
-                        alert('Please select at least one friend for group recommendations.');
-                        generateButton.disabled = false;
-                        generateButton.classList.remove('racing-glow'); // Remove the racing border animation
-                        generateButton.classList.add('glow-button');
-                        generateButton.textContent = 'Generate Recommendations'; // Reset the text
-                        return;
-                    }
-                    
-                    const usernamesQuery = selectedUsernames.join(',');
-                    response = await fetch(`/api/group-recommendations?usernames=${encodeURIComponent(usernamesQuery)}`);
-                } else {
-                    // If the toggle is set to "For Me," fetch personal recommendations
+                
                     response = await fetch(`/api/recommendations/${username}`);
-                }
+                
         
                 const data = await response.json();
                 console.log('Recommendations response:', data);
@@ -699,122 +655,145 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
 
-async function fetchNYTimesBestSellers() {
-    const apiKey = '07KGzNSRt9XlvFc8Esd006b7fqiGA8cc'; 
-    const response = await fetch(`https://api.nytimes.com/svc/books/v3/lists/current/hardcover-fiction.json?api-key=${apiKey}`);
-    const data = await response.json();
-    return data.results.books.map(book => ({
-        title: book.title,
-        authors: book.author,
-        thumbnail: book.book_image,
-        isbn: book.primary_isbn13
-    }));
+// Add these constants at the top of your index.js file
+const NYT_CACHE_DURATION = 2 * 24 * 60 * 60 * 1000; // 2 days in milliseconds
+const CACHE_KEYS = {
+    FICTION: 'nyt_fiction_cache',
+    YA: 'nyt_ya_cache',
+    NONFICTION: 'nyt_nonfiction_cache',
+    LAST_FETCH: 'nyt_last_fetch'
+};
+
+// Helper function to check if cache is valid
+function isCacheValid() {
+    const lastFetch = localStorage.getItem(CACHE_KEYS.LAST_FETCH);
+    if (!lastFetch) return false;
+    
+    const now = new Date().getTime();
+    return (now - parseInt(lastFetch)) < NYT_CACHE_DURATION;
 }
 
+// Modified fetch functions to use caching
+async function fetchNYTimesBestSellers() {
+    // Check cache first
+    if (isCacheValid()) {
+        const cachedData = localStorage.getItem(CACHE_KEYS.FICTION);
+        if (cachedData) {
+            return JSON.parse(cachedData);
+        }
+    }
+
+    // If cache is invalid or doesn't exist, fetch new data
+    try {
+        const apiKey = '07KGzNSRt9XlvFc8Esd006b7fqiGA8cc'; 
+        const response = await fetch(`https://api.nytimes.com/svc/books/v3/lists/current/hardcover-fiction.json?api-key=${apiKey}`);
+        const data = await response.json();
+        
+        const processedData = data.results.books.map(book => ({
+            title: book.title,
+            authors: book.author,
+            thumbnail: book.book_image,
+            isbn: book.primary_isbn13
+        }));
+
+        // Cache the new data
+        localStorage.setItem(CACHE_KEYS.FICTION, JSON.stringify(processedData));
+        localStorage.setItem(CACHE_KEYS.LAST_FETCH, new Date().getTime().toString());
+        
+        return processedData;
+    } catch (error) {
+        console.error('Error fetching NY Times Best Sellers:', error);
+        // If fetch fails, try to use cached data even if expired
+        const cachedData = localStorage.getItem(CACHE_KEYS.FICTION);
+        return cachedData ? JSON.parse(cachedData) : [];
+    }
+}
+
+async function fetchNYTimesyadult() {
+    // Check cache first
+    if (isCacheValid()) {
+        const cachedData = localStorage.getItem(CACHE_KEYS.YA);
+        if (cachedData) {
+            return JSON.parse(cachedData);
+        }
+    }
+
+    try {
+        const apiKey = 'Glpuj6w9AxVo6kx0vpfy8x3hdBr10eHu';
+        const response = await fetch(`https://api.nytimes.com/svc/books/v3/lists/current/young-adult-hardcover.json?api-key=${apiKey}`);
+        const data = await response.json();
+        
+        const processedData = data.results.books.map(book => ({
+            title: book.title,
+            authors: book.author,
+            thumbnail: book.book_image,
+            isbn: book.primary_isbn13
+        }));
+
+        // Cache the new data
+        localStorage.setItem(CACHE_KEYS.YA, JSON.stringify(processedData));
+        localStorage.setItem(CACHE_KEYS.LAST_FETCH, new Date().getTime().toString());
+        
+        return processedData;
+    } catch (error) {
+        console.error('Error fetching NY Times young adult books:', error);
+        const cachedData = localStorage.getItem(CACHE_KEYS.YA);
+        return cachedData ? JSON.parse(cachedData) : [];
+    }
+}
+
+async function fetchNF() {
+    // Check cache first
+    if (isCacheValid()) {
+        const cachedData = localStorage.getItem(CACHE_KEYS.NONFICTION);
+        if (cachedData) {
+            return JSON.parse(cachedData);
+        }
+    }
+
+    try {
+        const apiKey = 'Glpuj6w9AxVo6kx0vpfy8x3hdBr10eHu';
+        const response = await fetch(`https://api.nytimes.com/svc/books/v3/lists/current/hardcover-nonfiction.json?api-key=${apiKey}`);
+        const data = await response.json();
+        
+        const processedData = data.results.books.map(book => ({
+            title: book.title,
+            authors: book.author,
+            thumbnail: book.book_image,
+            isbn: book.primary_isbn13
+        }));
+
+        // Cache the new data
+        localStorage.setItem(CACHE_KEYS.NONFICTION, JSON.stringify(processedData));
+        localStorage.setItem(CACHE_KEYS.LAST_FETCH, new Date().getTime().toString());
+        
+        return processedData;
+    } catch (error) {
+        console.error('Error fetching NY Times nonfiction books:', error);
+        const cachedData = localStorage.getItem(CACHE_KEYS.NONFICTION);
+        return cachedData ? JSON.parse(cachedData) : [];
+    }
+}
+
+// Update the fetch calls in your existing code
 fetchNYTimesBestSellers().then(books => {
     renderNYTimesBestSellers(books);
 }).catch(error => {
-    console.error('Error fetching NY Times Best Sellers:', error);
+    console.error('Error handling NY Times Best Sellers:', error);
     renderPlaceholderRecommendations();
 });
-
-
-
-const renderNYTimesBestSellers = (books) => {
-    bestSellersContainer.innerHTML = '';
-    books.forEach(book => {
-        const bookElement = document.createElement('div');
-        bookElement.classList.add('nyt-card', 'p-4', 'bg-gray-100', 'rounded', 'shadow', 'book-card');
-        bookElement.innerHTML = `
-            <div class="relative group">
-                <a href="../html/book.html?isbn=${book.isbn}" class="block relative overflow-hidden rounded-lg shadow-lg hover:shadow-2xl transition duration-300 ease-in-out group">
-                    <img src="${book.thumbnail}" alt="${book.title}" class="w-30 h-30 object-cover">
-                    <div class="absolute bottom-0 left-0 w-full p-4 bg-black bg-opacity-60 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-in-out">
-                        <h2 class="text-lg font-bold">${book.title}</h2>
-                        <p class="text-gray-300">by ${book.authors}</p>
-                    </div>
-                </a>
-            </div>
-        `;
-        bestSellersContainer.appendChild(bookElement);
-    });
-};
-
-async function fetchNYTimesyadult() {
-    const apiKey = 'Glpuj6w9AxVo6kx0vpfy8x3hdBr10eHu'; // Replace with your actual API key
-    const response = await fetch(`https://api.nytimes.com/svc/books/v3/lists/current/young-adult-hardcover.json?api-key=${apiKey}`);
-    const data = await response.json();
-    return data.results.books.map(book => ({
-        title: book.title,
-        authors: book.author,
-        thumbnail: book.book_image,
-        isbn: book.primary_isbn13
-    }));
-}
-const renderNYTimesyadult = (books) => {
-    yadultContainer.innerHTML = '';
-    books.forEach(book => {
-        const bookElement = document.createElement('div');
-        bookElement.classList.add('nyt-card', 'p-4', 'bg-gray-100', 'rounded', 'shadow', 'book-card');
-        bookElement.innerHTML = `
-            <div class="relative group">
-                <a href="../html/book.html?isbn=${book.isbn}" class="block relative overflow-hidden rounded-lg shadow-lg hover:shadow-2xl transition duration-300 ease-in-out group">
-                    <img src="${book.thumbnail}" alt="${book.title}" class="w-30 h-30 object-cover">
-                    <div class="absolute bottom-0 left-0 w-full p-4 bg-black bg-opacity-60 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-in-out">
-                        <h2 class="text-lg font-bold">${book.title}</h2>
-                        <p class="text-gray-300">by ${book.authors}</p>
-                    </div>
-                </a>
-            </div>
-        `;
-        yadultContainer.appendChild(bookElement);
-    });
-};
 
 fetchNYTimesyadult().then(books => {
     renderNYTimesyadult(books);
 }).catch(error => {
-    console.error('Error fetching NY Times young adult books:', error);
+    console.error('Error handling NY Times young adult books:', error);
     renderPlaceholderRecommendations();
 });
-
-
-async function fetchNF() {
-    const apiKey = 'Glpuj6w9AxVo6kx0vpfy8x3hdBr10eHu'; // Replace with your actual API key
-    const response = await fetch(`https://api.nytimes.com/svc/books/v3/lists/current/hardcover-nonfiction.json?api-key=${apiKey}`);
-    const data = await response.json();
-    return data.results.books.map(book => ({
-        title: book.title,
-        authors: book.author,
-        thumbnail: book.book_image,
-        isbn: book.primary_isbn13
-    }));
-}
-
-const renderNF = (books) => {
-    nonfictionContainer.innerHTML = '';
-    books.forEach(book => {
-        const bookElement = document.createElement('div');
-        bookElement.classList.add('nyt-card', 'p-4', 'bg-gray-100', 'rounded', 'shadow', 'book-card');
-        bookElement.innerHTML = `
-            <div class="relative group">
-                <a href="../html/book.html?isbn=${book.isbn}" class="block relative overflow-hidden rounded-lg shadow-lg hover:shadow-2xl transition duration-300 ease-in-out group">
-                    <img src="${book.thumbnail}" alt="${book.title}" class="w-30 h-30 object-cover">
-                    <div class="absolute bottom-0 left-0 w-full p-4 bg-black bg-opacity-60 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-in-out">
-                        <h2 class="text-lg font-bold">${book.title}</h2>
-                        <p class="text-gray-300">by ${book.authors}</p>
-                    </div>
-                </a>
-            </div>
-        `;
-        nonfictionContainer.appendChild(bookElement);
-    });
-};
 
 fetchNF().then(books => {
     renderNF(books);
 }).catch(error => {
-    console.error('Error fetching NY Times young adult books:', error);
+    console.error('Error handling NY Times nonfiction books:', error);
     renderPlaceholderRecommendations();
 });
 
@@ -887,6 +866,163 @@ const generateNewLists = () => {
         { id: 2, name: 'List 2' }
         // Add logic to select the appropriate lists based on your requirements
     ];
+};
+
+// Render functions for NYT lists
+const renderNYTimesBestSellers = (books) => {
+    bestSellersContainer.innerHTML = '';
+    books.forEach(book => {
+        const bookElement = document.createElement('div');
+        bookElement.classList.add('recommendation-card', 'p-4', 'bg-gray-100', 'rounded', 'shadow', 'book-card');
+
+        // Function to generate a random color for fallback
+        const generateRandomColor = () => {
+            const letters = '89ABCDEF';
+            let color = '#';
+            for (let i = 0; i < 6; i++) {
+                color += letters[Math.floor(Math.random() * letters.length)];
+            }
+            return color;
+        };
+
+        // Fallback handler for image loading errors
+        const onErrorFallback = (event) => {
+            const parentElement = event.target.closest('.relative.group');
+            const randomColor = generateRandomColor();
+            parentElement.querySelector('img').remove();
+
+            parentElement.innerHTML += `
+                <div class="w-full h-60 flex flex-col justify-center items-center text-center p-4" style="background-color: ${randomColor};">
+                    <h2 class="text-lg font-bold text-white">${book.title}</h2>
+                    <p class="text-gray-300">by ${book.authors}</p>
+                </div>
+            `;
+        };
+
+        bookElement.innerHTML = `
+            <div class="relative group">
+                <a href="../html/book.html?isbn=${book.isbn}" class="block relative overflow-hidden rounded-lg shadow-lg hover:shadow-2xl transition duration-300 ease-in-out group">
+                    <img 
+                        src="${book.thumbnail}" 
+                        alt="${book.title}" 
+                        class="w-full h-72 object-cover"
+                    />
+                    <div class="absolute bottom-0 left-0 w-full p-4 bg-black bg-opacity-60 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-in-out">
+                        <h2 class="text-lg font-bold">${book.title}</h2>
+                        <p class="text-gray-300">by ${book.authors}</p>
+                    </div>
+                </a>
+            </div>
+        `;
+
+        bestSellersContainer.appendChild(bookElement);
+
+        // Add error handler for image
+        const imgElement = bookElement.querySelector('img');
+        imgElement.addEventListener('error', onErrorFallback);
+    });
+};
+
+const renderNYTimesyadult = (books) => {
+    yadultContainer.innerHTML = '';
+    books.forEach(book => {
+        const bookElement = document.createElement('div');
+        bookElement.classList.add('recommendation-card', 'p-4', 'bg-gray-100', 'rounded', 'shadow', 'book-card');
+
+        const generateRandomColor = () => {
+            const letters = '89ABCDEF';
+            let color = '#';
+            for (let i = 0; i < 6; i++) {
+                color += letters[Math.floor(Math.random() * letters.length)];
+            }
+            return color;
+        };
+
+        const onErrorFallback = (event) => {
+            const parentElement = event.target.closest('.relative.group');
+            const randomColor = generateRandomColor();
+            parentElement.querySelector('img').remove();
+
+            parentElement.innerHTML += `
+                <div class="w-full h-60 flex flex-col justify-center items-center text-center p-4" style="background-color: ${randomColor};">
+                    <h2 class="text-lg font-bold text-white">${book.title}</h2>
+                    <p class="text-gray-300">by ${book.authors}</p>
+                </div>
+            `;
+        };
+
+        bookElement.innerHTML = `
+            <div class="relative group">
+                <a href="../html/book.html?isbn=${book.isbn}" class="block relative overflow-hidden rounded-lg shadow-lg hover:shadow-2xl transition duration-300 ease-in-out group">
+                    <img 
+                        src="${book.thumbnail}" 
+                        alt="${book.title}" 
+                        class="w-full h-72 object-cover"
+                    />
+                    <div class="absolute bottom-0 left-0 w-full p-4 bg-black bg-opacity-60 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-in-out">
+                        <h2 class="text-lg font-bold">${book.title}</h2>
+                        <p class="text-gray-300">by ${book.authors}</p>
+                    </div>
+                </a>
+            </div>
+        `;
+
+        yadultContainer.appendChild(bookElement);
+
+        const imgElement = bookElement.querySelector('img');
+        imgElement.addEventListener('error', onErrorFallback);
+    });
+};
+
+const renderNF = (books) => {
+    nonfictionContainer.innerHTML = '';
+    books.forEach(book => {
+        const bookElement = document.createElement('div');
+        bookElement.classList.add('recommendation-card', 'p-4', 'bg-gray-100', 'rounded', 'shadow', 'book-card');
+
+        const generateRandomColor = () => {
+            const letters = '89ABCDEF';
+            let color = '#';
+            for (let i = 0; i < 6; i++) {
+                color += letters[Math.floor(Math.random() * letters.length)];
+            }
+            return color;
+        };
+
+        const onErrorFallback = (event) => {
+            const parentElement = event.target.closest('.relative.group');
+            const randomColor = generateRandomColor();
+            parentElement.querySelector('img').remove();
+
+            parentElement.innerHTML += `
+                <div class="w-full h-60 flex flex-col justify-center items-center text-center p-4" style="background-color: ${randomColor};">
+                    <h2 class="text-lg font-bold text-white">${book.title}</h2>
+                    <p class="text-gray-300">by ${book.authors}</p>
+                </div>
+            `;
+        };
+
+        bookElement.innerHTML = `
+            <div class="relative group">
+                <a href="../html/book.html?isbn=${book.isbn}" class="block relative overflow-hidden rounded-lg shadow-lg hover:shadow-2xl transition duration-300 ease-in-out group">
+                    <img 
+                        src="${book.thumbnail}" 
+                        alt="${book.title}" 
+                        class="w-full h-72 object-cover"
+                    />
+                    <div class="absolute bottom-0 left-0 w-full p-4 bg-black bg-opacity-60 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-in-out">
+                        <h2 class="text-lg font-bold">${book.title}</h2>
+                        <p class="text-gray-300">by ${book.authors}</p>
+                    </div>
+                </a>
+            </div>
+        `;
+
+        nonfictionContainer.appendChild(bookElement);
+
+        const imgElement = bookElement.querySelector('img');
+        imgElement.addEventListener('error', onErrorFallback);
+    });
 };
 
 });

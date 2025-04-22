@@ -536,6 +536,68 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Initialize reading calendar
     readingData = await fetchReadingData(username);
     initializeCalendar();
+
+    const logoutButton = document.getElementById('logoutButton');
+    const profilePicInput = document.getElementById('profilePicInput');
+    const profileImage = document.getElementById('profileImage');
+
+    // Handle logout
+    logoutButton.addEventListener('click', () => {
+        localStorage.removeItem('username'); // Clear the username from localStorage
+        window.location.href = '../html/login.html'; // Redirect to login page
+    });
+
+    // Handle profile picture upload
+    profilePicInput.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        if (!file.type.startsWith('image/')) {
+            alert('Please upload an image file');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('profilePic', file);
+        formData.append('username', username);
+
+        try {
+            const response = await fetch('/api/upload-profile-pic', {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                // Update the profile picture immediately
+                profileImage.src = data.imageUrl + '?t=' + new Date().getTime(); // Add timestamp to prevent caching
+                alert('Profile picture updated successfully!');
+            } else {
+                alert('Failed to update profile picture: ' + data.message);
+            }
+        } catch (error) {
+            console.error('Error uploading profile picture:', error);
+            alert('Error uploading profile picture. Please try again.');
+        }
+    });
+
+    // Load user's profile picture if it exists
+    async function loadProfilePicture() {
+        try {
+            const response = await fetch(`/api/profile-pic/${username}`);
+            if (response.ok) {
+                const data = await response.json();
+                if (data.imageUrl) {
+                    profileImage.src = data.imageUrl + '?t=' + new Date().getTime();
+                }
+            }
+        } catch (error) {
+            console.error('Error loading profile picture:', error);
+        }
+    }
+
+    // Call this function when the page loads
+    await loadProfilePicture();
 });
 
 

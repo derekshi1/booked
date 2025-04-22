@@ -30,8 +30,17 @@
                 <!-- Profile Info Row: Profile picture, username, logout button, and stats below -->
                 <div class="flex flex-col items-center ml-4 mt-8">
                     <!-- Profile picture -->
-                    <div class="profile-pic mb-4">
-                        <img src="../profile.png" alt="Profile Picture" class="w-32 h-32 rounded-full">
+                    <div class="profile-pic mb-4 relative group">
+                        <img id="profileImage" src="../profile.png" alt="Profile Picture" class="w-32 h-32 rounded-full">
+                        <div id="uploadOverlay" class="absolute inset-0 bg-black bg-opacity-50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                            <label for="profilePicInput" class="text-white cursor-pointer">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                            </label>
+                            <input type="file" id="profilePicInput" accept="image/*" class="hidden">
+                        </div>
                     </div>
                     <h1 id="usernameDisplay" class="handwriting-font text-white text-2xl">Username</h1>
 

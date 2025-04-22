@@ -6,7 +6,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     const friendsListContainer = document.getElementById('friendsListContainer');
     const friendsButton = document.getElementById("friendsSection");
     const reviewsSection = document.getElementById("reviewsSection");
+    const currentlyReadingButton = document.getElementById('currentlyReadingSection');
+    const clubSection = document.getElementById('clubSection');
 
+    // Add event listeners for navigation buttons
+    friendsButton.addEventListener("click", function() {
+        window.location.href = `friends.html?username=${encodeURIComponent(username)}`;
+    });
+
+    currentlyReadingButton.addEventListener("click", function() {
+        window.location.href = `currentlyreading.html?username=${encodeURIComponent(username)}`;
+    });    
+
+    reviewsSection.addEventListener("click", function() {
+        window.location.href = `social.html?username=${encodeURIComponent(username)}`;
+    });
+
+    clubSection.addEventListener("click", function() {
+        window.location.href = `clubs.html?username=${encodeURIComponent(username)}`;
+    });
 
     try {
         const response = await fetch(`/api/friends/${username}`);

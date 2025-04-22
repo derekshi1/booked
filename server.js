@@ -2,6 +2,10 @@ const express = require('express');
 const mongoose = require('mongoose');
 const { spawn } = require('child_process');
 const pythonCommand = process.platform === 'win32' ? 'python' : 'python3';
+const multer = require('multer'); // Add this to your imports
+const path = require('path');
+const { GridFsStorage } = require('multer-gridfs-storage');
+const crypto = require('crypto');
 
 const app = express();
 const port = 8080;
@@ -26,7 +30,7 @@ const userSchema = new mongoose.Schema({
   password: { type: String, required: true },
   friends: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], default: [] },
   friendRequests: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'FriendRequest' }], default: [] },
-  profilePicture: { type: String, default: '../profile.png' }
+  profilePicture: { type: String, default: '../profile.png' } // Will store either '../profile.png' or a GridFS file ID
 });
 
 
@@ -2608,5 +2612,171 @@ app.post('/api/dismiss-friend-suggestion', async (req, res) => {
     } catch (error) {
         console.error('Error dismissing friend suggestion:', error);
         res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+});
+
+// Create GridFS storage engine
+const storage = new GridFsStorage({
+    url: mongoUri,
+    options: { useNewUrlParser: true, useUnifiedTopology: true },
+    file: (req, file) => {
+        return new Promise((resolve, reject) => {
+            crypto.randomBytes(16, (err, buf) => {
+                if (err) {
+                    return reject(err);
+                }
+                const filename = buf.toString('hex') + path.extname(file.originalname);
+                const fileInfo = {
+                    filename: filename,
+                    bucketName: 'profilePics',
+                    metadata: {
+                        username: req.body.username
+                    }
+                };
+                resolve(fileInfo);
+            });
+        });
+    }
+});
+
+const upload = multer({
+    storage,
+    limits: {
+        fileSize: 5 * 1024 * 1024 // 5MB limit
+    },
+    fileFilter: (req, file, cb) => {
+        if (file.mimetype.startsWith('image/')) {
+            cb(null, true);
+        } else {
+            cb(new Error('Not an image! Please upload an image file.'), false);
+        }
+    }
+});
+
+// Initialize GridFS stream
+let gfs;
+mongoose.connection.once('open', () => {
+    gfs = new mongoose.mongo.GridFSBucket(mongoose.connection.db, {
+        bucketName: 'profilePics'
+    });
+});
+
+// Upload profile picture endpoint
+app.post('/api/upload-profile-pic', upload.single('profilePic'), async (req, res) => {
+    try {
+        const { username } = req.body;
+        if (!req.file) {
+            return res.status(400).json({ success: false, message: 'No file uploaded' });
+        }
+
+        // Find and delete old profile picture if it exists
+        const user = await User.findOne({ username });
+        if (user.profilePicture && user.profilePicture !== '../profile.png') {
+            try {
+                await gfs.delete(new mongoose.Types.ObjectId(user.profilePicture));
+            } catch (err) {
+                console.log('No old file to delete or error deleting:', err);
+            }
+        }
+
+        // Update user with new file ID
+        const updatedUser = await User.findOneAndUpdate(
+            { username },
+            { profilePicture: req.file.id },
+            { new: true }
+        );
+
+        if (!updatedUser) {
+            return res.status(404).json({ success: false, message: 'User not found' });
+        }
+
+        res.json({
+            success: true,
+            fileId: req.file.id,
+            message: 'Profile picture uploaded successfully'
+        });
+    } catch (error) {
+        console.error('Error uploading profile picture:', error);
+        res.status(500).json({ success: false, message: 'Error uploading profile picture' });
+    }
+});
+
+// Get profile picture endpoint
+app.get('/api/profile-pic/:username', async (req, res) => {
+    try {
+        const { username } = req.params;
+        const user = await User.findOne({ username });
+        
+        if (!user) {
+            return res.status(404).json({ success: false, message: 'User not found' });
+        }
+
+        if (!user.profilePicture || user.profilePicture === '../profile.png') {
+            return res.json({ success: true, imageUrl: '../profile.png' });
+        }
+
+        // Verify the ID is valid before attempting to use it
+        if (!mongoose.Types.ObjectId.isValid(user.profilePicture)) {
+            return res.status(400).json({ success: false, message: 'Invalid profile picture ID' });
+        }
+
+        const files = await gfs.find({ _id: new mongoose.Types.ObjectId(user.profilePicture) }).toArray();
+        
+        if (!files || files.length === 0) {
+            // Reset to default if file not found
+            await User.findOneAndUpdate({ username }, { profilePicture: '../profile.png' });
+            return res.json({ success: true, imageUrl: '../profile.png' });
+        }
+
+        res.json({ 
+            success: true, 
+            imageUrl: `/api/profile-pic/file/${user.profilePicture}`
+        });
+    } catch (error) {
+        console.error('Error fetching profile picture:', error);
+        res.status(500).json({ success: false, message: 'Error fetching profile picture' });
+    }
+});
+
+// Stream profile picture file
+app.get('/api/profile-pic/file/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        // Validate the ID format
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ success: false, message: 'Invalid file ID format' });
+        }
+
+        const files = await gfs.find({ _id: new mongoose.Types.ObjectId(id) }).toArray();
+        
+        if (!files || files.length === 0) {
+            return res.status(404).json({ success: false, message: 'No file exists' });
+        }
+
+        // Set appropriate headers
+        res.set('Content-Type', files[0].contentType);
+        
+        const readStream = gfs.openDownloadStream(new mongoose.Types.ObjectId(id));
+        readStream.on('error', (error) => {
+            console.error('Error streaming file:', error);
+            res.status(500).json({ success: false, message: 'Error streaming file' });
+        });
+
+        readStream.pipe(res);
+    } catch (error) {
+        console.error('Error streaming profile picture:', error);
+        res.status(500).json({ success: false, message: 'Error streaming profile picture' });
+    }
+});
+
+// Delete profile picture
+app.delete('/api/profile-pic/:id', async (req, res) => {
+    try {
+        await gfs.delete(new mongoose.Types.ObjectId(req.params.id));
+        res.json({ success: true, message: 'Profile picture deleted' });
+    } catch (error) {
+        console.error('Error deleting profile picture:', error);
+        res.status(500).json({ success: false, message: 'Error deleting profile picture' });
     }
 });

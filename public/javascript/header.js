@@ -20,26 +20,28 @@ document.addEventListener('DOMContentLoaded', async () => {
     const logoLink = document.createElement('a');
     logoLink.href = '../html/index.html';
     const logo = document.createElement('img');
-    logo.src = '../logonobg.png';
+    logo.src = '../bookedlogo.png';
     logo.alt = 'Booked Logo';
-    logo.classList.add('w-100', 'h-12', 'mr-4', 'logo-transition');
+    logo.classList.add('w-48', 'h-24', 'mr-4', 'logo-transition', 'object-contain');
+    logo.style.marginTop = '-10px';
+    logo.style.marginBottom = '-10px';
     logoLink.appendChild(logo);
     
     // Create and append navigation links
     const homeLink = document.createElement('a');
     homeLink.href = '../html/index.html';
-    homeLink.classList.add('ml-4','font-bold', 'text-green-900', 'text-lg', 'px-4', 'py-2', 'rounded', 'mr-8');
+    homeLink.classList.add('ml-4', 'font-bold', 'text-white', 'text-lg', 'px-4', 'py-2', 'rounded', 'mr-8');
     homeLink.textContent = 'Home';
 
     const listsLink = document.createElement('a');
     listsLink.href = '../html/lists.html';
-    listsLink.classList.add('ml-4', 'font-bold','text-green-900', 'text-lg', 'px-4', 'py-2', 'rounded', 'mr-8');
+    listsLink.classList.add('ml-4', 'font-bold', 'text-white', 'text-lg', 'px-4', 'py-2', 'rounded', 'mr-8');
     listsLink.textContent = 'Lists';
 
     const socialLink = document.createElement('a');
     socialLink.href = '../html/social.html';
-    socialLink.id = 'socialTab'; 
-    socialLink.classList.add('ml-4', 'font-bold','text-green-900', 'text-lg', 'px-4', 'py-2', 'rounded', 'mr-8');
+    socialLink.id = 'socialTab';
+    socialLink.classList.add('ml-4', 'font-bold', 'text-white', 'text-lg', 'px-4', 'py-2', 'rounded', 'mr-8');
     socialLink.textContent = 'Social';
     let socialTabClicked = false;  // Track if the social tab was clicked
     console.log('Social tab created:', socialLink); // Log creation of social tab
@@ -49,7 +51,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const chatLink = document.createElement('a');
     chatLink.href = '../html/chat.html';
     chatLink.id = 'chatTab';
-    chatLink.classList.add('ml-4', 'font-bold','text-green-900', 'text-lg', 'px-4', 'py-2', 'rounded', 'mr-8');
+    chatLink.classList.add('ml-4', 'font-bold', 'text-white', 'text-lg', 'px-4', 'py-2', 'rounded', 'mr-8');
     chatLink.textContent = 'Booked Chatbot';
 
 
@@ -85,7 +87,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             <img src="https://cdn-icons-png.flaticon.com/512/1828/1828778.png" alt="Close" class="close-icon w-6 h-6" id="closeSearchIcon">
             <div id="suggestionsBox" class="suggestions"></div> <!-- Suggestions Box -->
         </div>
-        <a href="../html/library.html" class="ml-4 font-bold text-green-900 text-lg px-4 py-2 rounded library-link">Library</a>
+        <a href="../html/library.html" class="ml-4 font-bold text-white text-lg px-4 py-2 rounded library-link">Library</a>
     `;
     if (username) {
         userSection.innerHTML += `
@@ -128,7 +130,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 </div>
                 <div class="flex flex-col items-center">
                     <img src="../profile.png" alt="Profile" class="w-6 h-6 mb-1 cursor-pointer" onclick="window.location.href='../html/profile.html'">
-                    <span class="text-green-900 font-bold username" onclick="window.location.href='../html/profile.html'">${username}</span>
+                    <span class="text-white font-bold username" onclick="window.location.href='../html/profile.html'">${username}</span>
                 </div>
             </div>
         `;
@@ -144,6 +146,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const searchIcon = document.querySelector('.search-icon');  // Get the search icon element
     const searchInput = document.getElementById('titleInput');
     const closeIcon = document.getElementById('closeSearchIcon');
+    searchIcon.classList.add('search-icon-white');
 
     const expandSearchIcon = document.getElementById('expandSearchIcon');
     expandSearchIcon.addEventListener('click', expandSearch);
@@ -151,44 +154,43 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Handle scrolling to change header background, logo, and link colors
     window.addEventListener('scroll', () => {
-        // Select all the links you want to change the color of
         const links = document.querySelectorAll('#logoAndHome a, #userSection a, .username');
         const usernameElement = document.querySelector('.username');
 
         if (usernameElement) {
-            usernameElement.style.color = window.scrollY > 50 ? 'white' : '';
+            usernameElement.style.color = 'white';
         }
         if (window.scrollY > 50 && !logoChanged) {
-            header.style.backgroundColor = 'rgba(45, 52, 45, 1)'; // New background with slight transparency
-            searchIcon.classList.add('search-icon-white'); // Add white color class
+            header.style.backgroundColor = 'rgba(45, 52, 45, 1)';
+            searchIcon.classList.add('search-icon-white');
 
             // Fade out the current logo
             logo.style.opacity = '0';
             
             // After the fade-out transition is complete, change the src and fade back in
-            logo.src = '../logonobg.png'; // New logo with correct background color
-            logo.style.opacity = '1'; // Ensure logo is fully visible
-            logoChanged = true; // Mark the logo as changed
+            logo.src = '../bookedlogo.png';
+            logo.style.opacity = '1';
+            logoChanged = true;
                 
-            // Change all link colors to white
+            // Keep all link colors white
             links.forEach(link => {
                 link.style.color = 'white';
             });
 
         } else if (window.scrollY <= 50 && logoChanged) {
-            header.style.backgroundColor = 'rgba(233, 220, 175, 1)'; // Initial background color without transparency
+            header.style.backgroundColor = 'rgba(45, 52, 45, 1)';
             
             // Fade out the current logo
             logo.style.opacity = '0';
-            searchIcon.classList.remove('search-icon-white'); // Remove white color class
+            searchIcon.classList.remove('search-icon-white');
 
-            logo.src = '../logonobg.png'; // Original logo
-            logo.style.opacity = '1'; // Ensure logo is fully visible
-            logoChanged = false; // Mark the logo as reverted
+            logo.src = '../bookedlogo.png';
+            logo.style.opacity = '1';
+            logoChanged = false;
             
-            // Change all link colors back to their original color
+            // Keep all link colors white
             links.forEach(link => {
-                link.style.color = ''; // Remove the inline color style, reverting to original
+                link.style.color = 'white';
             });
         }
     });
