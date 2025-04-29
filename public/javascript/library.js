@@ -24,13 +24,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     const readListTitle = document.getElementById('readListTitle');
     // Apply the color to the entire Current Reads title
     currentReadsTitle.innerHTML = isOwnLibrary 
-    ? `<span class="tan-title"><em>Your</em> Current Reads...</span>` 
-    : `<span class="tan-title"><em>${username}'s</em> Current Reads...</span>`;
+    ? `<span class="text-3xl font-bold mb-6 ml-4 text-white"><em>Your</em> Current Reads...</span>` 
+    : `<span class="text-3xl font-bold mb-6 ml-4 text-white"><em>${username}'s</em> Current Reads...</span>`;
 
     // Apply the color to the entire Reading List title
     readListTitle.innerHTML = isOwnLibrary 
-    ? `<span class="tan-title"><em>Your</em> Reading List...</span>` 
-    : `<span class="tan-title"><em>${username}'s</em> Reading List...</span>`;
+    ? `<span class="text-3xl font-bold mb-6 ml-4 text-white"><em>Your</em> Reading List...</span>` 
+    : `<span class="text-3xl font-bold mb-6 ml-4 text-white"><em>${username}'s</em> Reading List...</span>`;
 
 
 

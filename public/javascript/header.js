@@ -22,7 +22,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const logo = document.createElement('img');
     logo.src = '../bookedlogo.png';
     logo.alt = 'Booked Logo';
-    logo.classList.add('w-48', 'h-24', 'mr-4', 'logo-transition', 'object-contain');
+    logo.classList.add('w-48', 'h-20', 'mr-4', 'logo-transition', 'object-contain');
     logo.style.marginTop = '-10px';
     logo.style.marginBottom = '-10px';
     logoLink.appendChild(logo);
@@ -161,7 +161,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             usernameElement.style.color = 'white';
         }
         if (window.scrollY > 50 && !logoChanged) {
-            header.style.backgroundColor = 'rgba(45, 52, 45, 1)';
+            //header.style.backgroundColor = 'rgba(45, 52, 45, 1)';
             searchIcon.classList.add('search-icon-white');
 
             // Fade out the current logo
@@ -178,7 +178,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
 
         } else if (window.scrollY <= 50 && logoChanged) {
-            header.style.backgroundColor = 'rgba(45, 52, 45, 1)';
+            //header.style.backgroundColor = 'rgba(45, 52, 45, 1)';
             
             // Fade out the current logo
             logo.style.opacity = '0';
