@@ -474,15 +474,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 updateRecommendationStatus(clickData);
             }
         
-            // Check the state of the toggle
-            
             try {
                 
                     response = await fetch(`/api/recommendations/${username}`);
                 
         
                 const data = await response.json();
-                console.log('Recommendations response:', data);
         
                 if (data.success && data.recommendations.length > 0) {
                     localStorage.setItem(`${username}_recommendations`, JSON.stringify(data.recommendations));
