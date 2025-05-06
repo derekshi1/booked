@@ -6,6 +6,7 @@ const multer = require('multer'); // Add this to your imports
 const path = require('path');
 const { GridFsStorage } = require('multer-gridfs-storage');
 const crypto = require('crypto');
+const cron = require('node-cron');
 
 const app = express();
 const port = 8080;
@@ -30,7 +31,18 @@ const userSchema = new mongoose.Schema({
   password: { type: String, required: true },
   friends: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], default: [] },
   friendRequests: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'FriendRequest' }], default: [] },
-  profilePicture: { type: String, default: '../profile.png' } // Will store either '../profile.png' or a GridFS file ID
+  profilePicture: { type: String, default: '../profile.png' },
+  // Add archetype fields
+  archetype: {
+    name: String,
+    description: String,
+    confidence: Number,
+    lastUpdated: { type: Date, default: null },
+    genreDistribution: { type: Map, of: Number },
+    scores: { type: Map, of: Number },
+    archetypeConfidences: { type: Map, of: Number },
+    archetypeWeights: { type: Map, of: Object }
+  }
 });
 
 
@@ -2077,6 +2089,7 @@ app.put('/api/lists/:listId', async (req, res) => {
     }
 });
 
+
 app.listen(port, () => {
   console.log(`Server listening at http://localhost:${port}`);
 });
@@ -2778,5 +2791,163 @@ app.delete('/api/profile-pic/:id', async (req, res) => {
     } catch (error) {
         console.error('Error deleting profile picture:', error);
         res.status(500).json({ success: false, message: 'Error deleting profile picture' });
+    }
+});
+
+// Add new endpoint to determine and store user archetype
+app.get('/api/user-archetype/:username', async (req, res) => {
+    try {
+        const { username } = req.params;
+        console.log(`[ARCHETYPE] Starting analysis for user: ${username}`);
+        
+        // Find user and their library
+        const user = await User.findOne({ username });
+        const userLibrary = await UserLibrary.findOne({ username });
+        
+        if (!user) {
+            console.log(`[ARCHETYPE] User not found: ${username}`);
+            return res.status(404).json({ success: false, message: 'User not found' });
+        }
+        
+        if (!userLibrary || !userLibrary.books || userLibrary.books.length === 0) {
+            console.log(`[ARCHETYPE] Library empty or not found for user: ${username}`);
+            return res.status(400).json({ 
+                success: false, 
+                message: 'User library is empty or not found' 
+            });
+        }
+
+        console.log(`[ARCHETYPE] Found ${userLibrary.books.length} books in library`);
+
+        // Spawn Python process to analyze library
+        console.log('[ARCHETYPE] Spawning Python process for analysis');
+        const pythonProcess = spawn(pythonCommand, [
+            'public/functions/user_archetype.py',
+            JSON.stringify(userLibrary.books)
+        ]);
+
+        let result = '';
+        pythonProcess.stdout.on('data', (data) => {
+            const output = data.toString();
+            console.log(`[ARCHETYPE] Python stdout: ${output}`);
+            result += output;
+        });
+
+        pythonProcess.stderr.on('data', (data) => {
+            console.error(`[ARCHETYPE] Python stderr: ${data}`);
+        });
+
+        pythonProcess.on('close', async (code) => {
+            console.log(`[ARCHETYPE] Python process exited with code: ${code}`);
+            if (code !== 0) {
+                console.error('[ARCHETYPE] Analysis failed');
+                return res.status(500).json({ 
+                    success: false, 
+                    message: 'Error analyzing user archetype' 
+                });
+            }
+
+            try {
+                console.log('[ARCHETYPE] Parsing analysis result');
+                const analysisResult = JSON.parse(result);
+                
+                if (!analysisResult.success) {
+                    console.error(`[ARCHETYPE] Analysis returned error: ${analysisResult.message}`);
+                    return res.status(400).json({ 
+                        success: false, 
+                        message: analysisResult.message 
+                    });
+                }
+
+                console.log('[ARCHETYPE] Updating user with archetype information');
+                // Update user with archetype information
+                const updatedUser = await User.findOneAndUpdate(
+                    { username },
+                    {
+                        'archetype.name': analysisResult.archetype.name,
+                        'archetype.description': analysisResult.archetype.description,
+                        'archetype.confidence': analysisResult.archetype.confidence,
+                        'archetype.lastUpdated': new Date(),
+                        'archetype.genreDistribution': analysisResult.archetype.genreDistribution,
+                        'archetype.scores': analysisResult.archetype.scores,
+                        'archetype.archetypeConfidences': analysisResult.archetype.archetypeConfidences,
+                        'archetype.archetypeWeights': analysisResult.archetype.archetypeWeights
+                    },
+                    { new: true }
+                );
+
+                console.log('[ARCHETYPE] Analysis complete, sending response');
+                res.json({
+                    success: true,
+                    archetype: {
+                        name: analysisResult.archetype.name,
+                        description: analysisResult.archetype.description,
+                        confidence: analysisResult.archetype.confidence,
+                        lastUpdated: new Date(),
+                        genreDistribution: analysisResult.archetype.genreDistribution,
+                        scores: analysisResult.archetype.scores,
+                        archetypeConfidences: analysisResult.archetype.archetypeConfidences,
+                        archetypeWeights: analysisResult.archetype.archetypeWeights
+                    }
+                });
+
+            } catch (error) {
+                console.error('[ARCHETYPE] Error parsing archetype analysis:', error);
+                res.status(500).json({ 
+                    success: false, 
+                    message: 'Error processing archetype analysis' 
+                });
+            }
+        });
+
+    } catch (error) {
+        console.error('[ARCHETYPE] Error in user archetype endpoint:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Internal server error' 
+        });
+    }
+});
+
+// Add endpoint to get user's archetype
+app.get('/api/users/:username/archetype', async (req, res) => {
+    try {
+        const { username } = req.params;
+        const user = await User.findOne({ username });
+
+        if (!user) {
+            return res.status(404).json({ 
+                success: false, 
+                message: 'User not found' 
+            });
+        }
+
+        if (!user.archetype || !user.archetype.name) {
+            return res.status(404).json({ 
+                success: false, 
+                message: 'No archetype found for user' 
+            });
+        }
+
+        res.json({
+            success: true,
+            archetype: {
+                name: user.archetype.name,
+                description: user.archetype.description,
+                confidence: user.archetype.confidence,
+                lastUpdated: user.archetype.lastUpdated,
+                genreDistribution: Object.fromEntries(user.archetype.genreDistribution || new Map()),
+                scores: Object.fromEntries(user.archetype.scores || new Map()),
+                archetypeConfidences: Object.fromEntries(user.archetype.archetypeConfidences || new Map()),
+                archetypeWeights: Object.fromEntries(user.archetype.archetypeWeights || new Map())
+            }
+        });
+
+    } catch (error) {
+        console.error('Error fetching user archetype:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Internal server error' 
+        });
     }
 });

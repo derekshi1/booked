@@ -146,7 +146,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const searchIcon = document.querySelector('.search-icon');  // Get the search icon element
     const searchInput = document.getElementById('titleInput');
     const closeIcon = document.getElementById('closeSearchIcon');
-    searchIcon.classList.add('search-icon-white');
 
     const expandSearchIcon = document.getElementById('expandSearchIcon');
     expandSearchIcon.addEventListener('click', expandSearch);
@@ -162,7 +161,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         if (window.scrollY > 50 && !logoChanged) {
             //header.style.backgroundColor = 'rgba(45, 52, 45, 1)';
-            searchIcon.classList.add('search-icon-white');
 
             // Fade out the current logo
             logo.style.opacity = '0';
@@ -182,7 +180,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             
             // Fade out the current logo
             logo.style.opacity = '0';
-            searchIcon.classList.remove('search-icon-white');
 
             logo.src = '../bookedlogo.png';
             logo.style.opacity = '1';

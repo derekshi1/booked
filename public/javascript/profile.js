@@ -412,101 +412,95 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const bookIndicator = document.createElement('div');
                 bookIndicator.className = 'absolute bottom-1 right-1 flex gap-1';
                 
-                // Create dots for up to 3 books with tooltips
-                booksOnThisDay.slice(0, 3).forEach(book => {
-                    const dotContainer = document.createElement('div');
-                    dotContainer.className = 'relative group';
-                    
-                    const dot = document.createElement('div');
-                    // A book is only completed if it has an endDate
-                    const isCompleted = book.endDate !== null && book.endDate !== undefined;
-                    const colorClass = isCompleted ? 'bg-green-500' : 'bg-blue-500';
-                    dot.className = `w-2 h-2 rounded-full ${colorClass} hover:scale-125 transition-transform duration-200`;
-                    
-                    // Create tooltip with book cover
-                    const tooltip = document.createElement('div');
-                    tooltip.className = 'absolute bottom-full right-0 mb-2 hidden group-hover:block w-64 bg-gray-900 text-white text-xs rounded p-2 shadow-lg z-50';
-                    
-                    // Calculate reading duration
+                // Show book covers for start and end dates, and dots for in-between dates
+                booksOnThisDay.forEach(book => {
                     const startDate = new Date(book.startDate);
-                    const endDate = book.endDate ? new Date(book.endDate) : new Date();
-                    const daysReading = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
+                    const endDate = book.endDate ? new Date(book.endDate) : null;
                     
-                    tooltip.innerHTML = `
-                        <div class="flex gap-3">
-                            <img src="${book.thumbnail}" alt="${book.title}" class="w-16 h-24 object-cover rounded">
-                            <div class="flex-1">
-                                <div class="text-sm font-semibold mb-1">${book.title}</div>
-                                <div class="text-xs text-gray-300">by ${book.authors}</div>
-                                <div class="text-xs mt-1">Started: ${startDate.toLocaleDateString()}</div>
-                                ${isCompleted ? 
-                                    `<div class="text-xs text-green-500">Completed: ${new Date(book.endDate).toLocaleDateString()}</div>` :
-                                    `<div class="text-xs text-blue-400"> Currently Reading: ${daysReading} days</div>`
-                                }
-                            </div>
-                        </div>
-                    `;
-                    
-                    // Add arrow to tooltip
-                    const arrow = document.createElement('div');
-                    arrow.className = 'absolute bottom-0 right-1 transform translate-y-full';
-                    arrow.innerHTML = `
-                        <svg class="text-gray-900 h-2 w-2" viewBox="0 0 8 4">
-                            <path fill="currentColor" d="M4 4L0 0h8L4 4z"/>
-                        </svg>
-                    `;
-                    tooltip.appendChild(arrow);
-                    
-                    dotContainer.appendChild(dot);
-                    dotContainer.appendChild(tooltip);
-                    bookIndicator.appendChild(dotContainer);
-                });
-                
-                // If there are more books than shown
-                if (booksOnThisDay.length > 3) {
-                    const moreIndicator = document.createElement('div');
-                    moreIndicator.className = 'relative group';
-                    
-                    const moreDot = document.createElement('div');
-                    moreDot.className = 'w-2 h-2 rounded-full bg-gray-400 hover:scale-125 transition-transform duration-200';
-                    
-                    const moreTooltip = document.createElement('div');
-                    moreTooltip.className = 'absolute bottom-full right-0 mb-2 hidden group-hover:block w-64 bg-gray-900 text-white text-xs rounded p-2 shadow-lg z-50';
-                    
-                    // Show all remaining books in the tooltip with thumbnails
-                    const remainingBooks = booksOnThisDay.slice(3);
-                    moreTooltip.innerHTML = `
-                        <div class="text-sm font-semibold mb-2">${remainingBooks.length} more book${remainingBooks.length > 1 ? 's' : ''}:</div>
-                        ${remainingBooks.map(book => {
-                            const isCompleted = book.endDate !== null && book.endDate !== undefined;
-                            return `
-                                <div class="flex gap-2 mb-2 pb-2 border-b border-gray-700 last:border-0">
-                                    <img src="${book.thumbnail}" alt="${book.title}" class="w-12 h-16 object-cover rounded">
-                                    <div class="flex-1">
-                                        <div class="font-medium text-xs">${book.title}</div>
-                                        <div class="text-gray-300 text-xs">by ${book.authors}</div>
-                                        <div class="text-xs ${isCompleted ? 'text-green-500' : 'text-blue-400'}">
-                                            ${isCompleted ? 'Completed' : 'Currently Reading'}
-                                        </div>
-                                    </div>
+                    // Check if this is the start date
+                    if (startDate.toDateString() === currentCellDate.toDateString()) {
+                        const startBookCover = document.createElement('div');
+                        startBookCover.className = 'relative group';
+                        
+                        const cover = document.createElement('img');
+                        cover.src = book.thumbnail;
+                        cover.className = 'w-8 h-12 object-cover rounded shadow-lg hover:scale-150 transition-transform duration-200';
+                        cover.alt = `Started: ${book.title}`;
+                        
+                        const tooltip = document.createElement('div');
+                        tooltip.className = 'absolute bottom-full right-0 mb-2 hidden group-hover:block w-64 bg-gray-900 text-white text-xs rounded p-2 shadow-lg z-50';
+                        tooltip.innerHTML = `
+                            <div class="flex gap-3">
+                                <img src="${book.thumbnail}" alt="${book.title}" class="w-16 h-24 object-cover rounded">
+                                <div class="flex-1">
+                                    <div class="text-sm font-semibold mb-1">${book.title}</div>
+                                    <div class="text-xs text-gray-300">by ${book.authors}</div>
+                                    <div class="text-xs mt-1">Started: ${startDate.toLocaleDateString()}</div>
                                 </div>
-                            `;
-                        }).join('')}
-                    `;
-                    
-                    const moreArrow = document.createElement('div');
-                    moreArrow.className = 'absolute bottom-0 right-1 transform translate-y-full';
-                    moreArrow.innerHTML = `
-                        <svg class="text-gray-900 h-2 w-2" viewBox="0 0 8 4">
-                            <path fill="currentColor" d="M4 4L0 0h8L4 4z"/>
-                        </svg>
-                    `;
-                    moreTooltip.appendChild(moreArrow);
-                    
-                    moreIndicator.appendChild(moreDot);
-                    moreIndicator.appendChild(moreTooltip);
-                    bookIndicator.appendChild(moreIndicator);
-                }
+                            </div>
+                        `;
+                        
+                        startBookCover.appendChild(cover);
+                        startBookCover.appendChild(tooltip);
+                        bookIndicator.appendChild(startBookCover);
+                    }
+                    // Check if this is the end date
+                    else if (endDate && endDate.toDateString() === currentCellDate.toDateString()) {
+                        const endBookCover = document.createElement('div');
+                        endBookCover.className = 'relative group';
+                        
+                        const cover = document.createElement('img');
+                        cover.src = book.thumbnail;
+                        cover.className = 'w-8 h-12 object-cover rounded shadow-lg hover:scale-150 transition-transform duration-200';
+                        cover.alt = `Completed: ${book.title}`;
+                        
+                        const tooltip = document.createElement('div');
+                        tooltip.className = 'absolute bottom-full right-0 mb-2 hidden group-hover:block w-64 bg-gray-900 text-white text-xs rounded p-2 shadow-lg z-50';
+                        tooltip.innerHTML = `
+                            <div class="flex gap-3">
+                                <img src="${book.thumbnail}" alt="${book.title}" class="w-16 h-24 object-cover rounded">
+                                <div class="flex-1">
+                                    <div class="text-sm font-semibold mb-1">${book.title}</div>
+                                    <div class="text-xs text-gray-300">by ${book.authors}</div>
+                                    <div class="text-xs text-green-500">Completed: ${endDate.toLocaleDateString()}</div>
+                                </div>
+                            </div>
+                        `;
+                        
+                        endBookCover.appendChild(cover);
+                        endBookCover.appendChild(tooltip);
+                        bookIndicator.appendChild(endBookCover);
+                    }
+                    // For days in between start and end
+                    else {
+                        const dotContainer = document.createElement('div');
+                        dotContainer.className = 'relative group';
+                        
+                        const dot = document.createElement('div');
+                        dot.className = 'w-2 h-2 rounded-full bg-blue-500 hover:scale-125 transition-transform duration-200';
+                        
+                        const tooltip = document.createElement('div');
+                        tooltip.className = 'absolute bottom-full right-0 mb-2 hidden group-hover:block w-64 bg-gray-900 text-white text-xs rounded p-2 shadow-lg z-50';
+                        
+                        const daysReading = Math.ceil((endDate ? endDate : new Date() - startDate) / (1000 * 60 * 60 * 24));
+                        
+                        tooltip.innerHTML = `
+                            <div class="flex gap-3">
+                                <img src="${book.thumbnail}" alt="${book.title}" class="w-16 h-24 object-cover rounded">
+                                <div class="flex-1">
+                                    <div class="text-sm font-semibold mb-1">${book.title}</div>
+                                    <div class="text-xs text-gray-300">by ${book.authors}</div>
+                                    <div class="text-xs mt-1">Started: ${startDate.toLocaleDateString()}</div>
+                                    <div class="text-xs text-blue-400">Reading for: ${daysReading} days</div>
+                                </div>
+                            </div>
+                        `;
+                        
+                        dotContainer.appendChild(dot);
+                        dotContainer.appendChild(tooltip);
+                        bookIndicator.appendChild(dotContainer);
+                    }
+                });
                 
                 cell.appendChild(bookIndicator);
             }
@@ -598,9 +592,68 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Call this function when the page loads
     await loadProfilePicture();
+
+    // Fetch and display user archetype
+    async function loadUserArchetype() {
+        try {
+            const response = await fetch(`/api/users/${username}/archetype`);
+            if (!response.ok) {
+                throw new Error('Failed to fetch archetype');
+            }
+            const data = await response.json();
+            
+            if (data.archetype) {
+                // Update archetype name and description
+                document.getElementById('archetypeName').textContent = data.archetype.name;
+                document.getElementById('archetypeDescription').textContent = data.archetype.description;
+                
+                // Update confidence bar
+                const confidence = Math.round(data.archetype.confidence * 100);
+                document.getElementById('archetypeConfidence').style.width = `${confidence}%`;
+                document.getElementById('confidenceText').textContent = `${confidence}%`;
+                
+                // Update genre distribution
+                const genreDistribution = document.getElementById('genreDistribution');
+                genreDistribution.innerHTML = '';
+                
+                if (data.archetype.genreDistribution) {
+                    Object.entries(data.archetype.genreDistribution)
+                        .sort(([,a], [,b]) => b - a) // Sort by percentage descending
+                        .forEach(([genre, percentage]) => {
+                            const genreDiv = document.createElement('div');
+                            genreDiv.className = 'flex items-center justify-between';
+                            genreDiv.innerHTML = `
+                                <span class="text-gray-300">${genre}</span>
+                                <div class="flex items-center">
+                                    <div class="w-32 bg-gray-600 rounded-full h-2.5 mr-2">
+                                        <div class="bg-blue-600 h-2.5 rounded-full" style="width: ${percentage}%"></div>
+                                    </div>
+                                    <span class="text-sm text-gray-300">${Math.round(percentage)}%</span>
+                                </div>
+                            `;
+                            genreDistribution.appendChild(genreDiv);
+                        });
+                }
+            } else {
+                // If no archetype is found, trigger an analysis
+                const analysisResponse = await fetch(`/api/user-archetype/${username}`);
+                if (analysisResponse.ok) {
+                    // Reload the archetype after analysis
+                    await loadUserArchetype();
+                } else {
+                    throw new Error('Failed to analyze archetype');
+                }
+            }
+        } catch (error) {
+            console.error('Error loading user archetype:', error);
+            document.getElementById('archetypeName').textContent = 'Error loading archetype';
+            document.getElementById('archetypeDescription').textContent = 'Please try again later';
+        }
+    }
+
+    // Call loadUserArchetype when the page loads
+    await loadUserArchetype();
 });
-
-
 
 async function removeFromTop5(username, isbn) {
     try {

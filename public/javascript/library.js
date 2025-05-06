@@ -129,7 +129,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         sortLabel.textContent = ""; // Hide the label if viewing someone else's library
         if (sortOptions) sortOptions.style.display = 'none';
         if (saveReviewButton) saveReviewButton.style.display = 'none';
-        libraryTitle.innerHTML = `<span class="tan-title"><em>${username}'s</em> Library...</span>`;
+        libraryTitle.innerHTML = `<span class="text-white"><em>${username}'s</em> Library...</span>`;
         await fetchAndDisplayBooks(currentPage);
 
     } else {
@@ -139,7 +139,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             currentPage = 1;
             await fetchAndDisplayBooks(sortBy, currentPage);
         });
-        libraryTitle.innerHTML = `<span class="tan-title"><em>Your</em> Library...</span>`;
+        libraryTitle.innerHTML = `<span class="text-white"><em>Your</em> Library...</span>`;
 
     }
     if (isOwnLibrary) {
