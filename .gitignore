@@ -122,3 +122,8 @@ build/
 # Dependency lockfiles
 package-lock.json
 node_modules/**/package-lock.json
+node_modules/mongodb/src/operations/list_collections.ts
+/node_modules/mongodb/src/operations
+/node_modules
+/node_modules/mongodb
+/node_modules/mongodb/src
