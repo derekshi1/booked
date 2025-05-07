@@ -246,15 +246,15 @@ document.addEventListener('DOMContentLoaded', () => {
             : null;
             recommendationElement.innerHTML = `
                 <div class="relative group book-card">
-                    <a href="../html/book.html?isbn=${isbn}" class="block relative overflow-hidden rounded-lg shadow-lg hover:shadow-2xl transition duration-300 ease-in-out group">
+                    <a href="../html/book.html?isbn=${isbn}" class="block relative overflow-hidden rounded-lg shadow-md hover:shadow-lg transition duration-200 ease-in-out group">
                         <img 
                             src="${thumbnail}?zoom=1" 
                             alt="${recommendation.title}" 
-                            class="w-full h-72 object-cover"
+                            class="w-full h-full object-cover rounded-t-lg"
                         />
-                        <div class="absolute bottom-0 left-0 w-full p-4 bg-black bg-opacity-60 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-in-out">
-                            <h2 class="text-lg font-bold">${recommendation.title}</h2>
-                            <p class="text-gray-300">by ${authors} </p>
+                        <div class="absolute bottom-0 left-0 w-full p-2 bg-black bg-opacity-50 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200 ease-in-out">
+                            <h2 class="text-sm font-bold">${recommendation.title}</h2>
+                            <p class="text-gray-300 text-xs">by ${authors}</p>
                         </div>
                     </a>
                 </div>
@@ -338,7 +338,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
             recommendationElement.innerHTML = `
                 <div class="relative group">
-                    <a href="../html/book.html?isbn=${isbn}" class="block relative overflow-hidden rounded-lg shadow-lg hover:shadow-2xl transition duration-300 ease-in-out group">
+                    <a href="../html/book.html?isbn=${isbn}" class="block relative overflow-hidden rounded-lg shadow-md hover:shadow-lg transition duration-200 ease-in-out group">
                         <img 
                             src="${thumbnail}?zoom=1" 
                             alt="${recommendation.title}" 
@@ -872,7 +872,6 @@ const renderNYTimesBestSellers = (books) => {
         const bookElement = document.createElement('div');
         bookElement.classList.add('recommendation-card', 'p-4', 'bg-gray-100', 'rounded', 'shadow', 'book-card');
 
-        // Function to generate a random color for fallback
         const generateRandomColor = () => {
             const letters = '89ABCDEF';
             let color = '#';
@@ -882,7 +881,6 @@ const renderNYTimesBestSellers = (books) => {
             return color;
         };
 
-        // Fallback handler for image loading errors
         const onErrorFallback = (event) => {
             const parentElement = event.target.closest('.relative.group');
             const randomColor = generateRandomColor();
@@ -897,16 +895,16 @@ const renderNYTimesBestSellers = (books) => {
         };
 
         bookElement.innerHTML = `
-            <div class="relative group">
-                <a href="../html/book.html?isbn=${book.isbn}" class="block relative overflow-hidden rounded-lg shadow-lg hover:shadow-2xl transition duration-300 ease-in-out group">
+            <div class="relative group book-card">
+                <a href="../html/book.html?isbn=${book.isbn}" class="block relative overflow-hidden rounded-lg shadow-md hover:shadow-lg transition duration-200 ease-in-out group">
                     <img 
                         src="${book.thumbnail}" 
                         alt="${book.title}" 
-                        class="w-full h-72 object-cover"
+                        class="w-full h-full object-cover rounded-t-lg"
                     />
-                    <div class="absolute bottom-0 left-0 w-full p-4 bg-black bg-opacity-60 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-in-out">
-                        <h2 class="text-lg font-bold">${book.title}</h2>
-                        <p class="text-gray-300">by ${book.authors}</p>
+                    <div class="absolute bottom-0 left-0 w-full p-2 bg-black bg-opacity-50 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200 ease-in-out">
+                        <h2 class="text-sm font-bold">${book.title}</h2>
+                        <p class="text-gray-300 text-xs">by ${book.authors}</p>
                     </div>
                 </a>
             </div>
@@ -914,7 +912,6 @@ const renderNYTimesBestSellers = (books) => {
 
         bestSellersContainer.appendChild(bookElement);
 
-        // Add error handler for image
         const imgElement = bookElement.querySelector('img');
         imgElement.addEventListener('error', onErrorFallback);
     });
@@ -949,16 +946,16 @@ const renderNYTimesyadult = (books) => {
         };
 
         bookElement.innerHTML = `
-            <div class="relative group">
-                <a href="../html/book.html?isbn=${book.isbn}" class="block relative overflow-hidden rounded-lg shadow-lg hover:shadow-2xl transition duration-300 ease-in-out group">
+            <div class="relative group book-card">
+                <a href="../html/book.html?isbn=${book.isbn}" class="block relative overflow-hidden rounded-lg shadow-md hover:shadow-lg transition duration-200 ease-in-out group">
                     <img 
                         src="${book.thumbnail}" 
                         alt="${book.title}" 
-                        class="w-full h-72 object-cover"
+                        class="w-full h-full object-cover rounded-t-lg"
                     />
-                    <div class="absolute bottom-0 left-0 w-full p-4 bg-black bg-opacity-60 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-in-out">
-                        <h2 class="text-lg font-bold">${book.title}</h2>
-                        <p class="text-gray-300">by ${book.authors}</p>
+                    <div class="absolute bottom-0 left-0 w-full p-2 bg-black bg-opacity-50 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200 ease-in-out">
+                        <h2 class="text-sm font-bold">${book.title}</h2>
+                        <p class="text-gray-300 text-xs">by ${book.authors}</p>
                     </div>
                 </a>
             </div>
@@ -1000,16 +997,16 @@ const renderNF = (books) => {
         };
 
         bookElement.innerHTML = `
-            <div class="relative group">
-                <a href="../html/book.html?isbn=${book.isbn}" class="block relative overflow-hidden rounded-lg shadow-lg hover:shadow-2xl transition duration-300 ease-in-out group">
+            <div class="relative group book-card">
+                <a href="../html/book.html?isbn=${book.isbn}" class="block relative overflow-hidden rounded-lg shadow-md hover:shadow-lg transition duration-200 ease-in-out group">
                     <img 
                         src="${book.thumbnail}" 
                         alt="${book.title}" 
-                        class="w-full h-72 object-cover"
+                        class="w-full h-full object-cover rounded-t-lg"
                     />
-                    <div class="absolute bottom-0 left-0 w-full p-4 bg-black bg-opacity-60 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-in-out">
-                        <h2 class="text-lg font-bold">${book.title}</h2>
-                        <p class="text-gray-300">by ${book.authors}</p>
+                    <div class="absolute bottom-0 left-0 w-full p-2 bg-black bg-opacity-50 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200 ease-in-out">
+                        <h2 class="text-sm font-bold">${book.title}</h2>
+                        <p class="text-gray-300 text-xs">by ${book.authors}</p>
                     </div>
                 </a>
             </div>
