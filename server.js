@@ -59,7 +59,10 @@ const userListSchema = new mongoose.Schema({
     description: String,
     thumbnail: String,
   }],
-  likes: [String], // Array of usernames who liked the list
+  likes: [{
+    username: String,
+    timestamp: { type: Date, default: Date.now }
+  }],
   createdDate: { type: Date, default: Date.now }
 });
 
@@ -122,7 +125,10 @@ const userLibrarySchema = new mongoose.Schema({
     rating: Number,
     reviewDate: Date,
     visibility: { type: String, enum: ['private', 'friends', 'public'], default: 'public' },
-    likes: [String]
+    likes: [{
+      username: String,
+      timestamp: { type: Date, default: Date.now }
+    }]
   }],
   top5: [{
     isbn: String,
@@ -2096,79 +2102,116 @@ app.listen(port, () => {
 
 // Like a list
 app.post('/api/lists/:listId/like', async (req, res) => {
-    const { listId } = req.params;
-    const { username } = req.body;
-
     try {
+        const { listId } = req.params;
+        const { username } = req.body;
+
         const list = await UserList.findById(listId);
         if (!list) {
             return res.status(404).json({ success: false, message: 'List not found' });
         }
 
-        // Initialize likes array if it doesn't exist
-        if (!list.likes) {
-            list.likes = [];
+        // Check if user has already liked this list
+        const hasLiked = list.likes.some(like => like.username === username);
+        if (hasLiked) {
+            return res.status(400).json({ success: false, message: 'You have already liked this list' });
         }
 
-        // Check if user has already liked the list
-        if (list.likes.includes(username)) {
-            return res.status(400).json({ 
-                success: false, 
-                message: 'You have already liked this list' 
-            });
-        }
-
-        // Add the like
-        list.likes.push(username);
+        // Add like with timestamp
+        list.likes.push({
+            username: username,
+            timestamp: new Date()
+        });
         await list.save();
 
-        res.json({ 
-            success: true, 
-            likes: list.likes.length,
-            message: 'List liked successfully' 
-        });
+        res.json({ success: true, likes: list.likes });
     } catch (error) {
         console.error('Error liking list:', error);
-        res.status(500).json({ success: false, message: 'Failed to like list' });
+        res.status(500).json({ success: false, message: 'Internal server error' });
     }
 });
 
-// Unlike a list
 app.post('/api/lists/:listId/unlike', async (req, res) => {
-    const { listId } = req.params;
-    const { username } = req.body;
-
     try {
+        const { listId } = req.params;
+        const { username } = req.body;
+
         const list = await UserList.findById(listId);
         if (!list) {
             return res.status(404).json({ success: false, message: 'List not found' });
         }
 
-        // Initialize likes array if it doesn't exist
-        if (!list.likes) {
-            list.likes = [];
-        }
-
-        // Check if user has liked the list
-        if (!list.likes.includes(username)) {
-            return res.status(400).json({ 
-                success: false, 
-                message: 'You have not liked this list' 
-            });
-        }
-
-        // Remove the like
-        list.likes = list.likes.filter(user => user !== username);
+        // Remove like by username
+        list.likes = list.likes.filter(like => like.username !== username);
         await list.save();
 
-        res.json({ 
-            success: true, 
-            likes: list.likes.length,
-            message: 'List unliked successfully' 
-        });
+        res.json({ success: true, likes: list.likes });
     } catch (error) {
         console.error('Error unliking list:', error);
-        res.status(500).json({ success: false, message: 'Failed to unlike list' });
+        res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+});
+
+app.post('/api/reviews/:isbn/like', async (req, res) => {
+    try {
+        const { isbn } = req.params;
+        const { username } = req.body;
+
+        // Find the user library that contains the review for this ISBN
+        const userLibrary = await UserLibrary.findOne({ "books.isbn": isbn });
+        if (!userLibrary) {
+            return res.status(404).json({ success: false, message: 'Review not found' });
+        }
+
+        const book = userLibrary.books.find(b => b.isbn === isbn);
+        if (!book) {
+            return res.status(404).json({ success: false, message: 'Book not found' });
+        }
+
+        // Check if user has already liked this review
+        const hasLiked = book.likes.some(like => like.username === username);
+        if (hasLiked) {
+            return res.status(400).json({ success: false, message: 'You have already liked this review' });
+        }
+
+        // Add like with timestamp
+        book.likes.push({
+            username: username,
+            timestamp: new Date()
+        });
+        await userLibrary.save();
+
+        res.json({ success: true, likes: book.likes });
+    } catch (error) {
+        console.error('Error liking review:', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+});
+
+app.post('/api/reviews/:isbn/unlike', async (req, res) => {
+    try {
+        const { isbn } = req.params;
+        const { username } = req.body;
+
+        // Find the user library that contains the review for this ISBN
+        const userLibrary = await UserLibrary.findOne({ "books.isbn": isbn });
+        if (!userLibrary) {
+            return res.status(404).json({ success: false, message: 'Review not found' });
+        }
+
+        const book = userLibrary.books.find(b => b.isbn === isbn);
+        if (!book) {
+            return res.status(404).json({ success: false, message: 'Book not found' });
+        }
+
+        // Remove like by username
+        book.likes = book.likes.filter(like => like.username !== username);
+        await userLibrary.save();
+
+        res.json({ success: true, likes: book.likes });
+    } catch (error) {
+        console.error('Error unliking review:', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
     }
 });
 
@@ -2423,15 +2466,19 @@ app.get('/api/likes-notifications/:username', async (req, res) => {
         if (userLibrary && userLibrary.books) {
             userLibrary.books.forEach(book => {
                 if (book.likes && book.likes.length > 0) {
-                    // Only include recent likes (e.g., within the last 30 days)
-                    const recentLikes = book.likes.slice(-5); // Get last 5 likes
+                    // Get the most recent likes with their timestamps
+                    const recentLikes = book.likes.slice(-5).map(like => ({
+                        username: like.username,
+                        timestamp: like.timestamp
+                    }));
+                    
                     reviewLikes.push({
                         type: 'review',
                         bookTitle: book.title,
                         isbn: book.isbn,
                         thumbnail: book.thumbnail,
-                        likedBy: recentLikes,
-                        timestamp: new Date() // You might want to store timestamps for likes in your schema
+                        likedBy: recentLikes.map(like => like.username),
+                        timestamp: recentLikes[recentLikes.length - 1].timestamp
                     });
                 }
             });
@@ -2443,20 +2490,25 @@ app.get('/api/likes-notifications/:username', async (req, res) => {
 
         userLists.forEach(list => {
             if (list.likes && list.likes.length > 0) {
-                const recentLikes = list.likes.slice(-5);
+                // Get the most recent likes with their timestamps
+                const recentLikes = list.likes.slice(-5).map(like => ({
+                    username: like.username,
+                    timestamp: like.timestamp
+                }));
+                
                 listLikes.push({
                     type: 'list',
                     listName: list.listName,
                     listId: list._id,
-                    likedBy: recentLikes,
-                    timestamp: new Date() // You might want to store timestamps for likes in your schema
+                    likedBy: recentLikes.map(like => like.username),
+                    timestamp: recentLikes[recentLikes.length - 1].timestamp
                 });
             }
         });
 
-        // Combine and sort all likes
+        // Combine and sort all likes by timestamp in descending order
         const allLikes = [...reviewLikes, ...listLikes].sort((a, b) => 
-            b.timestamp - a.timestamp
+            new Date(b.timestamp) - new Date(a.timestamp)
         );
 
         res.json({ success: true, likes: allLikes });

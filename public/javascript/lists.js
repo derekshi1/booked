@@ -229,7 +229,7 @@ function createListElement(list, isFriendsList) {
     }
 
     const username = localStorage.getItem('username');
-    const isLiked = list.likes?.includes(username);
+    const isLiked = list.likes?.some(like => like.username === username);
 
     listDiv.innerHTML = `
         <div>
@@ -805,9 +805,9 @@ function showListModal(listId) {
                 <div class="flex items-center space-x-4">
                     <div class="flex items-center">
                         <button onclick="toggleListLike(event, '${list._id}')" 
-                                class="flex items-center space-x-1 transition-colors duration-200 hover:text-red-500 ${list.likes?.includes(localStorage.getItem('username')) ? 'text-red-500' : 'text-gray-400'}">
+                                class="flex items-center space-x-1 transition-colors duration-200 hover:text-red-500 ${list.likes?.some(like => like.username === localStorage.getItem('username')) ? 'text-red-500' : 'text-gray-400'}">
                             <svg class="w-6 h-6" 
-                                 fill="${list.likes?.includes(localStorage.getItem('username')) ? 'currentColor' : 'none'}" 
+                                 fill="${list.likes?.some(like => like.username === localStorage.getItem('username')) ? 'currentColor' : 'none'}" 
                                  stroke="currentColor" 
                                  viewBox="0 0 24 24">
                                 <path stroke-linecap="round" 
@@ -857,7 +857,8 @@ async function toggleListLike(event, listId) {
     
     if (!list) return;
 
-    const isLiked = list.likes?.includes(username);
+    // Check if user has liked the list by looking for their username in the likes array
+    const isLiked = list.likes?.some(like => like.username === username);
     const endpoint = `/api/lists/${listId}/${isLiked ? 'unlike' : 'like'}`;
 
     try {
@@ -873,14 +874,18 @@ async function toggleListLike(event, listId) {
         if (data.success) {
             // Update the likes array in the list object
             if (isLiked) {
-                list.likes = list.likes.filter(user => user !== username);
+                list.likes = list.likes.filter(like => like.username !== username);
             } else {
                 if (!list.likes) list.likes = [];
-                list.likes.push(username);
+                list.likes.push({
+                    username: username,
+                    timestamp: new Date()
+                });
             }
             
-            // Only call loadUserLists() which internally calls renderLists()
+            // Reload the lists to update the UI
             await loadUserLists();
+            await loadFriendsLists();
             
             // Show success message
             showToast(isLiked ? 'Removed like from list' : 'Liked list', 'success');

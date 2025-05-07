@@ -608,9 +608,11 @@ async function toggleLikeReview(reviewId, likeButton) {
     try {
         const username = localStorage.getItem('username');
         const isLiked = likeButton.classList.contains('text-red-500'); // Check if already liked
+        const isbn = new URLSearchParams(window.location.search).get('isbn'); // Get ISBN from URL
+
         const endpoint = isLiked 
-            ? `/api/library/review/${reviewId}/unlike` 
-            : `/api/library/review/${reviewId}/like`;
+            ? `/api/reviews/${isbn}/unlike` 
+            : `/api/reviews/${isbn}/like`;
 
         const response = await fetch(endpoint, {
             method: 'POST',
@@ -620,9 +622,13 @@ async function toggleLikeReview(reviewId, likeButton) {
 
         if (response.ok) {
             const data = await response.json();
-            const likeCountElement = likeButton.querySelector('.like-count');
-            likeCountElement.textContent = data.likes;
-            likeButton.classList.toggle('text-red-500'); // Toggle heart color
+            if (data.success) {
+                const likeCountElement = likeButton.querySelector('.like-count');
+                likeCountElement.textContent = data.likes.length || 0;
+                likeButton.classList.toggle('text-red-500'); // Toggle heart color
+            } else {
+                console.error('Failed to toggle like:', data.message);
+            }
         } else {
             console.error('Failed to toggle like:', response.statusText);
         }

@@ -367,7 +367,7 @@ body {
 
 /* On hover, scale the book card up */
 .book-card:hover {
-    transform: scale(1.15); /* Slightly larger when hovered */
+    transform: scale(1.05); /* Reduced from 1.15 to 1.05 for a more subtle effect */
     z-index: 1; /* Ensure the card stays above others when hovered */
 }
 
@@ -792,7 +792,7 @@ body {
 
 /* On hover, scale the book card up */
 .book-card:hover {
-    transform: scale(1.15); /* Slightly larger when hovered */
+    transform: scale(1.05); /* Reduced from 1.15 to 1.05 for a more subtle effect */
     z-index: 1; /* Ensure the card stays above others when hovered */
 }
 
