@@ -1,13 +1,16 @@
 document.addEventListener('DOMContentLoaded', async () => {
     const urlParams = new URLSearchParams(window.location.search);
-    const username = urlParams.get('username');
+    const username = urlParams.get('username') || localStorage.getItem('username');
     const friendsTitle = document.getElementById('friendsTitle');
     friendsTitle.innerHTML = `Friends`;
-    const friendsListContainer = document.getElementById('friendsListContainer');
+    const friendsListContainer = document.getElementById('friendsList');
     const friendsButton = document.getElementById("friendsSection");
     const reviewsSection = document.getElementById("reviewsSection");
     const currentlyReadingButton = document.getElementById('currentlyReadingSection');
     const clubSection = document.getElementById('clubSection');
+    const suggestedFriendsContainer = document.getElementById('suggestedFriendsList');
+    let friendsSkip = 0;
+    const FRIENDS_LIMIT = 5;
 
     // Add event listeners for navigation buttons
     friendsButton.addEventListener("click", function() {
@@ -33,79 +36,132 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (data.success) {
             friendsListContainer.innerHTML = '';
             const titleElement = document.createElement('h2');
-            titleElement.classList.add('text-2xl', 'font-bold', 'mb-4', 'text-white'); // Added 'text-white' class
-            titleElement.innerHTML = `<em>${username}</em> Friends`; // Use innerHTML with <em> to italicize the username
+            titleElement.classList.add('text-2xl', 'font-bold', 'mb-4', 'text-white');
             friendsListContainer.appendChild(titleElement);
 
-            for (const friend of data.friends) {
-                // Fetch additional data for each friend
-                const [libraryResponse, friendsCountResponse] = await Promise.all([
-                    fetch(`/api/library/${friend.username}`),
-                    fetch(`/api/number-of-friends/${friend.username}`)
-                ]);
+            // Function to render friends
+            const renderFriends = (friends) => {
+                friends.forEach(friend => {
+                    const friendCard = document.createElement('div');
+                    friendCard.classList.add('bg-gray-800', 'p-4', 'rounded-lg', 'shadow-md', 'flex', 'justify-between', 'items-center', 'mb-4', 'transform', 'transition-all', 'duration-200', 'hover:scale-[1.02]');
+                    friendCard.style.width = '600px';
 
-                const libraryData = await libraryResponse.json();
-                const friendsCountData = await friendsCountResponse.json();
-
-                // Build the friend card with the format you provided
-                const friendCard = document.createElement('div');
-                friendCard.classList.add('bg-gray-800', 'p-4', 'rounded-lg', 'shadow-md', 'flex', 'justify-between', 'items-center', 'mb-2');
-                friendCard.style.width = '600px'; // Set a specific width
-                friendCard.style.height = '100px'; // Set a specific height
-
-                friendCard.innerHTML = `
+                    friendCard.innerHTML = `
                         <div class="flex items-center space-x-4">
                             <div class="profile-pic">
-                                <img src="../profile.png" alt="Profile Picture" class="w-8 h-8 rounded-full">
+                                <img src="../profile.png" alt="Profile Picture" class="w-12 h-12 rounded-full border-2 border-green-500">
                             </div>
                             <div class="username-container">
-                                <a href="../html/profile.html?username=${friend.username}" class="text-white text-lg font-semibold">${friend.username}</a>
+                                <a href="../html/profile.html?username=${friend.username}" class="text-white text-lg font-semibold hover:text-green-400 transition-colors">${friend.username}</a>
                             </div>
                         </div>
-                    <div class="flex items-center space-x-8">
-                        <button class="nudge-button px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors tooltip"
-                                data-username="${friend.username}"
-                                data-tooltip="Send a notification that nudges a friend to keep reading!">
-                            <span class="mr-1">👉</span> Nudge
-                        </button>
+                        <div class="flex items-center space-x-4">
+                            <button class="nudge-button group relative px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-all duration-200 transform hover:-translate-y-0.5 hover:shadow-lg"
+                                    data-username="${friend.username}"
+                                    data-tooltip="Send a friendly reminder to keep reading!">
+                                <div class="flex items-center space-x-2">
+                                    <svg class="w-5 h-5 transform group-hover:rotate-12 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                                    </svg>
+                                    <span>Nudge</span>
+                                </div>
+                            </button>
                         </div>
                     `;
-                friendsListContainer.appendChild(friendCard);
+                    friendsListContainer.appendChild(friendCard);
 
-                // Add click handler for nudge button
-                const nudgeButton = friendCard.querySelector('.nudge-button');
-                if (nudgeButton) {
-                    nudgeButton.addEventListener('click', async () => {
-                        const friendUsername = friend.username;
-                        try {
-                            const response = await fetch('/api/nudge-friend', {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json'
-                                },
-                                body: JSON.stringify({
-                                    fromUsername: username,
-                                    toUsername: friendUsername
-                                })
-                            });
+                    // Add click handler for nudge button
+                    const nudgeButton = friendCard.querySelector('.nudge-button');
+                    if (nudgeButton) {
+                        nudgeButton.addEventListener('click', async () => {
+                            const friendUsername = friend.username;
+                            try {
+                                const response = await fetch('/api/nudge-friend', {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json'
+                                    },
+                                    body: JSON.stringify({
+                                        fromUsername: username,
+                                        toUsername: friendUsername
+                                    })
+                                });
 
-                            const data = await response.json();
-                            if (data.success) {
-                                // Disable button temporarily
-                                nudgeButton.disabled = true;
-                                nudgeButton.classList.add('bg-gray-400');
-                                nudgeButton.textContent = 'Nudged!';
-                                setTimeout(() => {
-                                    nudgeButton.disabled = false;
-                                    nudgeButton.classList.remove('bg-gray-400');
-                                    nudgeButton.innerHTML = '<span class="mr-1">👉</span> Nudge';
-                                }, 3000);
+                                const data = await response.json();
+                                if (data.success) {
+                                    // Disable button temporarily with animation
+                                    nudgeButton.disabled = true;
+                                    nudgeButton.classList.add('bg-green-600', 'scale-95');
+                                    nudgeButton.innerHTML = `
+                                        <div class="flex items-center space-x-2">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                            </svg>
+                                            <span>Nudged!</span>
+                                        </div>
+                                    `;
+                                    setTimeout(() => {
+                                        nudgeButton.disabled = false;
+                                        nudgeButton.classList.remove('bg-green-600', 'scale-95');
+                                        nudgeButton.innerHTML = `
+                                            <div class="flex items-center space-x-2">
+                                                <svg class="w-5 h-5 transform group-hover:rotate-12 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                                                </svg>
+                                                <span>Nudge</span>
+                                            </div>
+                                        `;
+                                    }, 2000);
+                                }
+                            } catch (error) {
+                                console.error('Error sending nudge:', error);
                             }
-                        } catch (error) {
-                            console.error('Error sending nudge:', error);
-                        }
-                    });
-                }
+                        });
+                    }
+                });
+            };
+
+            // Initial render of first 5 friends
+            renderFriends(data.friends.slice(0, FRIENDS_LIMIT));
+
+            // Add "Show More" button if there are more friends
+            if (data.friends.length > FRIENDS_LIMIT) {
+                const showMoreButton = document.createElement('button');
+                showMoreButton.classList.add(
+                    'w-full',
+                    'mt-4',
+                    'px-4',
+                    'py-2',
+                    'bg-gray-700',
+                    'text-white',
+                    'rounded-md',
+                    'hover:bg-gray-600',
+                    'transition-colors',
+                    'duration-200',
+                    'flex',
+                    'items-center',
+                    'justify-center',
+                    'space-x-2'
+                );
+                showMoreButton.innerHTML = `
+                    <span>Show More Friends</span>
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                    </svg>
+                `;
+
+                showMoreButton.addEventListener('click', () => {
+                    friendsSkip += FRIENDS_LIMIT;
+                    const nextFriends = data.friends.slice(friendsSkip, friendsSkip + FRIENDS_LIMIT);
+                    renderFriends(nextFriends);
+
+                    // Remove button if no more friends to show
+                    if (friendsSkip + FRIENDS_LIMIT >= data.friends.length) {
+                        showMoreButton.remove();
+                    }
+                });
+
+                friendsListContainer.appendChild(showMoreButton);
             }
         } else {
             console.error('Failed to fetch friends:', data.message);
@@ -116,7 +172,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         friendsListContainer.innerHTML = '<p class="text-white">Error loading friends.</p>';
     }
 
-    // Add this CSS to the head of the document
+    // Add tooltip styles
     const style = document.createElement('style');
     style.textContent = `
         .tooltip {
@@ -135,10 +191,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             border-radius: 4px;
             font-size: 14px;
             line-height: 1.4;
-            white-space: normal;
+            white-space: nowrap;
             z-index: 1000;
-            width: max-content;
-            max-width: 250px;
             margin-bottom: 8px;
             text-align: center;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
@@ -167,10 +221,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             const response = await fetch(`/api/suggested-friends/${username}?limit=${SUGGESTIONS_LIMIT}&skip=${suggestionsSkip}`);
             console.log('Suggested friends API response status:', response.status);
             const data = await response.json();
-            console.log('Suggested friends API response data:', data);
+            
+            // Add detailed logging of the response data
+            console.log('=== Suggested Friends API Response ===');
+            console.log('Success:', data.success);
+            console.log('Number of suggestions:', data.suggestions ? data.suggestions.length : 0);
+            console.log('Has more:', data.hasMore);
+            console.log('Raw suggestions data:', JSON.stringify(data.suggestions, null, 2));
+            console.log('===================================');
 
-            const suggestedFriendsContainer = document.getElementById('suggestedFriendsContainer');
-            if (!suggestedFriendsContainer) {
+            const suggestedFriendsList = document.getElementById('suggestedFriendsList');
+            if (!suggestedFriendsList) {
                 console.error('Suggested friends container not found');
                 return;
             }
