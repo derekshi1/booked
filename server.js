@@ -905,73 +905,68 @@ app.post('/api/library/top5/remove', async (req, res) => {
 
 // Save review for a book in user's library
 app.post('/api/library/review', async (req, res) => {
-  const { username, isbn, review, rating, visibility = 'public' } = req.body;
+    const { username, isbn, review, rating, visibility = 'public' } = req.body;
 
-  try {
-    const userLibrary = await UserLibrary.findOne({ username });
-    if (!userLibrary) {
-      return res.status(404).json({ success: false, message: 'No library found for user' });
-    }
-
-    const book = userLibrary.books.find(book => book.isbn === isbn);
-    if (!book) {
-      return res.status(404).json({ success: false, message: 'Book not found in library' });
-    }
-
-    // Save the review, rating, and visibility for the book in the user's library
-    book.review = review;
-    book.rating = rating;
-    book.reviewDate = new Date();
-    book.visibility = visibility; // Add the visibility to the book
-
-    await userLibrary.save();
-
-    // Log review as an activity, but first check for duplicates
-    const user = await User.findOne({ username });
-    if (user) {
-      // Find all "reviewed" activities for this user and book
-      const reviewActivities = await Activity.find({
-        userId: user._id,
-        action: 'reviewed',
-        isbn: book.isbn,
-      }).sort({ timestamp: -1 }); // Sort by timestamp (newest first)
-
-      if (reviewActivities.length > 0) {
-        // Keep the most recent activity and remove the older duplicates
-        const [mostRecentActivity, ...duplicateActivities] = reviewActivities;
-
-        if (duplicateActivities.length > 0) {
-          await Activity.deleteMany({ _id: { $in: duplicateActivities.map(activity => activity._id) } });
-          console.log(`Removed ${duplicateActivities.length} duplicate activities for user ${username} and book ${isbn}`);
+    try {
+        // Find or create user library
+        let userLibrary = await UserLibrary.findOne({ username });
+        if (!userLibrary) {
+            return res.status(404).json({ success: false, message: 'No library found for user' });
         }
 
-        // Update the most recent activity with the new review details
-        mostRecentActivity.timestamp = new Date(); // Update timestamp to the latest review time
-        mostRecentActivity.review = review; // Ensure review text is updated
-        mostRecentActivity.rating = rating; // Update rating if applicable
-        mostRecentActivity.visibility = visibility; // Update visibility if changed
-        await mostRecentActivity.save();
-      } else {
-        // If no existing activity, create a new one
-        const newActivity = new Activity({
-          userId: user._id,
-          action: 'reviewed',
-          bookTitle: book.title,
-          isbn: book.isbn,
-          thumbnail: book.thumbnail,
-          timestamp: new Date(),
-          visibility,
-          isRead: false,
-        });
-        await newActivity.save();
-      }
-    }
+        // Find the book in user's library
+        const book = userLibrary.books.find(book => book.isbn === isbn);
+        if (!book) {
+            return res.status(404).json({ success: false, message: 'Book not found in library' });
+        }
 
-    res.status(200).json({ success: true, message: 'Review saved successfully' });
-  } catch (error) {
-    console.error('Error saving review:', error);
-    res.status(500).json({ success: false, message: 'Internal server error' });
-  }
+        // Update the review in the user's library (old schema)
+        book.review = review;
+        book.rating = rating;
+        book.reviewDate = new Date();
+        book.visibility = visibility;
+
+        // Save to user library
+        await userLibrary.save();
+
+        // Create or update the review in the Review collection (new schema)
+        const reviewData = {
+            username,
+            isbn,
+            bookTitle: book.title,
+            review,
+            rating,
+            visibility,
+            reviewDate: new Date()
+        };
+
+        await Review.findOneAndUpdate(
+            { username, isbn },
+            reviewData,
+            { upsert: true, new: true }
+        );
+
+        // Log review as an activity
+        const user = await User.findOne({ username });
+        if (user) {
+            const newActivity = new Activity({
+                userId: user._id,
+                action: 'reviewed',
+                bookTitle: book.title,
+                isbn: book.isbn,
+                thumbnail: book.thumbnail,
+                timestamp: new Date(),
+                visibility,
+                isRead: false
+            });
+            await newActivity.save();
+        }
+
+        res.status(200).json({ success: true, message: 'Review saved successfully' });
+    } catch (error) {
+        console.error('Error saving review:', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
+    }
 });
 
 app.get('/api/library/:username/ratings', async (req, res) => {
@@ -1265,71 +1260,65 @@ app.get('/api/reviews/books/:isbn', async (req, res) => {
   const { loggedInUsername } = req.query;
 
   try {
-    // Find all user libraries that contain the book with the specified ISBN
-    const userLibraries = await UserLibrary.find({ "books.isbn": isbn });
+    // Find all reviews for this book
+    const reviews = await Review.find({ isbn });
 
-    if (!userLibraries || userLibraries.length === 0) {
-      return res.status(404).json({ success: false, message: 'No reviews found for this book' });
+    if (!reviews || reviews.length === 0) {
+        return res.status(404).json({ success: false, message: 'No reviews found for this book' });
     }
 
-    let reviews = [];
+    const processedReviews = await Promise.all(reviews.map(async (review) => {
+        // Check if the logged-in user has liked this review
+        const isLikedByUser = review.likes.some(like => like.username === loggedInUsername);
 
-    for (const library of userLibraries) {
-      const book = library.books.find(book => book.isbn === isbn);
-
-      if (book && book.review) {
-        const isLikedByUser = book.likes.includes(loggedInUsername);
-
-        // Always include the loggedInUsername's reviews, regardless of visibility
-        if (library.username === loggedInUsername) {
-          reviews.push({
-            _id: book._id, 
-            username: library.username,
-            review: book.review,
-            rating: book.rating,
-            reviewDate: book.reviewDate,
-            visibility: book.visibility, 
-            likes: book.likes.length || 0,
-            isLikedByUser,
-          });
-        } else {
-          // Check visibility and include the review based on visibility for other users
-          if (book.visibility === 'public') {
-            reviews.push({
-              _id: book._id, 
-              username: library.username,
-              review: book.review,
-              rating: book.rating,
-              reviewDate: book.reviewDate,
-              visibility: book.visibility,
-              likes: book.likes.length || 0,
-              isLikedByUser,
-            });
-          } else if (book.visibility === 'friends') {
-            const isFriend = await checkFriendship(library.username, loggedInUsername);
+        // Check visibility
+        if (review.username === loggedInUsername) {
+            // User can always see their own reviews
+            return {
+                _id: review._id,
+                username: review.username,
+                review: review.review,
+                rating: review.rating,
+                reviewDate: review.reviewDate,
+                visibility: review.visibility,
+                likes: review.likes.length,
+                isLikedByUser
+            };
+        } else if (review.visibility === 'public') {
+            // Public reviews are visible to everyone
+            return {
+                _id: review._id,
+                username: review.username,
+                review: review.review,
+                rating: review.rating,
+                reviewDate: review.reviewDate,
+                visibility: review.visibility,
+                likes: review.likes.length,
+                isLikedByUser
+            };
+        } else if (review.visibility === 'friends') {
+            // Check if users are friends
+            const isFriend = await checkFriendship(review.username, loggedInUsername);
             if (isFriend) {
-              reviews.push({
-                _id: book._id, 
-                username: library.username,
-                review: book.review,
-                rating: book.rating,
-                reviewDate: book.reviewDate,
-                visibility: book.visibility,
-                likes: book.likes.length || 0,
-                isLikedByUser,
-              });
+                return {
+                    _id: review._id,
+                    username: review.username,
+                    review: review.review,
+                    rating: review.rating,
+                    reviewDate: review.reviewDate,
+                    visibility: review.visibility,
+                    likes: review.likes.length,
+                    isLikedByUser
+                };
             }
-          }
         }
-      }
-    }
+        return null;
+    }));
 
-    // Return reviews
-    if (reviews.length > 0) {
-      res.status(200).json({ success: true, reviews });
-    } else {
-      res.status(200).json({ success: true, reviews: [], message: 'No reviews available for this book' });
-    }
+    // Filter out null values (reviews that shouldn't be visible)
+    const visibleReviews = processedReviews.filter(review => review !== null);
+
+    res.status(200).json({ success: true, reviews: visibleReviews });
   } catch (error) {
     console.error('Error fetching reviews for book:', error);
     res.status(500).json({ success: false, message: 'Internal server error' });
@@ -2156,34 +2145,93 @@ app.post('/api/reviews/:isbn/like', async (req, res) => {
     try {
         const { isbn } = req.params;
         const { username } = req.body;
+        
+        console.log(`[LIKE REVIEW] Attempting to toggle like for ISBN: ${isbn} by user: ${username}`);
 
-        // Find the user library that contains the review for this ISBN
-        const userLibrary = await UserLibrary.findOne({ "books.isbn": isbn });
-        if (!userLibrary) {
+        // Find the review by ISBN
+        let review = await Review.findOne({ isbn });
+        console.log('[LIKE REVIEW] Query result from Review collection:', {
+            found: !!review,
+            query: { isbn },
+            review: review ? {
+                username: review.username,
+                isbn: review.isbn,
+                likes: review.likes
+            } : null
+        });
+        
+        // If not found in Review collection, check the old schema
+        if (!review) {
+            console.log(`[LIKE REVIEW] Review not found in new schema, checking old schema`);
+            const userLibrary = await UserLibrary.findOne({
+                "books.isbn": isbn
+            });
+
+            if (userLibrary) {
+                const book = userLibrary.books.find(b => b.isbn === isbn);
+                if (book && (book.review || book.rating)) {
+                    // Create new review in Review collection
+                    review = new Review({
+                        username: userLibrary.username,
+                        isbn: book.isbn,
+                        bookTitle: book.title,
+                        review: book.review,
+                        rating: book.rating,
+                        reviewDate: book.reviewDate || new Date(),
+                        visibility: book.visibility || 'public',
+                        likes: book.likes || []
+                    });
+                    await review.save();
+                    console.log(`[LIKE REVIEW] Created new review from old schema for ${book.title}`);
+                }
+            }
+        }
+
+        if (!review) {
+            console.log(`[LIKE REVIEW] No review found for ISBN: ${isbn}`);
             return res.status(404).json({ success: false, message: 'Review not found' });
         }
 
-        const book = userLibrary.books.find(b => b.isbn === isbn);
-        if (!book) {
-            return res.status(404).json({ success: false, message: 'Book not found' });
-        }
-
         // Check if user has already liked this review
-        const hasLiked = book.likes.some(like => like.username === username);
-        if (hasLiked) {
-            return res.status(400).json({ success: false, message: 'You have already liked this review' });
+        const existingLikeIndex = review.likes.findIndex(like => like.username === username);
+        
+        if (existingLikeIndex !== -1) {
+            // User has already liked the review, so unlike it
+            review.likes.splice(existingLikeIndex, 1);
+            console.log(`[LIKE REVIEW] Removed like by user ${username}`);
+        } else {
+            // User hasn't liked the review, so add a like
+            review.likes.push({
+                username: username,
+                timestamp: new Date()
+            });
+            console.log(`[LIKE REVIEW] Added like by user ${username}`);
         }
 
-        // Add like with timestamp
-        book.likes.push({
-            username: username,
-            timestamp: new Date()
-        });
-        await userLibrary.save();
+        await review.save();
 
-        res.json({ success: true, likes: book.likes });
+        // Also update the like in the old schema if it exists
+        const oldReview = await UserLibrary.findOne({
+            "books.isbn": isbn,
+            username: review.username
+        });
+        if (oldReview) {
+            const book = oldReview.books.find(b => b.isbn === isbn);
+            if (book) {
+                book.likes = review.likes;
+                await oldReview.save();
+            }
+        }
+
+        console.log(`[LIKE REVIEW] Successfully toggled like. New likes count: ${review.likes.length}`);
+
+        res.json({ 
+            success: true, 
+            likes: review.likes,
+            isLiked: existingLikeIndex === -1 // true if we just liked it, false if we just unliked it
+        });
     } catch (error) {
-        console.error('Error liking review:', error);
+        console.error('[LIKE REVIEW] Error toggling like:', error);
         res.status(500).json({ success: false, message: 'Internal server error' });
     }
 });
@@ -2193,24 +2241,68 @@ app.post('/api/reviews/:isbn/unlike', async (req, res) => {
         const { isbn } = req.params;
         const { username } = req.body;
 
-        // Find the user library that contains the review for this ISBN
-        const userLibrary = await UserLibrary.findOne({ "books.isbn": isbn });
-        if (!userLibrary) {
+        console.log(`[UNLIKE REVIEW] Attempting to unlike review for ISBN: ${isbn} by user: ${username}`);
+
+        // First check the new Review collection
+        let review = await Review.findOne({ isbn, username: { $ne: username } });
+        
+        // If not found in Review collection, check the old schema
+        if (!review) {
+            console.log(`[UNLIKE REVIEW] Review not found in new schema, checking old schema`);
+            const userLibrary = await UserLibrary.findOne({
+                "books.isbn": isbn,
+                username: { $ne: username }
+            });
+
+            if (userLibrary) {
+                const book = userLibrary.books.find(b => b.isbn === isbn);
+                if (book && (book.review || book.rating)) {
+                    // Create new review in Review collection
+                    review = new Review({
+                        username: userLibrary.username,
+                        isbn: book.isbn,
+                        bookTitle: book.title,
+                        review: book.review,
+                        rating: book.rating,
+                        reviewDate: book.reviewDate || new Date(),
+                        visibility: book.visibility || 'public',
+                        likes: book.likes || []
+                    });
+                    await review.save();
+                    console.log(`[UNLIKE REVIEW] Created new review from old schema for ${book.title}`);
+                }
+            }
+        }
+
+        if (!review) {
+            console.log(`[UNLIKE REVIEW] No review found for ISBN: ${isbn}`);
             return res.status(404).json({ success: false, message: 'Review not found' });
         }
 
-        const book = userLibrary.books.find(b => b.isbn === isbn);
-        if (!book) {
-            return res.status(404).json({ success: false, message: 'Book not found' });
-        }
+        console.log(`[UNLIKE REVIEW] Found review by user: ${review.username}`);
 
         // Remove like by username
-        book.likes = book.likes.filter(like => like.username !== username);
-        await userLibrary.save();
+        review.likes = review.likes.filter(like => like.username !== username);
+        await review.save();
 
-        res.json({ success: true, likes: book.likes });
+        // Also update the like in the old schema if it exists
+        const oldReview = await UserLibrary.findOne({
+            "books.isbn": isbn,
+            username: review.username
+        });
+        if (oldReview) {
+            const book = oldReview.books.find(b => b.isbn === isbn);
+            if (book) {
+                book.likes = review.likes;
+                await oldReview.save();
+            }
+        }
+
+        console.log(`[UNLIKE REVIEW] Successfully removed like. New likes count: ${review.likes.length}`);
+
+        res.json({ success: true, likes: review.likes });
     } catch (error) {
-        console.error('Error unliking review:', error);
+        console.error('[UNLIKE REVIEW] Error unliking review:', error);
         res.status(500).json({ success: false, message: 'Internal server error' });
     }
 });
@@ -2621,14 +2713,26 @@ app.get('/api/suggested-friends/:username', async (req, res) => {
     const { username } = req.params;
     const { limit = 5, skip = 0 } = req.query;
 
+    console.log('\n=== Starting Friend Suggestions Process ===');
+    console.log(`Looking for suggestions for user: ${username}`);
+    console.log(`Limit: ${limit}, Skip: ${skip}`);
+
     try {
         const user = await User.findOne({ username }).populate('friends');
         if (!user) {
+            console.log('❌ User not found');
             return res.status(404).json({ success: false, message: 'User not found' });
         }
 
+        console.log('\n=== Current User Info ===');
+        console.log(`Username: ${user.username}`);
+        console.log(`Number of current friends: ${user.friends.length}`);
+        console.log('Current friends:', user.friends.map(f => f.username));
+
         // Get user's current friends' IDs
         const userFriendIds = user.friends.map(friend => friend._id);
+        console.log('\n=== User Friend IDs ===');
+        console.log('User friend IDs:', userFriendIds.map(id => id.toString()));
 
         // Get all users except the current user and their friends
         const allOtherUsers = await User.find({
@@ -2637,32 +2741,60 @@ app.get('/api/suggested-friends/:username', async (req, res) => {
             }
         }).populate('friends');
 
+        console.log('\n=== Potential Friends Found ===');
+        console.log(`Total potential friends: ${allOtherUsers.length}`);
+        console.log('Potential friend usernames:', allOtherUsers.map(u => u.username));
+
         // Calculate mutual friends for each potential friend
+        console.log('\n=== Calculating Mutual Friends ===');
         const suggestedFriends = await Promise.all(allOtherUsers.map(async (potentialFriend) => {
-            const mutualFriends = potentialFriend.friends.filter(friend => 
-                userFriendIds.some(userFriend => userFriend.equals(friend))
-            );
+            console.log(`\nProcessing ${potentialFriend.username}:`);
+            console.log(`- Their friend IDs:`, potentialFriend.friends.map(f => f._id.toString()));
+            
+            // Debug the mutual friends calculation
+            const mutualFriends = potentialFriend.friends.filter(friend => {
+                const isMutual = userFriendIds.some(userFriend => {
+                    const isMatch = userFriend.toString() === friend._id.toString();
+                    if (isMatch) {
+                        console.log(`Found mutual friend: ${friend.username}`);
+                    }
+                    return isMatch;
+                });
+                return isMutual;
+            });
+
+            console.log(`- Total friends: ${potentialFriend.friends.length}`);
+            console.log(`- Mutual friends: ${mutualFriends.length}`);
+            if (mutualFriends.length > 0) {
+                console.log(`- Mutual friend names: ${mutualFriends.map(f => f.username).join(', ')}`);
+            }
 
             return {
                 username: potentialFriend.username,
                 mutualFriendsCount: mutualFriends.length,
-                mutualFriends: mutualFriends.map(friend => friend.username).slice(0, 3) // Show up to 3 mutual friends
+                mutualFriends: mutualFriends.map(friend => friend.username).slice(0, 3)
             };
         }));
 
         // Sort by number of mutual friends and get the requested slice
+        console.log('\n=== Sorting and Filtering Suggestions ===');
         const sortedSuggestions = suggestedFriends
-            .filter(friend => friend.mutualFriendsCount > 0) // Only show suggestions with mutual friends
+            .filter(friend => friend.mutualFriendsCount > 0)
             .sort((a, b) => b.mutualFriendsCount - a.mutualFriendsCount)
             .slice(skip, skip + parseInt(limit));
 
+        console.log(`\nFinal suggestions count: ${sortedSuggestions.length}`);
+        console.log('Final suggestions:', sortedSuggestions);
+
+        console.log('\n=== Sending Response ===');
         res.json({
             success: true,
             suggestions: sortedSuggestions,
             hasMore: sortedSuggestions.length === parseInt(limit)
         });
+        console.log('=== Friend Suggestions Process Complete ===\n');
     } catch (error) {
-        console.error('Error getting suggested friends:', error);
+        console.error('\n❌ Error in friend suggestions process:', error);
         res.status(500).json({ success: false, message: 'Internal server error' });
     }
 });
@@ -3000,6 +3132,126 @@ app.get('/api/users/:username/archetype', async (req, res) => {
         res.status(500).json({ 
             success: false, 
             message: 'Internal server error' 
+        });
+    }
+});
+
+// Temporary debug endpoint to view likes data
+app.get('/api/debug/likes/:username', async (req, res) => {
+    try {
+        const { username } = req.params;
+        console.log(`[DEBUG] Fetching likes data for user: ${username}`);
+
+        const userLibrary = await UserLibrary.findOne({ username });
+        if (!userLibrary) {
+            console.log(`[DEBUG] No library found for user: ${username}`);
+            return res.status(404).json({ success: false, message: 'User library not found' });
+        }
+
+        // Get all books with likes
+        const booksWithLikes = userLibrary.books.filter(book => book.likes && book.likes.length > 0);
+        console.log(`[DEBUG] Found ${booksWithLikes.length} books with likes`);
+
+        // Format the response
+        const likesData = booksWithLikes.map(book => ({
+            isbn: book.isbn,
+            title: book.title,
+            likes: book.likes,
+            totalLikes: book.likes.length
+        }));
+
+        res.json({
+            success: true,
+            username,
+            totalBooksWithLikes: booksWithLikes.length,
+            likesData
+        });
+    } catch (error) {
+        console.error('[DEBUG] Error fetching likes data:', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+});
+
+// Add Review Schema
+const reviewSchema = new mongoose.Schema({
+  username: { type: String, required: true },
+  isbn: { type: String, required: true },
+  bookTitle: { type: String, required: true },
+  review: { type: String },
+  rating: { type: Number },
+  reviewDate: { type: Date, default: Date.now },
+  visibility: { type: String, enum: ['private', 'friends', 'public'], default: 'public' },
+  likes: [{
+    username: String,
+    timestamp: { type: Date, default: Date.now }
+  }]
+});
+
+// Create compound index for username and isbn to ensure uniqueness
+reviewSchema.index({ username: 1, isbn: 1 }, { unique: true });
+
+// Create Review model
+const Review = mongoose.model('Review', reviewSchema);
+
+// Add migration endpoint
+app.post('/api/migrate-reviews', async (req, res) => {
+    try {
+        console.log('[MIGRATION] Starting review migration');
+        
+        // Get all user libraries
+        const userLibraries = await UserLibrary.find({});
+        console.log(`[MIGRATION] Found ${userLibraries.length} user libraries to process`);
+
+        let migratedCount = 0;
+        let errorCount = 0;
+
+        for (const userLibrary of userLibraries) {
+            for (const book of userLibrary.books) {
+                if (book.review || book.rating) {
+                    try {
+                        // Check if review already exists
+                        const existingReview = await Review.findOne({
+                            username: userLibrary.username,
+                            isbn: book.isbn
+                        });
+
+                        if (!existingReview) {
+                            // Create new review
+                            const newReview = new Review({
+                                username: userLibrary.username,
+                                isbn: book.isbn,
+                                bookTitle: book.title,
+                                review: book.review,
+                                rating: book.rating,
+                                reviewDate: book.reviewDate || new Date(),
+                                visibility: book.visibility || 'public',
+                                likes: book.likes || []
+                            });
+
+                            await newReview.save();
+                            migratedCount++;
+                            console.log(`[MIGRATION] Migrated review for ${userLibrary.username}'s book ${book.title}`);
+                        }
+                    } catch (error) {
+                        console.error(`[MIGRATION] Error migrating review for ${userLibrary.username}'s book ${book.title}:`, error);
+                        errorCount++;
+                    }
+                }
+            }
+        }
+
+        console.log(`[MIGRATION] Completed. Migrated ${migratedCount} reviews with ${errorCount} errors`);
+        res.json({
+            success: true,
+            message: `Successfully migrated ${migratedCount} reviews`,
+            errors: errorCount
+        });
+    } catch (error) {
+        console.error('[MIGRATION] Error during migration:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error during migration',
+            error: error.message
         });
     }
 });

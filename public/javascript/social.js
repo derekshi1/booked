@@ -161,23 +161,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             const isRelevantAction = activity.action.includes('reviewed') || activity.action.includes('added to library');
             
             if (!seenActivities.has(activityKey) && isRelevantAction) {
-                // Log each activity that passes the filter
-                console.log('Processing activity:', {
-                    username: activity.username,
-                    action: activity.action,
-                    bookTitle: activity.bookTitle,
-                    review: activity.review,
-                    rating: activity.rating,
-                    visibility: activity.visibility,
-                    timestamp: activity.timestamp
-                });
                 seenActivities.add(activityKey);
                 return true;
             }
             return false;
         });
-
-        console.log('Filtered unique activities:', uniqueActivities);
 
         // Sort activities by timestamp in descending order (most recent first)
         uniqueActivities.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
@@ -188,44 +176,154 @@ document.addEventListener('DOMContentLoaded', async () => {
         const activitiesContainer = document.createElement('div');
         activitiesContainer.classList.add('space-y-4');
 
-        uniqueActivities.forEach(async (activity) => {
-            // Log detailed information about each activity being rendered
-            console.log('Rendering activity:', {
-                type: activity.action.includes('reviewed') ? 'review' : 'library addition',
-                username: activity.username,
-                bookTitle: activity.bookTitle,
-                reviewData: {
-                    review: activity.review,
-                    rating: activity.rating,
-                    visibility: activity.visibility
-                },
-                rawActivity: activity // Log the entire activity object
+        // Show first 10 activities initially
+        const initialActivities = uniqueActivities.slice(0, 10);
+        const remainingActivities = uniqueActivities.slice(10);
+
+        // Render initial activities
+        initialActivities.forEach(async (activity) => {
+            const activityElement = createActivityElement(activity);
+            activitiesContainer.appendChild(activityElement);
+        });
+
+        // Add show more/less button if there are remaining activities
+        if (remainingActivities.length > 0) {
+            const showMoreButton = document.createElement('button');
+            showMoreButton.classList.add(
+                'w-32',
+                'h-10',
+                'mx-auto',
+                'mt-4',
+                'mb-4',
+                'flex',
+                'items-center',
+                'justify-center',
+                'bg-white',
+                'rounded-lg',
+                'border',
+                'border-gray-200',
+                'hover:border-green-500',
+                'transition-all',
+                'duration-300',
+                'transform',
+                'hover:-translate-y-0.5',
+                'group'
+            );
+            
+            // Create the arrow icon container
+            const arrowContainer = document.createElement('div');
+            arrowContainer.classList.add(
+                'flex',
+                'flex-row',
+                'items-center',
+                'gap-2',
+                'text-gray-600',
+                'group-hover:text-green-600',
+                'transition-colors',
+                'duration-300'
+            );
+
+            // Create the arrow icon
+            const arrowIcon = document.createElement('div');
+            arrowIcon.classList.add(
+                'w-4',
+                'h-4',
+                'transform',
+                'transition-transform',
+                'duration-300',
+                'group-hover:scale-110'
+            );
+            arrowIcon.innerHTML = `
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                </svg>
+            `;
+
+            // Create the text element
+            const buttonText = document.createElement('span');
+            buttonText.classList.add(
+                'text-sm',
+                'font-medium'
+            );
+            buttonText.textContent = `Show ${Math.min(5, remainingActivities.length)} more`;
+
+            // Add elements to the container
+            arrowContainer.appendChild(arrowIcon);
+            arrowContainer.appendChild(buttonText);
+            showMoreButton.appendChild(arrowContainer);
+
+            showMoreButton.dataset.remainingActivities = JSON.stringify(remainingActivities);
+            showMoreButton.dataset.currentIndex = '0';
+            showMoreButton.dataset.showingMore = 'false';
+
+            showMoreButton.addEventListener('click', () => {
+                const isShowingMore = showMoreButton.dataset.showingMore === 'true';
+                const currentIndex = parseInt(showMoreButton.dataset.currentIndex);
+                const remainingActivities = JSON.parse(showMoreButton.dataset.remainingActivities);
+
+                if (isShowingMore) {
+                    // Remove the last 5 activities
+                    const activitiesToRemove = activitiesContainer.querySelectorAll('.activity');
+                    for (let i = activitiesToRemove.length - 1; i >= activitiesToRemove.length - 5; i--) {
+                        if (activitiesToRemove[i]) {
+                            activitiesToRemove[i].remove();
+                        }
+                    }
+                    buttonText.textContent = `Show ${Math.min(5, remainingActivities.length - currentIndex)} more`;
+                    arrowIcon.classList.remove('rotate-180');
+                    showMoreButton.dataset.showingMore = 'false';
+                } else {
+                    // Add next 5 activities
+                    const nextActivities = remainingActivities.slice(currentIndex, currentIndex + 5);
+                    nextActivities.forEach(async (activity) => {
+                        const activityElement = createActivityElement(activity);
+                        activitiesContainer.insertBefore(activityElement, showMoreButton);
+                    });
+
+                    const newIndex = currentIndex + 5;
+                    showMoreButton.dataset.currentIndex = newIndex.toString();
+                    
+                    if (newIndex >= remainingActivities.length) {
+                        buttonText.textContent = 'Show less';
+                        arrowIcon.classList.add('rotate-180');
+                    } else {
+                        buttonText.textContent = `Show ${Math.min(5, remainingActivities.length - newIndex)} more`;
+                    }
+                    showMoreButton.dataset.showingMore = 'true';
+                }
             });
 
+            activitiesContainer.appendChild(showMoreButton);
+        }
+
+        activitiesFeed.appendChild(activitiesContainer);
+    };
+
+    // Helper function to create activity element
+    const createActivityElement = (activity) => {
             const activityElement = document.createElement('div');
             activityElement.classList.add(
                 'activity',
                 'p-6',
                 'bg-white',
                 'rounded-xl',
-                'shadow-md',
                 'mb-4',
                 'border',
                 'border-gray-100',
-                'hover:shadow-lg',
-                'transition-shadow',
+                'hover:bg-gray-50',
+                'transition-colors',
                 'duration-200'
             );
     
             let activityContent;
             const isReview = activity.action.includes('reviewed');
-            let reviewVisibility = activity.visibility || 'public'; // Default to public if undefined
+        let reviewVisibility = activity.visibility || 'public';
                 let canViewReview = false;
     
                 if (reviewVisibility === 'public') {
                     canViewReview = true;
                 } else if (reviewVisibility === 'friends') {
-                    const friendshipStatus = await checkFriendshipStatus(localStorage.getItem('username'), activity.username);
+            const friendshipStatus = checkFriendshipStatus(localStorage.getItem('username'), activity.username);
                     if (friendshipStatus === 'friend') {
                         canViewReview = true;
                     }
@@ -236,15 +334,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
     
             if (isReview && canViewReview) {
-                // Log review-specific data before rendering
-                console.log('Rendering review activity:', {
-                    username: activity.username,
-                    bookTitle: activity.bookTitle,
-                    review: activity.review,
-                    rating: activity.rating,
-                    visibility: activity.visibility
-                });
-
                     activityContent = `
                     <div class="flex items-start space-x-4">
                         <div class="flex-grow">
@@ -278,14 +367,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                             ` : '<div class="text-gray-500 text-sm">No review provided</div>'}
 
                                     <div class="flex items-center space-x-4 text-sm text-gray-500">
-                                        <span class="flex items-center">
-                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-                                                      d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z">
-                                                </path>
+                            <button class="like-button flex items-center ${activity.isLikedByUser ? 'text-red-500' : 'text-gray-500'} hover:text-red-500 focus:outline-none" 
+                                    data-isbn="${activity.isbn}" 
+                                    data-username="${activity.username}">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
                                             </svg>
-                                            ${activity.likes || 0} likes
-                                        </span>
+                                <span class="like-count">${activity.likes ? activity.likes.length : 0}</span>
+                            </button>
                                         <span class="flex items-center">
                                             <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
@@ -305,7 +394,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                          </div>
                     `;
                     } else if (!isReview) {
-                        // Library addition activity
                         activityContent = `
                             <div class="flex items-start space-x-4">
                                 <div class="flex-grow">
@@ -336,7 +424,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                             </div>
                         `;
                     } else {
-                        // Private review
                         activityContent = `
                             <div class="flex items-start space-x-4">
                                 <div class="flex-grow">
@@ -368,10 +455,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     }
 
                     activityElement.innerHTML = activityContent;
-                    activitiesContainer.appendChild(activityElement);
-                });
-
-                activitiesFeed.appendChild(activitiesContainer);
+        return activityElement;
     };
     
     
@@ -714,6 +798,98 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
     
+    // Add this function to create the like button with initial state
+    function createLikeButton(isbn, username, likes, isLikedByUser) {
+        const likeButton = document.createElement('button');
+        likeButton.className = 'like-button flex items-center space-x-1';
+        if (isLikedByUser) {
+            likeButton.classList.add('text-red-500');
+        } else {
+            likeButton.classList.add('text-gray-500');
+        }
+        likeButton.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+            </svg>
+            <span class="like-count">${likes ? likes.length : 0}</span>
+        `;
+        likeButton.onclick = () => toggleLikeReview(isbn, username, likeButton);
+        return likeButton;
+    }
+
+    // Update the review rendering code to use the new like button
+    function renderReview(review) {
+        const reviewElement = document.createElement('div');
+        reviewElement.className = 'review';
+        
+        // ... other review content ...
+
+        // Add the like button with initial state
+        const likeButton = createLikeButton(review.isbn, review.username, review.likes, review.isLikedByUser);
+        reviewElement.appendChild(likeButton);
+
+        return reviewElement;
+    }
+
+    async function toggleLikeReview(isbn, username, likeButton) {
+        try {
+            console.log(`[TOGGLE LIKE] Attempting to toggle like for ISBN: ${isbn} by user: ${username}`);
+            console.log('[TOGGLE LIKE] Current button state:', {
+                isLiked: likeButton.classList.contains('text-red-500'),
+                classes: likeButton.className
+            });
+
+            const response = await fetch(`/api/reviews/${isbn}/like`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ username })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Failed to toggle like');
+            }
+
+            const data = await response.json();
+            console.log('[TOGGLE LIKE] Server response:', data);
+
+            if (data.success) {
+                // Update the button content with both heart and count
+                if (data.isLiked) {
+                    likeButton.classList.remove('text-gray-500');
+                    likeButton.classList.add('text-red-500');
+                } else {
+                    likeButton.classList.remove('text-red-500');
+                    likeButton.classList.add('text-gray-500');
+                }
+                
+                // Update the like count
+                const likeCountSpan = likeButton.querySelector('.like-count');
+                if (likeCountSpan) {
+                    likeCountSpan.textContent = data.likes.length;
+                }
+
+                console.log('[TOGGLE LIKE] Updated button state:', {
+                    isLiked: likeButton.classList.contains('text-red-500'),
+                    classes: likeButton.className
+                });
+            }
+        } catch (error) {
+            console.error('[TOGGLE LIKE] Error:', error);
+            alert(error.message || 'Error toggling like');
+        }
+    }
+
+    activitiesFeed.addEventListener('click', async (event) => {
+        const likeButton = event.target.closest('.like-button');
+        if (likeButton) {
+            const isbn = likeButton.getAttribute('data-isbn');
+            const username = likeButton.getAttribute('data-username');
+            await toggleLikeReview(isbn, username, likeButton);
+        }
+    });
 });
 const checkFriendshipStatus = async (username, friendUsername) => {
     try {
