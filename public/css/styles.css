@@ -361,13 +361,13 @@ body {
 }
 
 .book-card {
-    transition: transform 0.2s ease-in-out; /* Changed from 0.3s to 0.2s for faster hover */
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out; /* Faster transition for smoother effect */
     transform: scale(1); /* Default size */
 }
 
 /* On hover, scale the book card up */
 .book-card:hover {
-    transform: scale(1.05); /* Reduced from 1.15 to 1.05 for a more subtle effect */
+    transform: scale(1.05); /* More subtle scale effect */
     z-index: 1; /* Ensure the card stays above others when hovered */
 }
 
@@ -389,18 +389,30 @@ body {
 }
 
 .library-card {
-    padding: 0.5rem; /* Add padding to maintain some spacing inside the card */
-    background-color: #2D2D2D; /* Background color for better visibility */
-    border-radius: 8px; /* Rounded corners */
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2); /* Subtle shadow for depth */
-    color: #FFFFFF; /* Text color for better contrast */
-    text-align: center; /* Center text */
+    padding: 0.5rem;
+    background-color: #2D2D2D;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    color: #FFFFFF;
+    text-align: center;
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
 }
+
+.library-card:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
 .library-card img {
     width: 100%;
     height: 100%;
     object-fit: cover;
     border-radius: 4px;
+    transition: transform 0.2s ease-in-out;
+}
+
+.library-card:hover img {
+    transform: scale(1.02);
 }
 
 /* Arrow button styles */
@@ -786,13 +798,13 @@ body {
 }
 
 .book-card {
-    transition: transform 0.2s ease-in-out; /* Changed from 0.3s to 0.2s for faster hover */
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out; /* Faster transition for smoother effect */
     transform: scale(1); /* Default size */
 }
 
 /* On hover, scale the book card up */
 .book-card:hover {
-    transform: scale(1.05); /* Reduced from 1.15 to 1.05 for a more subtle effect */
+    transform: scale(1.05); /* More subtle scale effect */
     z-index: 1; /* Ensure the card stays above others when hovered */
 }
 
@@ -814,18 +826,30 @@ body {
 }
 
 .library-card {
-    padding: 0.5rem; /* Add padding to maintain some spacing inside the card */
-    background-color: #2D2D2D; /* Background color for better visibility */
-    border-radius: 8px; /* Rounded corners */
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2); /* Subtle shadow for depth */
-    color: #FFFFFF; /* Text color for better contrast */
-    text-align: center; /* Center text */
+    padding: 0.5rem;
+    background-color: #2D2D2D;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    color: #FFFFFF;
+    text-align: center;
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
 }
+
+.library-card:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
 .library-card img {
     width: 100%;
     height: 100%;
     object-fit: cover;
     border-radius: 4px;
+    transition: transform 0.2s ease-in-out;
+}
+
+.library-card:hover img {
+    transform: scale(1.02);
 }
 
 /* Arrow button styles */

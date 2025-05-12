@@ -235,7 +235,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <div class="relative group book-card" style="box-shadow: ${getGlowColor(book.rating)}">
                     <a href="../html/book.html?isbn=${book.isbn}" class="block relative overflow-hidden rounded-lg shadow-md hover:shadow-lg transition duration-200 ease-in-out group">
                         <img src="${book.thumbnail}" alt="${book.title}" class="w-full h-full object-cover rounded-t-lg">
-                        <div class="absolute bottom-0 left-0 w-full p-3 bg-black bg-opacity-50 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200 ease-in-out">
+                        <div class="absolute bottom-0 left-0 w-full p-2 bg-black bg-opacity-50 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200 ease-in-out">
                             <h2 class="text-sm font-bold">${book.title}</h2>
                             <p class="text-gray-300 text-xs">by ${book.authors}</p>
                         </div>
