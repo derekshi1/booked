@@ -186,12 +186,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 // Add existing books to top 5 grid
                 books.forEach(book => {
                     const bookDiv = document.createElement('div');
-                    bookDiv.classList.add('relative', 'p-6', 'rounded-lg', 'shadow-lg', 'cursor-pointer', 'hover:shadow-2xl', 'transition', 'duration-300', 'ease-in-out', 'bg-gray-800');
                     bookDiv.style.width = '200px';  // Set the desired width for the book card
                     bookDiv.style.height = '300px';
                     bookDiv.innerHTML = `
-                        <div class="relative group h-full book-card">
-                            <a href="../html/book.html?isbn=${book.isbn}" class="block relative overflow-hidden rounded-lg shadow-lg hover:shadow-2xl transition duration-300 ease-in-out group h-full">
+                        <div class="relative group h-full w-full book-card" style="box-shadow: ${getGlowColor(book.rating)}">
+                            <a href="../html/book.html?isbn=${book.isbn}" class="block relative overflow-hidden rounded-lg shadow-md hover:shadow-lg transition duration-200 ease-in-out group w-full h-full">
                                 <img src="${book.thumbnail}" alt="${book.title}" class="w-full h-full object-cover rounded-t-lg">
                                 <div class="absolute bottom-0 left-0 w-full p-4 bg-black bg-opacity-60 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-in-out">
                                     <h2 class="text-lg font-bold">${book.title}</h2>
@@ -473,32 +472,32 @@ document.addEventListener('DOMContentLoaded', async () => {
                     }
                     // For days in between start and end
                     else {
-                        const dotContainer = document.createElement('div');
-                        dotContainer.className = 'relative group';
-                        
-                        const dot = document.createElement('div');
+                    const dotContainer = document.createElement('div');
+                    dotContainer.className = 'relative group';
+                    
+                    const dot = document.createElement('div');
                         dot.className = 'w-2 h-2 rounded-full bg-blue-500 hover:scale-125 transition-transform duration-200';
-                        
-                        const tooltip = document.createElement('div');
-                        tooltip.className = 'absolute bottom-full right-0 mb-2 hidden group-hover:block w-64 bg-gray-900 text-white text-xs rounded p-2 shadow-lg z-50';
-                        
+                    
+                    const tooltip = document.createElement('div');
+                    tooltip.className = 'absolute bottom-full right-0 mb-2 hidden group-hover:block w-64 bg-gray-900 text-white text-xs rounded p-2 shadow-lg z-50';
+                    
                         const daysReading = Math.ceil((endDate ? endDate : new Date() - startDate) / (1000 * 60 * 60 * 24));
-                        
-                        tooltip.innerHTML = `
-                            <div class="flex gap-3">
-                                <img src="${book.thumbnail}" alt="${book.title}" class="w-16 h-24 object-cover rounded">
-                                <div class="flex-1">
-                                    <div class="text-sm font-semibold mb-1">${book.title}</div>
-                                    <div class="text-xs text-gray-300">by ${book.authors}</div>
-                                    <div class="text-xs mt-1">Started: ${startDate.toLocaleDateString()}</div>
+                    
+                    tooltip.innerHTML = `
+                        <div class="flex gap-3">
+                            <img src="${book.thumbnail}" alt="${book.title}" class="w-16 h-24 object-cover rounded">
+                            <div class="flex-1">
+                                <div class="text-sm font-semibold mb-1">${book.title}</div>
+                                <div class="text-xs text-gray-300">by ${book.authors}</div>
+                                <div class="text-xs mt-1">Started: ${startDate.toLocaleDateString()}</div>
                                     <div class="text-xs text-blue-400">Reading for: ${daysReading} days</div>
-                                </div>
                             </div>
-                        `;
-                        
-                        dotContainer.appendChild(dot);
-                        dotContainer.appendChild(tooltip);
-                        bookIndicator.appendChild(dotContainer);
+                        </div>
+                    `;
+                    
+                    dotContainer.appendChild(dot);
+                    dotContainer.appendChild(tooltip);
+                    bookIndicator.appendChild(dotContainer);
                     }
                 });
                 
@@ -677,5 +676,14 @@ async function removeFromTop5(username, isbn) {
         alert('Error removing book from top 5.');
     }
 }
+
+function getGlowColor(value) {
+    // Create a warm golden glow regardless of rating
+    const goldenColor = 'rgba(255, 215, 0, 0.4)'; // Golden color with 40% opacity
+    const warmAccent = 'rgba(255, 165, 0, 0.2)'; // Orange accent with 20% opacity
+    
+    return `0 0 20px ${goldenColor}, 0 0 30px ${warmAccent}`; // Double layered golden glow
+}
+
 
 
