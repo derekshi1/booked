@@ -1622,6 +1622,10 @@ app.get('/api/friends-activities/:username', async (req, res) => {
                     // Get the book data from the friend's library
                     const libraryBook = actions.libraryBook;
                     
+                    // Check if the current user has liked this review
+                    const isLikedByUser = libraryBook && libraryBook.likes ? 
+                        libraryBook.likes.some(like => like.username === username) : false;
+                    
                     // If there's a review, create a combined activity with library data
                     friendsActivities.push({
                         username: friend.username,
@@ -1635,7 +1639,8 @@ app.get('/api/friends-activities/:username', async (req, res) => {
                         visibility: libraryBook ? libraryBook.visibility : 'public',
                         isRead: actions.reviewed.readBy.includes(user._id),
                         likes: libraryBook ? libraryBook.likes : [],
-                        comments: libraryBook ? libraryBook.comments : []
+                        comments: libraryBook ? libraryBook.comments : [],
+                        isLikedByUser: isLikedByUser
                     });
                 } else if (actions.added) {
                     // If there's only an add action, include that
@@ -2243,15 +2248,14 @@ app.post('/api/reviews/:isbn/unlike', async (req, res) => {
 
         console.log(`[UNLIKE REVIEW] Attempting to unlike review for ISBN: ${isbn} by user: ${username}`);
 
-        // First check the new Review collection
-        let review = await Review.findOne({ isbn, username: { $ne: username } });
+        // Find the review by ISBN
+        let review = await Review.findOne({ isbn });
         
         // If not found in Review collection, check the old schema
         if (!review) {
             console.log(`[UNLIKE REVIEW] Review not found in new schema, checking old schema`);
             const userLibrary = await UserLibrary.findOne({
-                "books.isbn": isbn,
-                username: { $ne: username }
+                "books.isbn": isbn
             });
 
             if (userLibrary) {
@@ -2300,7 +2304,11 @@ app.post('/api/reviews/:isbn/unlike', async (req, res) => {
 
         console.log(`[UNLIKE REVIEW] Successfully removed like. New likes count: ${review.likes.length}`);
 
-        res.json({ success: true, likes: review.likes });
+        res.json({ 
+            success: true, 
+            likes: review.likes,
+            isLiked: false
+        });
     } catch (error) {
         console.error('[UNLIKE REVIEW] Error unliking review:', error);
         res.status(500).json({ success: false, message: 'Internal server error' });

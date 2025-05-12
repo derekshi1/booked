@@ -301,160 +301,162 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Helper function to create activity element
     const createActivityElement = (activity) => {
-            const activityElement = document.createElement('div');
-            activityElement.classList.add(
-                'activity',
-                'p-6',
-                'bg-white',
-                'rounded-xl',
-                'mb-4',
-                'border',
-                'border-gray-100',
-                'hover:bg-gray-50',
-                'transition-colors',
-                'duration-200'
-            );
+        const activityElement = document.createElement('div');
+        activityElement.classList.add(
+            'activity',
+            'p-6',
+            'bg-white',
+            'rounded-xl',
+            'mb-4',
+            'border',
+            'border-gray-100',
+            'hover:bg-gray-50',
+            'transition-colors',
+            'duration-200'
+        );
     
-            let activityContent;
-            const isReview = activity.action.includes('reviewed');
+        let activityContent;
+        const isReview = activity.action.includes('reviewed');
         let reviewVisibility = activity.visibility || 'public';
-                let canViewReview = false;
+        let canViewReview = false;
     
-                if (reviewVisibility === 'public') {
-                    canViewReview = true;
-                } else if (reviewVisibility === 'friends') {
+        if (reviewVisibility === 'public') {
+            canViewReview = true;
+        } else if (reviewVisibility === 'friends') {
             const friendshipStatus = checkFriendshipStatus(localStorage.getItem('username'), activity.username);
-                    if (friendshipStatus === 'friend') {
-                        canViewReview = true;
-                    }
-                } else if (reviewVisibility === 'private') {
-                    if (localStorage.getItem('username') === activity.username) {
-                        canViewReview = true;
-                    }
-                }
+            if (friendshipStatus === 'friend') {
+                canViewReview = true;
+            }
+        } else if (reviewVisibility === 'private') {
+            if (localStorage.getItem('username') === activity.username) {
+                canViewReview = true;
+            }
+        }
     
-            if (isReview && canViewReview) {
-                    activityContent = `
-                    <div class="flex items-start space-x-4">
-                        <div class="flex-grow">
-                            <div class="flex items-center space-x-2 mb-3">
-                                <a href="../html/profile.html?username=${activity.username}" 
-                                   class="text-blue-600 hover:text-blue-800 font-semibold">
-                                    ${activity.username}
-                                </a>
-                                <span class="text-gray-400">•</span>
-                                <span class="text-gray-500 text-sm">${formatTimeAgo(activity.timestamp)}</span>
+        if (isReview && canViewReview) {
+            // Initialize like button state based on server data
+            const isLikedClass = activity.isLikedByUser ? 'text-red-500' : 'text-gray-600';
+            activityContent = `
+                <div class="flex items-start space-x-4">
+                    <div class="flex-grow">
+                        <div class="flex items-center space-x-2 mb-3">
+                            <a href="../html/profile.html?username=${activity.username}" 
+                               class="text-blue-600 hover:text-blue-800 font-semibold">
+                                ${activity.username}
+                            </a>
+                            <span class="text-gray-400">•</span>
+                            <span class="text-gray-500 text-sm">${formatTimeAgo(activity.timestamp)}</span>
+                        </div>
+                        
+                        <div class="flex items-center mb-3">
+                            <a href="../html/book.html?isbn=${activity.isbn}" 
+                               class="text-lg font-medium text-gray-900 hover:text-gray-700">
+                                ${activity.bookTitle}
+                            </a>
+                            <div class="ml-2 px-2 py-1 bg-green-50 rounded-full">
+                                <span class="text-green-800 text-sm font-medium">
+                                    ${activity.rating !== undefined ? activity.rating : 'No rating'}/100
+                                </span>
                             </div>
-                            
-                            <div class="flex items-center mb-3">
-                                <a href="../html/book.html?isbn=${activity.isbn}" 
-                                   class="text-lg font-medium text-gray-900 hover:text-gray-700">
-                                    ${activity.bookTitle}
-                                </a>
-                                <div class="ml-2 px-2 py-1 bg-green-50 rounded-full">
-                                    <span class="text-green-800 text-sm font-medium">
-                                        ${activity.rating !== undefined ? activity.rating : 'No rating'}/100
-                                    </span>
-                                </div>
                         </div>
                 
-                                    ${activity.review ? `
-                                        <div class="bg-gray-50 p-4 rounded-lg mb-3">
-                                            <p class="text-gray-700 text-sm leading-relaxed">
-                                                "${activity.review}"
-                            </p>
-                        </div>
-                            ` : '<div class="text-gray-500 text-sm">No review provided</div>'}
+                        ${activity.review ? `
+                            <div class="bg-gray-50 p-4 rounded-lg mb-3">
+                                <p class="text-gray-700 text-sm leading-relaxed">
+                                    "${activity.review}"
+                                </p>
+                            </div>
+                        ` : '<div class="text-gray-500 text-sm">No review provided</div>'}
 
-                                    <div class="flex items-center space-x-4 text-sm text-gray-500">
-                            <button class="like-button flex items-center ${activity.isLikedByUser ? 'text-red-500' : 'text-gray-500'} hover:text-red-500 focus:outline-none" 
+                        <div class="flex items-center space-x-4 text-sm text-gray-500">
+                            <button class="like-button flex items-center ${isLikedClass} hover:text-red-500 focus:outline-none" 
                                     data-isbn="${activity.isbn}" 
-                                    data-username="${activity.username}">
+                                    data-is-liked="${activity.isLikedByUser}">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="currentColor" viewBox="0 0 24 24">
                                     <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
-                                            </svg>
+                                </svg>
                                 <span class="like-count">${activity.likes ? activity.likes.length : 0}</span>
                             </button>
-                                        <span class="flex items-center">
-                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-                                                      d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z">
-                                                </path>
-                                            </svg>
-                                            ${activity.comments || 0} comments
-                                        </span>
-                                    </div>
-                        </div> 
-                                
-                                <div class="flex-shrink-0">
-                                    <img src="${activity.thumbnail}" 
-                                         alt="${activity.bookTitle}" 
-                                         class="w-20 h-28 object-cover rounded-lg shadow-sm">
-                            </div>
-                         </div>
-                    `;
-                    } else if (!isReview) {
-                        activityContent = `
-                            <div class="flex items-start space-x-4">
-                                <div class="flex-grow">
-                                    <div class="flex items-center space-x-2 mb-3">
-                                        <a href="../html/profile.html?username=${activity.username}" 
-                                           class="text-blue-600 hover:text-blue-800 font-semibold">
-                                            ${activity.username}
-                                        </a>
-                                        <span class="text-gray-400">•</span>
-                                        <span class="text-gray-500 text-sm">${formatTimeAgo(activity.timestamp)}</span>
-                                    </div>
-                                    
-                                    <div class="flex items-center">
-                                        <span class="text-gray-700">added</span>
-                                        <a href="../html/book.html?isbn=${activity.isbn}" 
-                                           class="ml-2 text-lg font-medium text-gray-900 hover:text-gray-700">
-                                            ${activity.bookTitle}
-                                        </a>
-                                        <span class="text-gray-700 ml-2">to their library</span>
-                                    </div>
-                                </div>
-                                
-                                <div class="flex-shrink-0">
-                                    <img src="${activity.thumbnail}" 
-                                         alt="${activity.bookTitle}" 
-                                         class="w-20 h-28 object-cover rounded-lg shadow-sm">
-                                </div>
-                            </div>
-                        `;
-                    } else {
-                        activityContent = `
-                            <div class="flex items-start space-x-4">
-                                <div class="flex-grow">
-                                    <div class="flex items-center space-x-2 mb-3">
-                                        <a href="../html/profile.html?username=${activity.username}" 
-                                           class="text-blue-600 hover:text-blue-800 font-semibold">
-                                            ${activity.username}
-                                        </a>
-                                        <span class="text-gray-400">•</span>
-                                        <span class="text-gray-500 text-sm">${formatTimeAgo(activity.timestamp)}</span>
-                                    </div>
-                                    
-                                    <div class="flex items-center text-gray-500">
-                                        <span>privately reviewed</span>
-                                        <a href="../html/book.html?isbn=${activity.isbn}" 
-                                           class="ml-2 text-gray-700 hover:text-gray-900 font-medium">
-                                            ${activity.bookTitle}
-                                        </a>
-                                    </div>
-                                </div>
-                                
-                                <div class="flex-shrink-0">
-                                    <img src="${activity.thumbnail}" 
-                                         alt="${activity.bookTitle}" 
-                                         class="w-20 h-28 object-cover rounded-lg shadow-sm opacity-50">
+                            <span class="flex items-center">
+                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                          d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z">
+                                    </path>
+                                </svg>
+                                ${activity.comments || 0} comments
+                            </span>
+                        </div>
+                    </div> 
+                    
+                    <div class="flex-shrink-0">
+                        <img src="${activity.thumbnail}" 
+                             alt="${activity.bookTitle}" 
+                             class="w-20 h-28 object-cover rounded-lg shadow-sm">
                     </div>
                 </div>
             `;
-                    }
+        } else if (!isReview) {
+            activityContent = `
+                <div class="flex items-start space-x-4">
+                    <div class="flex-grow">
+                        <div class="flex items-center space-x-2 mb-3">
+                            <a href="../html/profile.html?username=${activity.username}" 
+                               class="text-blue-600 hover:text-blue-800 font-semibold">
+                                ${activity.username}
+                            </a>
+                            <span class="text-gray-400">•</span>
+                            <span class="text-gray-500 text-sm">${formatTimeAgo(activity.timestamp)}</span>
+                        </div>
+                            
+                            <div class="flex items-center">
+                                <span class="text-gray-700">added</span>
+                                <a href="../html/book.html?isbn=${activity.isbn}" 
+                                   class="ml-2 text-lg font-medium text-gray-900 hover:text-gray-700">
+                                    ${activity.bookTitle}
+                                </a>
+                                <span class="text-gray-700 ml-2">to their library</span>
+                            </div>
+                        </div>
+                        
+                        <div class="flex-shrink-0">
+                            <img src="${activity.thumbnail}" 
+                                 alt="${activity.bookTitle}" 
+                                 class="w-20 h-28 object-cover rounded-lg shadow-sm">
+                        </div>
+                    </div>
+                `;
+        } else {
+            activityContent = `
+                <div class="flex items-start space-x-4">
+                    <div class="flex-grow">
+                        <div class="flex items-center space-x-2 mb-3">
+                            <a href="../html/profile.html?username=${activity.username}" 
+                               class="text-blue-600 hover:text-blue-800 font-semibold">
+                                ${activity.username}
+                            </a>
+                            <span class="text-gray-400">•</span>
+                            <span class="text-gray-500 text-sm">${formatTimeAgo(activity.timestamp)}</span>
+                        </div>
+                            
+                            <div class="flex items-center text-gray-500">
+                                <span>privately reviewed</span>
+                                <a href="../html/book.html?isbn=${activity.isbn}" 
+                                   class="ml-2 text-gray-700 hover:text-gray-900 font-medium">
+                                    ${activity.bookTitle}
+                                </a>
+                            </div>
+                        </div>
+                        
+                        <div class="flex-shrink-0">
+                            <img src="${activity.thumbnail}" 
+                                 alt="${activity.bookTitle}" 
+                                 class="w-20 h-28 object-cover rounded-lg shadow-sm opacity-50">
+                        </div>
+                    </div>
+                `;
+        }
 
-                    activityElement.innerHTML = activityContent;
+        activityElement.innerHTML = activityContent;
         return activityElement;
     };
     
@@ -798,72 +800,28 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
     
-    // Add this function to create the like button with initial state
-    function createLikeButton(isbn, username, likes, isLikedByUser) {
-        const likeButton = document.createElement('button');
-        likeButton.className = 'like-button flex items-center space-x-1';
-        if (isLikedByUser) {
-            likeButton.classList.add('text-red-500');
-        } else {
-            likeButton.classList.add('text-gray-500');
-        }
-        likeButton.innerHTML = `
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
-            </svg>
-            <span class="like-count">${likes ? likes.length : 0}</span>
-        `;
-        likeButton.onclick = () => toggleLikeReview(isbn, username, likeButton);
-        return likeButton;
-    }
-
-    // Update the review rendering code to use the new like button
-    function renderReview(review) {
-        const reviewElement = document.createElement('div');
-        reviewElement.className = 'review';
-        
-        // ... other review content ...
-
-        // Add the like button with initial state
-        const likeButton = createLikeButton(review.isbn, review.username, review.likes, review.isLikedByUser);
-        reviewElement.appendChild(likeButton);
-
-        return reviewElement;
-    }
-
-    async function toggleLikeReview(isbn, username, likeButton) {
+    // Update the toggle like function
+    async function toggleLikeReview(isbn, likeButton) {
         try {
-            console.log(`[TOGGLE LIKE] Attempting to toggle like for ISBN: ${isbn} by user: ${username}`);
-            console.log('[TOGGLE LIKE] Current button state:', {
-                isLiked: likeButton.classList.contains('text-red-500'),
-                classes: likeButton.className
-            });
+            const username = localStorage.getItem('username');
+            const isLiked = likeButton.getAttribute('data-is-liked') === 'true';
+            const endpoint = isLiked ? `/api/reviews/${isbn}/unlike` : `/api/reviews/${isbn}/like`;
 
-            const response = await fetch(`/api/reviews/${isbn}/like`, {
+            const response = await fetch(endpoint, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username })
             });
 
             if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.message || 'Failed to toggle like');
+                throw new Error('Failed to toggle like');
             }
 
             const data = await response.json();
-            console.log('[TOGGLE LIKE] Server response:', data);
-
             if (data.success) {
-                // Update the button content with both heart and count
-                if (data.isLiked) {
-                    likeButton.classList.remove('text-gray-500');
-                    likeButton.classList.add('text-red-500');
-                } else {
-                    likeButton.classList.remove('text-red-500');
-                    likeButton.classList.add('text-gray-500');
-                }
+                // Update the button state
+                likeButton.classList.toggle('text-red-500');
+                likeButton.classList.toggle('text-gray-600');
                 
                 // Update the like count
                 const likeCountSpan = likeButton.querySelector('.like-count');
@@ -871,23 +829,20 @@ document.addEventListener('DOMContentLoaded', async () => {
                     likeCountSpan.textContent = data.likes.length;
                 }
 
-                console.log('[TOGGLE LIKE] Updated button state:', {
-                    isLiked: likeButton.classList.contains('text-red-500'),
-                    classes: likeButton.className
-                });
+                // Update the data-is-liked attribute
+                likeButton.setAttribute('data-is-liked', (!isLiked).toString());
             }
         } catch (error) {
-            console.error('[TOGGLE LIKE] Error:', error);
-            alert(error.message || 'Error toggling like');
+            console.error('Error toggling like:', error);
         }
     }
 
+    // Update the event listener for like buttons
     activitiesFeed.addEventListener('click', async (event) => {
         const likeButton = event.target.closest('.like-button');
         if (likeButton) {
             const isbn = likeButton.getAttribute('data-isbn');
-            const username = likeButton.getAttribute('data-username');
-            await toggleLikeReview(isbn, username, likeButton);
+            await toggleLikeReview(isbn, likeButton);
         }
     });
 });
