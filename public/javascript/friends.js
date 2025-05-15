@@ -58,7 +58,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <div class="flex items-center space-x-4">
                             <button class="nudge-button group relative px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-all duration-200 transform hover:-translate-y-0.5 hover:shadow-lg"
                                     data-username="${friend.username}"
-                                    data-tooltip="Send a friendly reminder to keep reading!">
+                                    data-tooltip="Nudge this friend to keep reading! Note: you can only nudge once an hour!"
+                                    data-last-nudge="${localStorage.getItem(`nudge_${friend.username}`) || ''}">
                                 <div class="flex items-center space-x-2">
                                     <svg class="w-5 h-5 transform group-hover:rotate-12 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
@@ -73,6 +74,23 @@ document.addEventListener('DOMContentLoaded', async () => {
                     // Add click handler for nudge button
                     const nudgeButton = friendCard.querySelector('.nudge-button');
                     if (nudgeButton) {
+                        // Check if button is in cooldown
+                        const lastNudgeTime = localStorage.getItem(`nudge_${friend.username}`);
+                        if (lastNudgeTime) {
+                            const cooldownTime = 60 * 60 * 1000; // 1 hour in milliseconds
+                            const timeSinceLastNudge = Date.now() - parseInt(lastNudgeTime);
+                            if (timeSinceLastNudge < cooldownTime) {
+                                // Button is in cooldown
+                                nudgeButton.disabled = true;
+                                nudgeButton.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+                                nudgeButton.classList.add('bg-gray-500', 'cursor-not-allowed');
+                                
+                                // Calculate remaining cooldown time
+                                const remainingTime = Math.ceil((cooldownTime - timeSinceLastNudge) / 1000 / 60); // in minutes
+                                nudgeButton.setAttribute('data-tooltip', `You can nudge again in ${remainingTime} minute${remainingTime !== 1 ? 's' : ''}`);
+                            }
+                        }
+
                         nudgeButton.addEventListener('click', async () => {
                             const friendUsername = friend.username;
                             try {
@@ -89,9 +107,17 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                                 const data = await response.json();
                                 if (data.success) {
-                                    // Disable button temporarily with animation
+                                    // Store the nudge time
+                                    localStorage.setItem(`nudge_${friendUsername}`, Date.now().toString());
+                                    
+                                    // Disable button and update appearance
                                     nudgeButton.disabled = true;
-                                    nudgeButton.classList.add('bg-green-600', 'scale-95');
+                                    nudgeButton.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+                                    nudgeButton.classList.add('bg-gray-500', 'cursor-not-allowed');
+                                    nudgeButton.setAttribute('data-tooltip', 'You can nudge again in 60 minutes');
+                                    
+                                    // Show success animation
+                                    nudgeButton.classList.add('scale-95');
                                     nudgeButton.innerHTML = `
                                         <div class="flex items-center space-x-2">
                                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -100,18 +126,30 @@ document.addEventListener('DOMContentLoaded', async () => {
                                             <span>Nudged!</span>
                                         </div>
                                     `;
-                                    setTimeout(() => {
-                                        nudgeButton.disabled = false;
-                                        nudgeButton.classList.remove('bg-green-600', 'scale-95');
-                                        nudgeButton.innerHTML = `
-                                            <div class="flex items-center space-x-2">
-                                                <svg class="w-5 h-5 transform group-hover:rotate-12 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-                                                </svg>
-                                                <span>Nudge</span>
-                                            </div>
-                                        `;
-                                    }, 2000);
+
+                                    // Start countdown timer
+                                    let remainingMinutes = 60;
+                                    const countdownInterval = setInterval(() => {
+                                        remainingMinutes--;
+                                        if (remainingMinutes <= 0) {
+                                            clearInterval(countdownInterval);
+                                            // Re-enable button
+                                            nudgeButton.disabled = false;
+                                            nudgeButton.classList.remove('bg-gray-500', 'cursor-not-allowed');
+                                            nudgeButton.classList.add('bg-blue-600', 'hover:bg-blue-700');
+                                            nudgeButton.setAttribute('data-tooltip', 'Nudge this friend to keep reading! Note: you can only nudge once an hour!');
+                                            nudgeButton.innerHTML = `
+                                                <div class="flex items-center space-x-2">
+                                                    <svg class="w-5 h-5 transform group-hover:rotate-12 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                                                    </svg>
+                                                    <span>Nudge</span>
+                                                </div>
+                                            `;
+                                        } else {
+                                            nudgeButton.setAttribute('data-tooltip', `You can nudge again in ${remainingMinutes} minute${remainingMinutes !== 1 ? 's' : ''}`);
+                                        }
+                                    }, 60000); // Update every minute
                                 }
                             } catch (error) {
                                 console.error('Error sending nudge:', error);
@@ -173,13 +211,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // Add tooltip styles
-    const style = document.createElement('style');
-    style.textContent = `
-        .tooltip {
+    const tooltipStyle = document.createElement('style');
+    tooltipStyle.textContent = `
+        [data-tooltip] {
             position: relative;
         }
 
-        .tooltip:hover::before {
+        [data-tooltip]:hover::before {
             content: attr(data-tooltip);
             position: absolute;
             bottom: 100%;
@@ -198,7 +236,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
         }
 
-        .tooltip:hover::after {
+        [data-tooltip]:hover::after {
             content: '';
             position: absolute;
             bottom: 100%;
@@ -210,7 +248,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             margin-bottom: 2px;
         }
     `;
-    document.head.appendChild(style);
+    document.head.appendChild(tooltipStyle);
 
     let suggestionsSkip = 0;
     const SUGGESTIONS_LIMIT = 5;
