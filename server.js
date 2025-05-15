@@ -82,7 +82,8 @@ const friendRequestSchema = new mongoose.Schema({
   from: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   to: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   status: { type: String, enum: ['pending', 'accepted', 'rejected'], default: 'pending' },
-  createdAt: { type: Date, default: Date.now }
+  createdAt: { type: Date, default: Date.now },
+  isRead: { type: Boolean, default: false } // Add isRead field
 });
 
 
@@ -127,7 +128,8 @@ const userLibrarySchema = new mongoose.Schema({
     visibility: { type: String, enum: ['private', 'friends', 'public'], default: 'public' },
     likes: [{
       username: String,
-      timestamp: { type: Date, default: Date.now }
+      timestamp: { type: Date, default: Date.now },
+      isRead: { type: Boolean, default: false } // Add isRead field for each like
     }]
   }],
   top5: [{
@@ -220,24 +222,124 @@ app.post('/api/users/:username/lists', async (req, res) => {
 
 // Endpoint to get count of unread activities
 app.get('/api/activities/unread-count/:username', async (req, res) => {
-  const { username } = req.params;
+    const { username } = req.params;
+    console.log(`\n=== Fetching unread notifications for ${username} ===`);
 
-  try {
-    const user = await User.findOne({ username });
-    if (!user) {
-      return res.status(404).json({ success: false, message: 'User not found' });
+    try {
+        const user = await User.findOne({ username });
+        if (!user) {
+            console.log('❌ User not found');
+            return res.status(404).json({ success: false, message: 'User not found' });
+        }
+        console.log(`✅ Found user: ${username}`);
+
+        // Count unread activities from friends, filtering out any problematic ones
+        const unreadActivities = await Activity.find({
+            userId: { $in: user.friends },
+            readBy: { $ne: user._id },
+            action: { $in: ['reviewed', 'added to library', 'added to top 5', 'added to reading list'] }
+        }).populate('userId', 'username');
+
+        // Filter out any activities with missing or invalid data
+        const validUnreadActivities = unreadActivities.filter(activity => {
+            try {
+                // Check if activity has all required fields
+                return activity.userId && 
+                       activity.action && 
+                       (activity.action === 'reviewed' ? activity.bookTitle : true);
+            } catch (error) {
+                console.log('Filtered out invalid activity:', error);
+                return false;
+            }
+        });
+
+        const unreadActivitiesCount = validUnreadActivities.length;
+
+        // Count unread friend requests
+        const unreadFriendRequests = await FriendRequest.find({
+            to: user._id,
+            status: 'pending',
+            isRead: false
+        }).populate('from', 'username');
+
+        const unreadFriendRequestsCount = unreadFriendRequests.length;
+
+        // Get unread likes on user's reviews
+        const userLibrary = await UserLibrary.findOne({ username });
+        let unreadLikesCount = 0;
+        let unreadLikesDetails = [];
+
+        if (userLibrary && userLibrary.books) {
+            console.log('\n=== Unread Likes ===');
+            userLibrary.books.forEach(book => {
+                if (book.likes) {
+                    try {
+                        // Get unread likes with full details, filtering out invalid ones
+                        const unreadLikes = book.likes.filter(like => {
+                            try {
+                                return !like.isRead && 
+                                       typeof like === 'object' && 
+                                       like.username;
+                            } catch (error) {
+                                console.log('Filtered out invalid like:', error);
+                                return false;
+                            }
+                        });
+                        
+                        if (unreadLikes.length > 0) {
+                            unreadLikesDetails.push({
+                                bookTitle: book.title,
+                                isbn: book.isbn,
+                                unreadLikes: unreadLikes.map(like => ({
+                                    username: like.username,
+                                    timestamp: like.timestamp,
+                                    isRead: like.isRead
+                                }))
+                            });
+                            console.log(`Book "${book.title}" has ${unreadLikes.length} unread likes:`, unreadLikes);
+                        }
+                        unreadLikesCount += unreadLikes.length;
+                    } catch (error) {
+                        console.log(`Error processing likes for book "${book.title}":`, error);
+                        // Skip this book's likes but continue with others
+                    }
+                }
+            });
+        }
+        console.log(`Total unread likes: ${unreadLikesCount}`);
+
+        // Count unread nudges
+        const unreadNudges = await Activity.find({
+            userId: user._id,
+            action: 'nudge',
+            readBy: { $ne: user._id }
+        }).populate('userId', 'username');
+
+        const unreadNudgesCount = unreadNudges.length;
+
+        // Total unread count
+        const totalUnreadCount = unreadActivitiesCount + unreadFriendRequestsCount + unreadLikesCount + unreadNudgesCount;
+        console.log('\n=== Summary ===');
+        console.log(`Total unread notifications: ${totalUnreadCount}`);
+        console.log(`- Activities: ${unreadActivitiesCount}`);
+        console.log(`- Friend Requests: ${unreadFriendRequestsCount}`);
+        console.log(`- Likes: ${unreadLikesCount}`);
+        console.log(`- Nudges: ${unreadNudgesCount}`);
+
+        res.json({ 
+            success: true, 
+            unreadCount: totalUnreadCount,
+            details: {
+                activities: unreadActivitiesCount,
+                friendRequests: unreadFriendRequestsCount,
+                likes: unreadLikesCount,
+                nudges: unreadNudgesCount
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching unread count:', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
     }
-
-    // Count all activities that are unread (isRead: false) for the user
-    const unreadCount = await Activity.countDocuments({
-      userId: { $in: user.friends },  // Only count activities from friends
-      readBy: { $ne: user._id }       // Exclude activities that the user has marked as read
-    });
-    res.status(200).json({ success: true, unreadCount });
-  } catch (error) {
-    console.error('Error fetching unread activities count:', error);
-    res.status(500).json({ success: false, message: 'Internal server error' });
-  }
 });
 
 // Mark all activities as read
@@ -1563,110 +1665,35 @@ app.get('/api/friends/:username', async (req, res) => {
 app.get('/api/friends-activities/:username', async (req, res) => {
     const { username } = req.params;
     try {
-        const user = await User.findOne({ username }).populate('friends');
-
+        const user = await User.findOne({ username });
         if (!user) {
-            console.log('User not found');
             return res.status(404).json({ success: false, message: 'User not found' });
         }
 
-        if (!Array.isArray(user.friends) || user.friends.length === 0) {
-            return res.status(200).json({ success: true, activities: [] });
-        }
+        const activities = await Activity.find({
+            userId: { $in: user.friends },
+            action: { $in: ['reviewed', 'added to library', 'added to top 5', 'added to reading list'] }
+        })
+        .populate('userId', 'username')
+        .sort({ timestamp: -1 })
+        .limit(50);
 
-        const friendsActivities = [];
+        // Filter out any activities with missing or invalid data
+        const validActivities = activities.filter(activity => {
+            try {
+                return activity.userId && 
+                       activity.action && 
+                       (activity.action === 'reviewed' ? activity.bookTitle : true);
+            } catch (error) {
+                console.log('Filtered out invalid activity:', error);
+                return false;
+            }
+        });
 
-        // Single loop through friends
-        for (const friend of user.friends) {
-            // Get all activities for this friend
-            const activities = await Activity.find({
-                userId: friend._id,
-                action: { $ne: 'nudge' },  // Exclude nudges
-                $or: [
-                    { visibility: 'public' },
-                    { visibility: 'friends' },
-                    { visibility: 'private', userId: friend._id }
-                ]
-            }).sort({ timestamp: -1 });
-
-            // Get the friend's library to access review data
-            const friendLibrary = await UserLibrary.findOne({ username: friend.username });
-            
-            console.log(`Activities found for friend ${friend.username}:`, activities);
-            console.log(`Library found for friend ${friend.username}:`, friendLibrary);
-
-            // Group activities by book
-            const bookActivities = {};
-            activities.forEach(activity => {
-                if (!bookActivities[activity.bookTitle]) {
-                    bookActivities[activity.bookTitle] = {
-                        added: null,
-                        reviewed: null,
-                        libraryBook: friendLibrary ? 
-                            friendLibrary.books.find(book => book.isbn === activity.isbn) : null
-                    };
-                }
-                
-                if (activity.action === 'added to library') {
-                    bookActivities[activity.bookTitle].added = activity;
-                } else if (activity.action === 'reviewed') {
-                    bookActivities[activity.bookTitle].reviewed = activity;
-                }
-            });
-
-            // Process each book's activities
-            Object.entries(bookActivities).forEach(([bookTitle, actions]) => {
-                console.log(`Processing book ${bookTitle} for friend ${friend.username}:`, actions);
-
-                if (actions.reviewed) {
-                    // Get the book data from the friend's library
-                    const libraryBook = actions.libraryBook;
-                    
-                    // Check if the current user has liked this review
-                    const isLikedByUser = libraryBook && libraryBook.likes ? 
-                        libraryBook.likes.some(like => like.username === username) : false;
-                    
-                    // If there's a review, create a combined activity with library data
-                    friendsActivities.push({
-                        username: friend.username,
-                        action: 'reviewed',
-                        bookTitle: bookTitle,
-                        isbn: actions.reviewed.isbn,
-                        thumbnail: actions.reviewed.thumbnail,
-                        review: libraryBook ? libraryBook.review : null,
-                        rating: libraryBook ? libraryBook.rating : null,
-                        timestamp: actions.reviewed.timestamp,
-                        visibility: libraryBook ? libraryBook.visibility : 'public',
-                        isRead: actions.reviewed.readBy.includes(user._id),
-                        likes: libraryBook ? libraryBook.likes : [],
-                        comments: libraryBook ? libraryBook.comments : [],
-                        isLikedByUser: isLikedByUser
-                    });
-                } else if (actions.added) {
-                    // If there's only an add action, include that
-                    friendsActivities.push({
-                        username: friend.username,
-                        action: 'added to library',
-                        bookTitle: bookTitle,
-                        isbn: actions.added.isbn,
-                        thumbnail: actions.added.thumbnail,
-                        timestamp: actions.added.timestamp,
-                        visibility: actions.added.visibility,
-                        isRead: actions.added.readBy.includes(user._id)
-                    });
-                }
-            });
-        }
-
-        // Sort all activities by timestamp
-        friendsActivities.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-
-        console.log('Final processed activities:', friendsActivities);
-
-        res.json({ success: true, activities: friendsActivities });
+        res.json({ success: true, activities: validActivities });
     } catch (error) {
-        console.error('Error getting friends\' activities:', error);
-        res.status(500).json({ success: false, message: 'Error getting friends\' activities' });
+        console.error('Error fetching activities:', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
     }
 });
 
@@ -2205,12 +2232,13 @@ app.post('/api/reviews/:isbn/like', async (req, res) => {
             review.likes.splice(existingLikeIndex, 1);
             console.log(`[LIKE REVIEW] Removed like by user ${username}`);
         } else {
-            // User hasn't liked the review, so add a like
+            // User hasn't liked the review, so add a like with isRead=false
             review.likes.push({
                 username: username,
-                timestamp: new Date()
+                timestamp: new Date(),
+                isRead: false
             });
-            console.log(`[LIKE REVIEW] Added like by user ${username}`);
+            console.log(`[LIKE REVIEW] Added like by user ${username} with isRead=false`);
         }
 
         await review.save();
@@ -2223,8 +2251,19 @@ app.post('/api/reviews/:isbn/like', async (req, res) => {
         if (oldReview) {
             const book = oldReview.books.find(b => b.isbn === isbn);
             if (book) {
-                book.likes = review.likes;
+                // Ensure the like has isRead=false when adding to old schema
+                if (existingLikeIndex === -1) {
+                    book.likes = book.likes || [];
+                    book.likes.push({
+                        username: username,
+                        timestamp: new Date(),
+                        isRead: false
+                    });
+                } else {
+                    book.likes = book.likes.filter(like => like.username !== username);
+                }
                 await oldReview.save();
+                console.log(`[LIKE REVIEW] Updated old schema with like status: isRead=false`);
             }
         }
 
@@ -2698,18 +2737,96 @@ app.post('/api/mark-notifications-read', async (req, res) => {
         }
 
         // Mark all activities as read for this user
-        await Activity.updateMany(
-            { userId: { $in: user.friends }, readBy: { $ne: user._id } },
-            { $addToSet: { readBy: user._id } }
-        );
+        try {
+            await Activity.updateMany(
+                { userId: { $in: user.friends }, readBy: { $ne: user._id } },
+                { $addToSet: { readBy: user._id } }
+            );
+        } catch (activityError) {
+            console.error('Error marking activities as read:', activityError);
+            // Continue execution even if activities update fails
+        }
 
         // Mark all friend requests as read
-        await FriendRequest.updateMany(
-            { to: user._id },
-            { $set: { isRead: true } }
-        );
+        try {
+            await FriendRequest.updateMany(
+                { to: user._id, isRead: false },
+                { $set: { isRead: true } }
+            );
+        } catch (friendRequestError) {
+            console.error('Error marking friend requests as read:', friendRequestError);
+            // Continue execution even if friend requests update fails
+        }
 
-        res.status(200).json({ success: true, message: 'All notifications marked as read' });
+        // Initialize counter for updated likes
+        let updatedLikesCount = 0;
+        let problematicBooks = [];
+
+        // Mark all likes as read in user's library
+        const userLibrary = await UserLibrary.findOne({ username });
+        if (userLibrary) {
+            console.log('\n=== Marking likes as read ===');
+            
+            userLibrary.books.forEach(book => {
+                if (book.likes) {
+                    try {
+                        // Convert any string likes to objects with isRead property
+                        book.likes = book.likes.map(like => {
+                            if (typeof like === 'string') {
+                                return {
+                                    username: like,
+                                    timestamp: new Date(),
+                                    isRead: true
+                                };
+                            } else if (!like.isRead) {
+                                like.isRead = true;
+                                updatedLikesCount++;
+                                console.log(`Marking like from ${like.username} on book "${book.title}" as read`);
+                            }
+                            return like;
+                        });
+                    } catch (likeError) {
+                        console.error(`Error processing likes for book "${book.title}":`, likeError);
+                        problematicBooks.push({
+                            title: book.title,
+                            isbn: book.isbn,
+                            error: likeError.message
+                        });
+                        // Skip this book's likes but continue with others
+                    }
+                }
+            });
+            
+            console.log(`Total likes marked as read: ${updatedLikesCount}`);
+            if (problematicBooks.length > 0) {
+                console.log('Books with problematic likes:', problematicBooks);
+            }
+            
+            try {
+                await userLibrary.save();
+            } catch (saveError) {
+                console.error('Error saving user library:', saveError);
+                // Continue execution even if save fails
+            }
+        }
+
+        // Update lastNotificationCheck timestamp
+        try {
+            await User.findOneAndUpdate(
+                { username },
+                { lastNotificationCheck: new Date() }
+            );
+        } catch (timestampError) {
+            console.error('Error updating last notification check:', timestampError);
+            // Continue execution even if timestamp update fails
+        }
+
+        res.status(200).json({ 
+            success: true, 
+            message: 'All notifications marked as read',
+            updatedLikesCount: updatedLikesCount,
+            problematicBooks: problematicBooks
+        });
     } catch (error) {
         console.error('Error marking notifications as read:', error);
         res.status(500).json({ success: false, message: 'Internal server error' });

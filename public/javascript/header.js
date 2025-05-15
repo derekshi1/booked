@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', async () => {
-
+    console.log('DOM Content Loaded - Starting initial notification setup');
     const username = localStorage.getItem('username');
     const logoAndHomeContainer = document.getElementById('logoAndHome');
     const userSection = document.getElementById('userSection');
@@ -377,12 +377,19 @@ if (username) {
     
     // Toggle notification dropdown
     notificationBell.addEventListener('click', async (e) => {
+        console.log('Notification bell clicked');
         e.stopPropagation();
         const isHidden = notificationDropdown.classList.contains('hidden');
+        console.log('Dropdown is currently hidden:', isHidden);
+        
         notificationDropdown.classList.toggle('hidden');
         
         if (!isHidden) {
-            // Dropdown is being closed, mark notifications as read
+            console.log('Closing dropdown');
+            // No need to mark as read here since we do it when opening
+        } else {
+            console.log('Opening dropdown, fetching notifications');
+            // Mark notifications as read when they're first viewed
             try {
                 const response = await fetch('/api/mark-notifications-read', {
                     method: 'POST',
@@ -393,16 +400,13 @@ if (username) {
                 });
                 
                 if (response.ok) {
-                    // Clear the notification count
-                    notificationCount.classList.add('hidden');
-                    notificationCount.textContent = '0';
+                    console.log('Successfully marked notifications as read');
+                    await fetchNotifications();
+                    await updateNotificationCount();
                 }
             } catch (error) {
                 console.error('Error marking notifications as read:', error);
             }
-        } else {
-            // Dropdown is being opened
-            fetchNotifications();
         }
     });
 
@@ -410,25 +414,8 @@ if (username) {
     document.addEventListener('click', async (e) => {
         if (!notificationDropdown.contains(e.target) && !notificationBell.contains(e.target)) {
             if (!notificationDropdown.classList.contains('hidden')) {
-            notificationDropdown.classList.add('hidden');
-                // Mark notifications as read when closing
-                try {
-                    const response = await fetch('/api/mark-notifications-read', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({ username })
-            });
-            
-            if (response.ok) {
-                        // Clear the notification count
-                notificationCount.classList.add('hidden');
-                        notificationCount.textContent = '0';
-            }
-        } catch (error) {
-            console.error('Error marking notifications as read:', error);
-                }
+                notificationDropdown.classList.add('hidden');
+                // No need to mark as read here since we do it when opening
             }
         }
     });
@@ -460,255 +447,270 @@ const NOTIFICATIONS_PER_PAGE = 10;
     
     async function fetchNotifications() {
         try {
-        const username = localStorage.getItem('username');
-        const [friendRequestsResponse, activitiesResponse, likesResponse, nudgesResponse] = await Promise.all([
-            fetch(`/api/friend-requests/${username}`),
-            fetch(`/api/friends-activities/${username}`),
-            fetch(`/api/likes-notifications/${username}`),
-            fetch(`/api/nudge-notifications/${username}`)
-        ]);
+            console.log('Starting fetchNotifications...');
+            const username = localStorage.getItem('username');
+            console.log('Fetching notifications for username:', username);
 
-        const friendRequestsData = await friendRequestsResponse.json();
-        const activitiesData = await activitiesResponse.json();
-        const likesData = await likesResponse.json();
-        const nudgesData = await nudgesResponse.json();
+            const [friendRequestsResponse, activitiesResponse, likesResponse, nudgesResponse] = await Promise.all([
+                fetch(`/api/friend-requests/${username}`),
+                fetch(`/api/friends-activities/${username}`),
+                fetch(`/api/likes-notifications/${username}`),
+                fetch(`/api/nudge-notifications/${username}`)
+            ]);
 
-        console.log('Nudges response:', nudgesResponse);
-        console.log('Nudges data:', nudgesData);
+            const friendRequestsData = await friendRequestsResponse.json();
+            const activitiesData = await activitiesResponse.json();
+            const likesData = await likesResponse.json();
+            const nudgesData = await nudgesResponse.json();
 
-        if (friendRequestsData.success && activitiesData.success && likesData.success && nudgesData.success) {
-            // Render Friend Requests
-            const friendRequestsList = document.getElementById('friendRequestsList');
-            friendRequestsList.innerHTML = '';
+            console.log('Notification data received:', {
+                friendRequests: friendRequestsData.friendRequests.length,
+                activities: activitiesData.activities.length,
+                likes: likesData.likes.length,
+                nudges: nudgesData.nudges.length
+            });
 
-            if (friendRequestsData.friendRequests.length === 0) {
-                friendRequestsList.innerHTML = `
-                    <div class="p-3 text-gray-500 text-sm text-center">
-                        No pending friend requests
+            if (friendRequestsData.success && activitiesData.success && likesData.success && nudgesData.success) {
+                // Render Friend Requests
+                const friendRequestsList = document.getElementById('friendRequestsList');
+                friendRequestsList.innerHTML = '';
+
+                if (friendRequestsData.friendRequests.length === 0) {
+                    friendRequestsList.innerHTML = `
+                        <div class="p-3 text-gray-500 text-sm text-center">
+                            No pending friend requests
+                        </div>
+                    `;
+                } else {
+                    friendRequestsData.friendRequests.forEach(request => {
+                        const requestElement = document.createElement('div');
+                        requestElement.classList.add(
+                            'p-3',
+                            'border-b',
+                            'hover:bg-gray-50',
+                            'flex',
+                            'items-center',
+                            'justify-between'
+                        );
+                        requestElement.innerHTML = `
+                            <div class="flex items-center">
+                                <img src="../profile.png" alt="Profile" class="w-8 h-8 rounded-full mr-2">
+                                <div>
+                                    <p class="font-semibold">${request.from.username}</p>
+                                    <p class="text-sm text-gray-500">Sent you a friend request</p>
+                                </div>
+                            </div>
+                            <div class="flex space-x-2">
+                                <button class="decline-friend-button px-3 py-1 bg-red-600 text-white rounded-md hover:bg-red-700 text-sm"
+                                        data-request-id="${request._id}" 
+                                        data-friend-username="${request.from.username}">
+                                    Decline
+                                </button>
+                                <button class="accept-friend-button px-3 py-1 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm"
+                                        data-request-id="${request._id}" 
+                                        data-friend-username="${request.from.username}">
+                                    Accept
+                                </button>
+                            </div>
+                        `;
+                        friendRequestsList.appendChild(requestElement);
+                    });
+
+                    // Add event listeners for both accept and decline buttons
+                    const acceptButtons = friendRequestsList.querySelectorAll('.accept-friend-button');
+                    const declineButtons = friendRequestsList.querySelectorAll('.decline-friend-button');
+
+                    acceptButtons.forEach(button => {
+                        button.addEventListener('click', async (e) => {
+                            const requestId = e.target.getAttribute('data-request-id');
+                            const friendUsername = e.target.getAttribute('data-friend-username');
+                            await acceptFriendRequest(requestId, friendUsername);
+                            fetchNotifications(); // Re-fetch after accepting
+                        });
+                    });
+
+                    declineButtons.forEach(button => {
+                        button.addEventListener('click', async (e) => {
+                            const requestId = e.target.getAttribute('data-request-id');
+                            const friendUsername = e.target.getAttribute('data-friend-username');
+                            await declineFriendRequest(requestId, friendUsername);
+                            fetchNotifications(); // Re-fetch after declining
+                        });
+                    });
+                }
+
+                // Add Nudges Section
+                const nudgesSection = document.createElement('div');
+                nudgesSection.classList.add('border-b');
+                nudgesSection.innerHTML = `
+                    <div class="p-2 bg-gray-50">
+                        <span class="font-semibold">Reading Nudges</span>
                     </div>
                 `;
-            } else {
-                friendRequestsData.friendRequests.forEach(request => {
-                    const requestElement = document.createElement('div');
-                    requestElement.classList.add(
-                        'p-3',
-                        'border-b',
-                        'hover:bg-gray-50',
-                        'flex',
-                        'items-center',
-                        'justify-between'
-                    );
-                    requestElement.innerHTML = `
-                        <div class="flex items-center">
-                            <img src="../profile.png" alt="Profile" class="w-8 h-8 rounded-full mr-2">
-                            <div>
-                                <p class="font-semibold">${request.from.username}</p>
-                                <p class="text-sm text-gray-500">Sent you a friend request</p>
-                            </div>
-                        </div>
-                        <div class="flex space-x-2">
-                            <button class="decline-friend-button px-3 py-1 bg-red-600 text-white rounded-md hover:bg-red-700 text-sm"
-                                    data-request-id="${request._id}" 
-                                    data-friend-username="${request.from.username}">
-                                Decline
-                            </button>
-                            <button class="accept-friend-button px-3 py-1 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm"
-                                    data-request-id="${request._id}" 
-                                    data-friend-username="${request.from.username}">
-                                Accept
-                            </button>
-                        </div>
-                    `;
-                    friendRequestsList.appendChild(requestElement);
-                });
+                const notificationList = document.getElementById('notificationList');
+                notificationList.innerHTML = ''; // Clear existing notifications
+                notificationList.appendChild(nudgesSection);
 
-                // Add event listeners for both accept and decline buttons
-                const acceptButtons = friendRequestsList.querySelectorAll('.accept-friend-button');
-                const declineButtons = friendRequestsList.querySelectorAll('.decline-friend-button');
+                // Add logging before rendering nudges
+                console.log('Number of nudges:', nudgesData.nudges.length);
+                console.log('Nudges to render:', nudgesData.nudges);
 
-                acceptButtons.forEach(button => {
-                    button.addEventListener('click', async (e) => {
-                        const requestId = e.target.getAttribute('data-request-id');
-                        const friendUsername = e.target.getAttribute('data-friend-username');
-                        await acceptFriendRequest(requestId, friendUsername);
-                        fetchNotifications(); // Re-fetch after accepting
-                    });
-                });
-
-                declineButtons.forEach(button => {
-                    button.addEventListener('click', async (e) => {
-                        const requestId = e.target.getAttribute('data-request-id');
-                        const friendUsername = e.target.getAttribute('data-friend-username');
-                        await declineFriendRequest(requestId, friendUsername);
-                        fetchNotifications(); // Re-fetch after declining
-                    });
-                });
-            }
-
-            // Add Nudges Section
-            const nudgesSection = document.createElement('div');
-            nudgesSection.classList.add('border-b');
-            nudgesSection.innerHTML = `
-                <div class="p-2 bg-gray-50">
-                    <span class="font-semibold">Reading Nudges</span>
-                </div>
-            `;
-            const notificationList = document.getElementById('notificationList');
-            notificationList.innerHTML = ''; // Clear existing notifications
-            notificationList.appendChild(nudgesSection);
-
-            // Add logging before rendering nudges
-            console.log('Number of nudges:', nudgesData.nudges.length);
-            console.log('Nudges to render:', nudgesData.nudges);
-
-            // Render Nudges
-            if (nudgesData.nudges && nudgesData.nudges.length > 0) {
-                console.log('Rendering nudges:', nudgesData.nudges);
-                nudgesData.nudges.forEach(nudge => {
-                    console.log('Processing nudge:', nudge);
-                    const nudgeElement = document.createElement('div');
-                    nudgeElement.classList.add(
-                        'notification-item',
-                        'p-3',
-                        'border-b',
-                        'hover:bg-gray-50'
-                    );
-                    nudgeElement.innerHTML = `
-                        <div class="flex items-center">
-                            <div class="text-blue-500 mr-2">
-                                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd" 
-                                          d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v3.586L7.707 9.293a1 1 0 00-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 10.586V7z" 
-                                          clip-rule="evenodd"/>
-                                </svg>
-                            </div>
-                            <div>
-                                <p class="text-sm">
-                                    <span class="font-semibold">${nudge.fromUsername}</span> 
-                                    nudged you to get back to reading!
-                                </p>
-                                <span class="text-xs text-gray-500">${formatTimeAgo(nudge.timestamp)}</span>
-                            </div>
-                        </div>
-                    `;
-                    notificationList.appendChild(nudgeElement);
-                });
-            } else {
-                console.log('No nudges found or empty array:', nudgesData.nudges);
-                const noNudges = document.createElement('div');
-                noNudges.classList.add('p-3', 'text-gray-500', 'text-sm', 'text-center');
-                noNudges.textContent = 'No reading nudges';
-                notificationList.appendChild(noNudges);
-            }
-
-            // Add Likes Section
-            const likesSection = document.createElement('div');
-            likesSection.classList.add('border-b');
-            likesSection.innerHTML = `
-                <div class="p-2 bg-gray-50">
-                    <span class="font-semibold">Recent Likes</span>
-                </div>
-            `;
-            notificationList.appendChild(likesSection);
-
-            // Render Likes
-            if (likesData.likes.length > 0) {
-                likesData.likes.forEach(like => {
-                    const likeElement = document.createElement('div');
-                    likeElement.classList.add(
-                        'notification-item',
-                        'p-3',
-                        'border-b',
-                        'hover:bg-gray-50',
-                        'flex',
-                        'items-center',
-                        'justify-between'
-                    );
-
-                    let likeContent = '';
-                    if (like.type === 'review') {
-                        likeContent = `
+                // Render Nudges
+                if (nudgesData.nudges && nudgesData.nudges.length > 0) {
+                    console.log('Rendering nudges:', nudgesData.nudges);
+                    nudgesData.nudges.forEach(nudge => {
+                        console.log('Processing nudge:', nudge);
+                        const nudgeElement = document.createElement('div');
+                        nudgeElement.classList.add(
+                            'notification-item',
+                            'p-3',
+                            'border-b',
+                            'hover:bg-gray-50'
+                        );
+                        nudgeElement.innerHTML = `
                             <div class="flex items-center">
-                                <div class="text-red-500 mr-2">
+                                <div class="text-blue-500 mr-2">
                                     <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd"></path>
+                                        <path fill-rule="evenodd" 
+                                              d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v3.586L7.707 9.293a1 1 0 00-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 10.586V7z" 
+                                              clip-rule="evenodd"/>
                                     </svg>
                                 </div>
                                 <div>
                                     <p class="text-sm">
-                                        <span class="font-semibold">${like.likedBy.join(', ')}</span> 
-                                        ${like.likedBy.length > 1 ? 'liked' : 'liked'} your review of 
-                                        <span class="font-semibold">${like.bookTitle}</span>
+                                        <span class="font-semibold">${nudge.fromUsername}</span> 
+                                        nudged you to get back to reading!
                                     </p>
-                                    <span class="text-xs text-gray-500">${formatTimeAgo(like.timestamp)}</span>
-                                </div>
-                            </div>
-                            ${like.thumbnail ? `
-                                <img src="${like.thumbnail}" alt="${like.bookTitle}" 
-                                     class="w-10 h-14 object-cover rounded ml-2">
-                            ` : ''}
-                        `;
-                    } else if (like.type === 'list') {
-                        likeContent = `
-                            <div class="flex items-center">
-                                <div class="text-red-500 mr-2">
-                                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd"></path>
-                                    </svg>
-                                </div>
-                                <div>
-                                    <p class="text-sm">
-                                        <span class="font-semibold">${like.likedBy.join(', ')}</span> 
-                                        ${like.likedBy.length > 1 ? 'liked' : 'liked'} your list 
-                                        <span class="font-semibold">${like.listName}</span>
-                                    </p>
-                                    <span class="text-xs text-gray-500">${formatTimeAgo(like.timestamp)}</span>
+                                    <span class="text-xs text-gray-500">${formatTimeAgo(nudge.timestamp)}</span>
                                 </div>
                             </div>
                         `;
-                    }
+                        notificationList.appendChild(nudgeElement);
+                    });
+                } else {
+                    console.log('No nudges found or empty array:', nudgesData.nudges);
+                    const noNudges = document.createElement('div');
+                    noNudges.classList.add('p-3', 'text-gray-500', 'text-sm', 'text-center');
+                    noNudges.textContent = 'No reading nudges';
+                    notificationList.appendChild(noNudges);
+                }
 
-                    likeElement.innerHTML = likeContent;
-                    notificationList.appendChild(likeElement);
+                // Add Likes Section
+                const likesSection = document.createElement('div');
+                likesSection.classList.add('border-b');
+                likesSection.innerHTML = `
+                    <div class="p-2 bg-gray-50">
+                        <span class="font-semibold">Recent Likes</span>
+                    </div>
+                `;
+                notificationList.appendChild(likesSection);
+
+                // Render Likes
+                if (likesData.likes.length > 0) {
+                    likesData.likes.forEach(like => {
+                        const likeElement = document.createElement('div');
+                        likeElement.classList.add(
+                            'notification-item',
+                            'p-3',
+                            'border-b',
+                            'hover:bg-gray-50',
+                            'flex',
+                            'items-center',
+                            'justify-between'
+                        );
+
+                        let likeContent = '';
+                        if (like.type === 'review') {
+                            likeContent = `
+                                <div class="flex items-center">
+                                    <div class="text-red-500 mr-2">
+                                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd"></path>
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm">
+                                            <span class="font-semibold">${like.likedBy.join(', ')}</span> 
+                                            ${like.likedBy.length > 1 ? 'liked' : 'liked'} your review of 
+                                            <span class="font-semibold">${like.bookTitle}</span>
+                                        </p>
+                                        <span class="text-xs text-gray-500">${formatTimeAgo(like.timestamp)}</span>
+                                    </div>
+                                </div>
+                                ${like.thumbnail ? `
+                                    <img src="${like.thumbnail}" alt="${like.bookTitle}" 
+                                         class="w-10 h-14 object-cover rounded ml-2">
+                                ` : ''}
+                            `;
+                        } else if (like.type === 'list') {
+                            likeContent = `
+                                <div class="flex items-center">
+                                    <div class="text-red-500 mr-2">
+                                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd"></path>
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm">
+                                            <span class="font-semibold">${like.likedBy.join(', ')}</span> 
+                                            ${like.likedBy.length > 1 ? 'liked' : 'liked'} your list 
+                                            <span class="font-semibold">${like.listName}</span>
+                                        </p>
+                                        <span class="text-xs text-gray-500">${formatTimeAgo(like.timestamp)}</span>
+                                    </div>
+                                </div>
+                            `;
+                        }
+
+                        likeElement.innerHTML = likeContent;
+                        notificationList.appendChild(likeElement);
+                    });
+                } else {
+                    const noLikes = document.createElement('div');
+                    noLikes.classList.add('p-3', 'text-gray-500', 'text-sm', 'text-center');
+                    noLikes.textContent = 'No new likes';
+                    notificationList.appendChild(noLikes);
+                }
+
+                // Add Activities Section Header
+                const activitiesSection = document.createElement('div');
+                activitiesSection.classList.add('border-b');
+                activitiesSection.innerHTML = `
+                    <div class="p-2 bg-gray-50">
+                        <span class="font-semibold">Recent Activities</span>
+                    </div>
+                `;
+                notificationList.appendChild(activitiesSection);
+
+                // Prepare activity notifications
+                allActivities = activitiesData.activities;
+                activitiesShown = 0;
+                renderNextNotifications(); // Load the first batch
+
+                // Calculate total notifications only counting unread items
+                const totalNotifications = 
+                    friendRequestsData.friendRequests.filter(req => !req.isRead).length + 
+                    likesData.likes.filter(like => !like.isRead).length +
+                    nudgesData.nudges.filter(nudge => !nudge.isRead).length +
+                    activitiesData.activities.filter(activity => !activity.isRead).length;
+
+                console.log('Calculated total notifications in fetchNotifications:', totalNotifications);
+                console.log('Breakdown of unread notifications:', {
+                    unreadFriendRequests: friendRequestsData.friendRequests.filter(req => !req.isRead).length,
+                    unreadLikes: likesData.likes.filter(like => !like.isRead).length,
+                    unreadNudges: nudgesData.nudges.filter(nudge => !nudge.isRead).length,
+                    unreadActivities: activitiesData.activities.filter(activity => !activity.isRead).length
                 });
-            } else {
-                const noLikes = document.createElement('div');
-                noLikes.classList.add('p-3', 'text-gray-500', 'text-sm', 'text-center');
-                noLikes.textContent = 'No new likes';
-                notificationList.appendChild(noLikes);
+
+                updateNotificationCount(totalNotifications);
             }
-
-            // Add Activities Section Header
-            const activitiesSection = document.createElement('div');
-            activitiesSection.classList.add('border-b');
-            activitiesSection.innerHTML = `
-                <div class="p-2 bg-gray-50">
-                    <span class="font-semibold">Recent Activities</span>
-                </div>
-            `;
-            notificationList.appendChild(activitiesSection);
-
-            // Prepare activity notifications
-            allActivities = activitiesData.activities;
-            activitiesShown = 0;
-            renderNextNotifications(); // Load the first batch
-
-            // Update notification count to include likes and nudges
-            const totalNotifications = 
-                friendRequestsData.friendRequests.length + 
-                likesData.likes.length +
-                nudgesData.nudges.length +
-                activitiesData.activities.filter(a => !a.isRead).length;
-
-            updateNotificationCount(totalNotifications);
+        } catch (error) {
+            console.error('Error fetching notifications:', error);
         }
-    } catch (error) {
-        console.error('Error fetching notifications:', error);
     }
-}
 
-// Renders the next batch of activity notifications
-function renderNextNotifications() {
+    // Renders the next batch of activity notifications
+    function renderNextNotifications() {
                 const notificationList = document.getElementById('notificationList');
     const showMoreButton = document.getElementById('showMoreNotifications');
     const nextBatch = allActivities.slice(activitiesShown, activitiesShown + NOTIFICATIONS_PER_PAGE);
@@ -762,13 +764,50 @@ document.getElementById('showMoreNotifications').addEventListener('click', () =>
 
     // Function to update notification count
 async function updateNotificationCount(totalCount) {
+    console.log('updateNotificationCount called with totalCount:', totalCount);
+    const username = localStorage.getItem('username');
+    
+    // Always fetch the latest unread count from the server
+    try {
+        console.log('Fetching latest unread count from server');
+        const response = await fetch(`/api/activities/unread-count/${username}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            console.log('Received unread count from server:', data.unreadCount);
+            totalCount = data.unreadCount;
+        } else {
+            console.error('Failed to fetch unread count:', data.message);
+            return;
+        }
+    } catch (error) {
+        console.error('Error fetching unread count:', error);
+        return;
+    }
+
+    const notificationBadge = document.getElementById('notificationBadge');
     const notificationCount = document.getElementById('notificationCount');
+    
+    console.log('Current notification elements:', {
+        badgeExists: !!notificationBadge,
+        countExists: !!notificationCount,
+        currentBadgeText: notificationBadge?.textContent,
+        currentCountText: notificationCount?.textContent,
+        newTotalCount: totalCount
+    });
+
     if (totalCount > 0) {
-        notificationCount.textContent = totalCount > 99 ? '99+' : totalCount;
-                    notificationCount.classList.remove('hidden');
-                } else {
-                    notificationCount.classList.add('hidden');
-                }
+        const displayCount = totalCount > 99 ? '99+' : totalCount;
+        console.log('Setting notification count to:', displayCount);
+        notificationBadge.textContent = displayCount;
+        notificationCount.textContent = displayCount;
+        notificationBadge.style.display = 'inline-block';
+        notificationCount.classList.remove('hidden');
+    } else {
+        console.log('Hiding notification count');
+        notificationBadge.style.display = 'none';
+        notificationCount.classList.add('hidden');
+    }
 }
 
 // Add the acceptFriendRequest function if it's not already defined
@@ -824,7 +863,8 @@ async function declineFriendRequest(requestId, friendUsername) {
     }
 
     // Initial fetch of notification count
-    updateNotificationCount();
+    console.log('Making initial notification count fetch');
+    await updateNotificationCount();
     
     // Update notifications every minute
     setInterval(updateNotificationCount, 60000);
@@ -936,6 +976,54 @@ function renderNotificationItem(activity) {
         `;
     }
     // ... existing notification rendering code ...
+}
+
+let notificationState = {
+    count: 0,
+    isUpdating: false,
+    lastUpdate: null
+};
+
+async function updateNotificationCount() {
+    if (notificationState.isUpdating) {
+        return;
+    }
+
+    try {
+        notificationState.isUpdating = true;
+        const username = localStorage.getItem('username');
+        if (!username) return;
+
+        const response = await fetch(`/api/activities/unread-count/${username}`);
+        const data = await response.json();
+
+        const notificationBadge = document.getElementById('notificationBadge');
+        const notificationCount = document.getElementById('notificationCount');
+
+        if (data.success) {
+            const totalCount = data.unreadCount;
+
+            // Update state
+            notificationState.count = totalCount;
+            notificationState.lastUpdate = new Date().toISOString();
+
+            // Update UI
+            if (totalCount > 0) {
+                const displayCount = totalCount > 99 ? '99+' : totalCount;
+                notificationBadge.textContent = displayCount;
+                notificationCount.textContent = displayCount;
+                notificationBadge.style.display = 'inline-block';
+                notificationCount.classList.remove('hidden');
+            } else {
+                notificationBadge.style.display = 'none';
+                notificationCount.classList.add('hidden');
+            }
+        }
+    } catch (error) {
+        console.error('Error updating notification count:', error);
+    } finally {
+        notificationState.isUpdating = false;
+    }
 }
 
 
