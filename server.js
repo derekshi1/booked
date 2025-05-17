@@ -3464,3 +3464,52 @@ app.post('/api/migrate-reviews', async (req, res) => {
         });
     }
 });
+
+// Google Authentication Endpoints
+app.post('/api/auth/google-login', async (req, res) => {
+    const { email, name, googleId, username } = req.body;
+
+    try {
+        // Check if user exists by username
+        let user = await User.findOne({ username });
+        
+        if (!user) {
+            return res.status(400).send('Username not found. Please register first.');
+        }
+
+        // Verify the Google ID matches
+        if (user.password !== googleId) {
+            return res.status(400).send('Invalid Google account');
+        }
+
+        res.status(200).send('Logged in');
+    } catch (err) {
+        console.error('Error during Google login:', err);
+        res.status(500).send('Internal server error');
+    }
+});
+
+app.post('/api/auth/google-register', async (req, res) => {
+    const { email, name, googleId, username } = req.body;
+
+    try {
+        // Check if username is already taken
+        const existingUser = await User.findOne({ username });
+        if (existingUser) {
+            return res.status(400).send('Username is already taken');
+        }
+
+        // Create new user with custom username
+        const user = new User({
+            username,
+            password: googleId, // Store Google ID as password
+            profilePicture: '../profile.png'
+        });
+        await user.save();
+
+        res.status(201).send('User created');
+    } catch (err) {
+        console.error('Error during Google registration:', err);
+        res.status(500).send('Internal server error');
+    }
+});

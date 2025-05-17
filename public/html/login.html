@@ -6,6 +6,7 @@
     <title>Login</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=League+Spartan:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
         body {
             font-family: 'League Spartan', sans-serif;
@@ -30,9 +31,9 @@
             z-index: 0;
         }
         .login-container {
-            background: rgba(255, 255, 255, 0.15);
-            backdrop-filter: blur(15px);
-            -webkit-backdrop-filter: blur(15px);
+            background: rgba(17, 24, 39, 0.65);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
             border: 1px solid rgba(255, 255, 255, 0.3);
             box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
         }
@@ -54,6 +55,20 @@
             transform: translateY(-1px);
             box-shadow: 0 4px 12px rgba(34, 197, 94, 0.4);
         }
+        .google-btn {
+            background: white;
+            color: #757575;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        .google-btn:hover {
+            background: #f1f1f1;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
     </style>
 </head>
 <body class="flex items-center justify-center min-h-screen">
@@ -61,15 +76,15 @@
         <h2 class="text-3xl font-bold mb-6 text-white text-center">Welcome Back</h2>
         <form id="loginForm" class="space-y-6">
             <div>
-                <label for="username" class="block text-sm font-medium text-black-200 mb-2">Username</label>
+                <label for="username" class="block text-sm font-medium text-white mb-2">Username</label>
                 <input type="text" id="username" name="username" 
                     class="input-field w-full p-3 rounded-lg text-black placeholder-black focus:outline-none" 
                     placeholder="Enter your username" required>
             </div>
             <div>
-                <label for="password" class="block text-sm font-medium text-black-200 mb-2">Password</label>
+                <label for="password" class="block text-sm font-medium text-white mb-2">Password</label>
                 <input type="password" id="password" name="password" 
-                    class="input-field w-full p-3 rounded-lg text-black placeholder-black focus:outline-none" 
+                    class="input-field w-full p-3 rounded-lg text-white placeholder-white focus:outline-none" 
                     placeholder="Enter your password" required>
             </div>
             <button type="submit" 
@@ -77,6 +92,23 @@
                 Sign In
             </button>
         </form>
+        <div class="relative my-6">
+            <div class="absolute inset-0 flex items-center">
+                <div class="w-full mb-2border-t border-gray-300"></div>
+            </div>
+        </div>
+        <div id="googleLoginForm" class="space-y-6 hidden">
+            <div>
+                <label for="googleUsername" class="block text-sm font-medium text-white mb-2">Username</label>
+                <input type="text" id="googleUsername" name="googleUsername" 
+                    class="input-field w-full p-3 rounded-lg text-black placeholder-black focus:outline-none" 
+                    placeholder="Enter your username" required>
+            </div>
+        </div>
+        <button id="googleSignIn" class="google-btn w-full p-3 rounded-lg font-semibold text-lg">
+            <img src="https://www.google.com/favicon.ico" alt="Google" class="w-5 h-5">
+            Sign in with Google
+        </button>
         <p id="message" class="text-red-400 mt-4 text-center text-sm"></p>
         <p class="mt-6 text-center text-gray-300 text-sm">
             Don't have an account? 
@@ -112,6 +144,58 @@
             } catch (error) {
                 const messageEl = document.getElementById('message');
                 messageEl.textContent = 'An error occurred. Please try again later.';
+            }
+        });
+
+        // Google Sign-In
+        document.getElementById('googleSignIn').addEventListener('click', async (e) => {
+            e.preventDefault();
+            try {
+                const client = google.accounts.oauth2.initTokenClient({
+                    client_id: '14363939556-rfd3scpioaorp8a4tj65on03hblb5rs9.apps.googleusercontent.com', 
+                    scope: 'email profile',
+                    callback: async (response) => {
+                        if (response.access_token) {
+                            const userInfo = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                                headers: { Authorization: `Bearer ${response.access_token}` }
+                            }).then(res => res.json());
+
+                            // Show username input field
+                            document.getElementById('googleLoginForm').classList.remove('hidden');
+                            
+                            // Add event listener for username submission
+                            document.getElementById('googleUsername').addEventListener('keypress', async (event) => {
+                                if (event.key === 'Enter') {
+                                    const username = document.getElementById('googleUsername').value;
+                                    
+                                    const loginResponse = await fetch('/api/auth/google-login', {
+                                        method: 'POST',
+                                        headers: {
+                                            'Content-Type': 'application/json',
+                                        },
+                                        body: JSON.stringify({
+                                            email: userInfo.email,
+                                            name: userInfo.name,
+                                            googleId: userInfo.sub,
+                                            username: username
+                                        }),
+                                    });
+
+                                    if (loginResponse.ok) {
+                                        localStorage.setItem('username', username);
+                                        window.location.href = '../html/index.html';
+                                    } else {
+                                        const error = await loginResponse.text();
+                                        document.getElementById('message').textContent = error;
+                                    }
+                                }
+                            });
+                        }
+                    },
+                });
+                client.requestAccessToken();
+            } catch (error) {
+                document.getElementById('message').textContent = 'An error occurred with Google Sign-In';
             }
         });
     </script>
