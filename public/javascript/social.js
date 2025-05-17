@@ -353,11 +353,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                                class="text-lg font-medium text-gray-900 hover:text-gray-700">
                                 ${activity.bookTitle}
                             </a>
-                            <div class="ml-2 px-2 py-1 bg-green-50 rounded-full">
-                                <span class="text-green-800 text-sm font-medium">
-                                    ${activity.rating !== undefined ? activity.rating : 'No rating'}/100
-                                </span>
-                            </div>
+                            ${activity.rating !== null ? `
+                                <div class="ml-2 px-2 py-1 bg-green-50 rounded-full">
+                                    <span class="text-green-800 text-sm font-medium">
+                                        ${activity.rating}/100
+                                    </span>
+                                </div>
+                            ` : ''}
                         </div>
                 
                         ${activity.review ? `
@@ -366,7 +368,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                                     "${activity.review}"
                                 </p>
                             </div>
-                        ` : '<div class="text-gray-500 text-sm">No review provided</div>'}
+                        ` : ''}
 
                         <div class="flex items-center space-x-4 text-sm text-gray-500">
                             <button class="like-button flex items-center ${isLikedClass} hover:text-red-500 focus:outline-none" 
@@ -383,7 +385,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                                           d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z">
                                     </path>
                                 </svg>
-                                ${activity.comments || 0} comments
+                                ${activity.comments ? activity.comments.length : 0} comments
                             </span>
                         </div>
                     </div> 
@@ -408,23 +410,23 @@ document.addEventListener('DOMContentLoaded', async () => {
                             <span class="text-gray-500 text-sm">${formatTimeAgo(activity.timestamp)}</span>
                         </div>
                             
-                            <div class="flex items-center">
-                                <span class="text-gray-700">added</span>
-                                <a href="../html/book.html?isbn=${activity.isbn}" 
-                                   class="ml-2 text-lg font-medium text-gray-900 hover:text-gray-700">
-                                    ${activity.bookTitle}
-                                </a>
-                                <span class="text-gray-700 ml-2">to their library</span>
-                            </div>
-                        </div>
-                        
-                        <div class="flex-shrink-0">
-                            <img src="${activity.thumbnail}" 
-                                 alt="${activity.bookTitle}" 
-                                 class="w-20 h-28 object-cover rounded-lg shadow-sm">
+                        <div class="flex items-center">
+                            <span class="text-gray-700">added</span>
+                            <a href="../html/book.html?isbn=${activity.isbn}" 
+                               class="ml-2 text-lg font-medium text-gray-900 hover:text-gray-700">
+                                ${activity.bookTitle}
+                            </a>
+                            <span class="text-gray-700 ml-2">to their library</span>
                         </div>
                     </div>
-                `;
+                    
+                    <div class="flex-shrink-0">
+                        <img src="${activity.thumbnail}" 
+                             alt="${activity.bookTitle}" 
+                             class="w-20 h-28 object-cover rounded-lg shadow-sm">
+                    </div>
+                </div>
+            `;
         } else {
             activityContent = `
                 <div class="flex items-start space-x-4">
@@ -438,22 +440,22 @@ document.addEventListener('DOMContentLoaded', async () => {
                             <span class="text-gray-500 text-sm">${formatTimeAgo(activity.timestamp)}</span>
                         </div>
                             
-                            <div class="flex items-center text-gray-500">
-                                <span>privately reviewed</span>
-                                <a href="../html/book.html?isbn=${activity.isbn}" 
-                                   class="ml-2 text-gray-700 hover:text-gray-900 font-medium">
-                                    ${activity.bookTitle}
-                                </a>
-                            </div>
-                        </div>
-                        
-                        <div class="flex-shrink-0">
-                            <img src="${activity.thumbnail}" 
-                                 alt="${activity.bookTitle}" 
-                                 class="w-20 h-28 object-cover rounded-lg shadow-sm opacity-50">
+                        <div class="flex items-center text-gray-500">
+                            <span>privately reviewed</span>
+                            <a href="../html/book.html?isbn=${activity.isbn}" 
+                               class="ml-2 text-gray-700 hover:text-gray-900 font-medium">
+                                ${activity.bookTitle}
+                            </a>
                         </div>
                     </div>
-                `;
+                    
+                    <div class="flex-shrink-0">
+                        <img src="${activity.thumbnail}" 
+                             alt="${activity.bookTitle}" 
+                             class="w-20 h-28 object-cover rounded-lg shadow-sm opacity-50">
+                    </div>
+                </div>
+            `;
         }
 
         activityElement.innerHTML = activityContent;

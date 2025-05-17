@@ -683,7 +683,11 @@ const NOTIFICATIONS_PER_PAGE = 10;
                 notificationList.appendChild(activitiesSection);
 
                 // Prepare activity notifications
-                allActivities = activitiesData.activities;
+                allActivities = activitiesData.activities.map(activity => ({
+                    ...activity,
+                    username: activity.username || activity.userId?.username // Handle both formats
+                }));
+                console.log('Processed activities:', allActivities);
                 activitiesShown = 0;
                 renderNextNotifications(); // Load the first batch
 
@@ -711,56 +715,56 @@ const NOTIFICATIONS_PER_PAGE = 10;
 
     // Renders the next batch of activity notifications
     function renderNextNotifications() {
-                const notificationList = document.getElementById('notificationList');
-    const showMoreButton = document.getElementById('showMoreNotifications');
-    const nextBatch = allActivities.slice(activitiesShown, activitiesShown + NOTIFICATIONS_PER_PAGE);
+        const notificationList = document.getElementById('notificationList');
+        const showMoreButton = document.getElementById('showMoreNotifications');
+        const nextBatch = allActivities.slice(activitiesShown, activitiesShown + NOTIFICATIONS_PER_PAGE);
                 
-    nextBatch.forEach(activity => {
-                    const notificationItem = document.createElement('div');
-        notificationItem.classList.add('notification-item', 'p-3', 'border-b', 'hover:bg-gray-50');
-                    if (!activity.isRead) {
-                        notificationItem.classList.add('unread');
-                    }
+        nextBatch.forEach(activity => {
+            const notificationItem = document.createElement('div');
+            notificationItem.classList.add('notification-item', 'p-3', 'border-b', 'hover:bg-gray-50');
+            if (!activity.isRead) {
+                notificationItem.classList.add('unread');
+            }
                     
-                    let notificationText = '';
-                    if (activity.action === 'became friends with') {
-                        notificationText = `<strong>${activity.username}</strong> became friends with you`;
-                    } else if (activity.action.includes('liked')) {
-                        notificationText = `<strong>${activity.username}</strong> liked your ${activity.action.split(' ')[1]}`;
-                    } else {
-                        notificationText = `<strong>${activity.username}</strong> ${activity.action} <em>${activity.bookTitle}</em>`;
-                    }
+            let notificationText = '';
+            if (activity.action === 'became friends with') {
+                notificationText = `<strong>${activity.username}</strong> became friends with you`;
+            } else if (activity.action.includes('liked')) {
+                notificationText = `<strong>${activity.username}</strong> liked your ${activity.action.split(' ')[1]}`;
+            } else {
+                notificationText = `<strong>${activity.username}</strong> ${activity.action} <em>${activity.bookTitle}</em>`;
+            }
                     
-                    notificationItem.innerHTML = `
-                        <div class="flex items-center justify-between">
-                            <div class="flex-grow">
-                                <p>${notificationText}</p>
-                    <span class="text-sm text-gray-500">${formatTimeAgo(activity.timestamp)}</span>
-                            </div>
-                            ${activity.thumbnail ? `
-                                <img src="${activity.thumbnail}" alt="${activity.bookTitle}" class="w-10 h-14 object-cover rounded ml-2">
-                            ` : ''}
-                        </div>
-                    `;
-                    notificationList.appendChild(notificationItem);
-                });
+            notificationItem.innerHTML = `
+                <div class="flex items-center justify-between">
+                    <div class="flex-grow">
+                        <p>${notificationText}</p>
+                        <span class="text-sm text-gray-500">${formatTimeAgo(activity.timestamp)}</span>
+                    </div>
+                    ${activity.thumbnail ? `
+                        <img src="${activity.thumbnail}" alt="${activity.bookTitle}" class="w-10 h-14 object-cover rounded ml-2">
+                    ` : ''}
+                </div>
+            `;
+            notificationList.appendChild(notificationItem);
+        });
                 
-    activitiesShown += nextBatch.length;
+        activitiesShown += nextBatch.length;
 
-    // Show or hide the button
-    if (activitiesShown >= allActivities.length) {
-        showMoreButton.style.display = 'none';
-    } else {
-        showMoreButton.style.display = 'block';
+        // Show or hide the button
+        if (activitiesShown >= allActivities.length) {
+            showMoreButton.style.display = 'none';
+        } else {
+            showMoreButton.style.display = 'block';
+        }
     }
-}
 
-// Update the Show More button click handler to include the scroll
-document.getElementById('showMoreNotifications').addEventListener('click', () => {
-    renderNextNotifications();
-    // Only scroll when Show More is clicked
-    document.getElementById('notificationList').scrollBy({ top: 300, behavior: 'smooth' });
-});
+    // Update the Show More button click handler to include the scroll
+    document.getElementById('showMoreNotifications').addEventListener('click', () => {
+        renderNextNotifications();
+        // Only scroll when Show More is clicked
+        document.getElementById('notificationList').scrollBy({ top: 300, behavior: 'smooth' });
+    });
 
     // Function to update notification count
 async function updateNotificationCount(totalCount) {
