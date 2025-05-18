@@ -223,7 +223,6 @@ app.post('/api/users/:username/lists', async (req, res) => {
 // Endpoint to get count of unread activities
 app.get('/api/activities/unread-count/:username', async (req, res) => {
     const { username } = req.params;
-    console.log(`\n=== Fetching unread notifications for ${username} ===`);
 
     try {
         const user = await User.findOne({ username });
@@ -231,7 +230,6 @@ app.get('/api/activities/unread-count/:username', async (req, res) => {
             console.log('❌ User not found');
             return res.status(404).json({ success: false, message: 'User not found' });
         }
-        console.log(`✅ Found user: ${username}`);
 
         // Count unread activities from friends, filtering out any problematic ones
         const unreadActivities = await Activity.find({
@@ -270,7 +268,6 @@ app.get('/api/activities/unread-count/:username', async (req, res) => {
         let unreadLikesDetails = [];
 
         if (userLibrary && userLibrary.books) {
-            console.log('\n=== Unread Likes ===');
             userLibrary.books.forEach(book => {
                 if (book.likes) {
                     try {
@@ -306,7 +303,6 @@ app.get('/api/activities/unread-count/:username', async (req, res) => {
                 }
             });
         }
-        console.log(`Total unread likes: ${unreadLikesCount}`);
 
         // Count unread nudges
         const unreadNudges = await Activity.find({
@@ -319,13 +315,7 @@ app.get('/api/activities/unread-count/:username', async (req, res) => {
 
         // Total unread count
         const totalUnreadCount = unreadActivitiesCount + unreadFriendRequestsCount + unreadLikesCount + unreadNudgesCount;
-        console.log('\n=== Summary ===');
-        console.log(`Total unread notifications: ${totalUnreadCount}`);
-        console.log(`- Activities: ${unreadActivitiesCount}`);
-        console.log(`- Friend Requests: ${unreadFriendRequestsCount}`);
-        console.log(`- Likes: ${unreadLikesCount}`);
-        console.log(`- Nudges: ${unreadNudgesCount}`);
-
+       
         res.json({ 
             success: true, 
             unreadCount: totalUnreadCount,

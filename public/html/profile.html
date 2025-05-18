@@ -9,7 +9,32 @@
     <script defer src="../javascript/header.js"></script>
     <script defer src="../javascript/profile.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link href="../css/styles.css" rel="stylesheet"> 
+    <link href="../css/styles.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'League Spartan', sans-serif;
+            background-size: 100% 100%;
+            background-position: center;
+            background-repeat: no-repeat;
+            position: relative;
+            min-height: 100vh;
+            margin: 0;
+            padding: 0;
+        }
+     
+        .profile-container, .stats-placeholder, .archetype-container, .reading-calendar-container {
+            background: rgba(17, 24, 39, 0.65);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            transition: all 0.3s ease;
+        }
+        .profile-container:hover, .stats-placeholder:hover, .archetype-container:hover, .reading-calendar-container:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 40px 0 rgba(31, 38, 135, 0.45);
+        }
+    </style>
 </head>
 <body>
     <header class="custom-header text-green-900 py-4">

@@ -377,16 +377,16 @@ async function renderReadingList(books) {
         bookDiv.classList.add('library-card', 'relative', 'p-6', 'rounded-lg', 'shadow-lg', 'cursor-pointer', 'hover:shadow-2xl', 'transition', 'duration-300', 'ease-in-out');
         bookDiv.innerHTML = `
             <div class="relative group book-card library-card" style="border: 4px solid ${getGradientColor(book.rating)};">
-                <a href="../html/book.html?isbn=${book.isbn}" class="block relative overflow-hidden rounded-lg shadow-lg hover:shadow-2xl transition duration-300 ease-in-out group">
+                <a href="../html/book.html?isbn=${book.isbn}" class="block relative overflow-hidden rounded-lg shadow-md hover:shadow-lg transition duration-200 ease-in-out group">
                     <img src="${book.thumbnail}" alt="${book.title}" class="w-full h-64 object-cover rounded-t-lg">
-                    <div class="absolute bottom-0 left-0 w-full p-4 bg-black bg-opacity-60 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-in-out">
-                        <h2 class="text-lg font-bold">${book.title}</h2>
-                        <p class="text-gray-300">by ${book.authors}</p>
+                    <div class="absolute bottom-0 left-0 w-full p-2 bg-black bg-opacity-50 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200 ease-in-out">
+                        <h2 class="text-sm font-bold">${book.title}</h2>
+                        <p class="text-gray-300 text-xs">by ${book.authors}</p>
                     </div>
                 </a>
-                    ${username === loggedInUsername ? 
-                        `<button onclick="removeFromReadingList('${username}', '${book.isbn}')" class="absolute top-0 left-0 mt-2 ml-2 text-xs bg-red-700 text-white px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-in-out">Remove</button>` 
-                        : ''}           
+                ${username === loggedInUsername ? 
+                    `<button onclick="removeFromReadingList('${username}', '${book.isbn}')" class="absolute top-0 left-0 mt-2 ml-2 text-xs bg-red-700 text-white px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 ease-in-out">Remove</button>` 
+                    : ''}           
             </div>
         `;
         readingListGrid.appendChild(bookDiv);
