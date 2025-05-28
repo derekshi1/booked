@@ -242,60 +242,39 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.location.href = '../html/login.html';
     }
 
-    // New function to fetch and display genres
-    async function pieChart() {
+    // Replace pieChart function with displayArchetype
+    async function displayArchetype() {
         try {
             const username = profileUsername || loggedInUsername;
-            const response = await fetch(`/api/library/${username}`);
+            const response = await fetch(`/api/users/${username}/archetype`);
+            if (!response.ok) {
+                throw new Error('Failed to fetch archetype');
+            }
             const data = await response.json();
-        
-            if (data.success) {
-                const categoryCounts = data.categoryCounts;
-
-                // Prep the data for the chart
-                const labels = Object.keys(categoryCounts);
-                const values = Object.values(categoryCounts);
-
-                const ctx = document.getElementById('categoryChart').getContext('2d');
-                new Chart(ctx, {
-                    type: 'pie',
-                    data: {
-                      labels: labels,
-                      datasets: [{
-                        label: 'Books by Category',
-                        data: values,
-                        backgroundColor: [
-                          '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40'
-                        ]
-                      }]
-                    },
-                    options: {
-                      responsive: true,
-                      plugins: {
-                        legend: {
-                          position: 'top',
-                          labels: {
-                            color: 'white' // Color for legend text
-                          }
-                        },
-                        title: {
-                          display: true,
-                          text: 'Distribution of Books by Category',
-                          color: 'white' // Color for title text
-                        }
-                      }
-                    }
-                  });
+            
+            if (data.archetype) {
+                const archetypeContainer = document.getElementById('categoryChart').parentElement;
+                archetypeContainer.innerHTML = `
+                     <h3 class="text-xl font-semibold text-white mb-4">Your Reading Archetype: ${data.archetype.name}</h3>
+                    <div class=" flex flex-col items-center justify-center h-full">
+                        <div class="w-[60px] h-[60px] transform scale-50">
+                            <img src="../archetypes/${data.archetype.name.toLowerCase()}_archetype.png" 
+                                 alt="${data.archetype.name} Archetype" 
+                                 class="w-full h-full object-contain max-w-[60px] max-h-[60px]">
+                        </div>
+                    </div>
+                `;
             } else {
-                console.error('Failed to fetch category counts:', data.message);
+                console.error('No archetype found');
             }
         } catch (error) {
-            console.error('Error fetching data:', error);
+            console.error('Error displaying archetype:', error);
         }
     }
 
-    // Call the pieChart function
-    pieChart();
+    // Call displayArchetype instead of pieChart
+    displayArchetype();
+
     async function fetchCurrentlyReading(username) {
         try {
             const response = await fetch(`/api/library/${username}/currently-reading`);
