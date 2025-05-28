@@ -644,17 +644,17 @@ function renderRecommendations(recommendations) {
 
     recommendations.slice(0, 5).forEach(book => {
         const bookElement = document.createElement('div');
-        bookElement.classList.add('single-recommendation-card', 'book-card', 'relative', 'p-6', 'rounded-lg', 'shadow-lg', 'cursor-pointer', 'hover:shadow-2xl', 'transition', 'duration-300', 'ease-in-out');
-        bookElement.style.width = '100%'; // Adjust this width to fit 7 books in the container
+        bookElement.classList.add('library-card', 'relative', 'p-6', 'rounded-lg', 'shadow-lg', 'cursor-pointer', 'hover:shadow-2xl', 'transition', 'duration-300', 'ease-in-out');
         bookElement.innerHTML = `
-            <a href="../html/book.html?isbn=${book.isbn}" class="block relative overflow-hidden rounded-lg shadow-lg hover:shadow-2xl transition duration-300 ease-in-out group">
-                <img src="${book.thumbnail}" alt="${book.title}" class="w-full h-64 object-cover rounded-t-lg">
-                                <div class="absolute bottom-0 left-0 w-full p-4 bg-black bg-opacity-60 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-in-out">
-                                    <h2 class="text-lg font-bold">${book.title}</h2>
-                                    <p class="text-gray-300">by ${book.authors}</p>
-                                </div>
-            </a>
-
+            <div class="relative group book-card library-card">
+                <a href="../html/book.html?isbn=${book.isbn}" class="block relative overflow-hidden rounded-lg shadow-md hover:shadow-lg transition duration-200 ease-in-out group">
+                    <img src="${book.thumbnail}" alt="${book.title}" class="w-full h-64 object-cover rounded-t-lg">
+                    <div class="absolute bottom-0 left-0 w-full p-2 bg-black bg-opacity-50 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200 ease-in-out">
+                        <h2 class="text-sm font-bold">${book.title}</h2>
+                        <p class="text-gray-300 text-xs">by ${book.authors}</p>
+                    </div>
+                </a>
+            </div>
         `;
         recommendationsContainer.appendChild(bookElement);
     });
