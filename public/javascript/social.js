@@ -151,9 +151,55 @@ document.addEventListener('DOMContentLoaded', async () => {
     setInterval(updateTimestamps, 3600000);
    
     
-    const renderActivitiesFeed = (activities) => {
-        console.log('All activities received:', activities);
-       
+    // Add pagination variables at the top
+    let currentPage = 1;
+    const activitiesPerPage = 10;
+    let isLoading = false;
+    let hasMoreActivities = true;
+    let allActivities = []; // Store all activities
+
+    // Modify the fetchActivities function to support pagination
+    const fetchActivities = async () => {
+        if (isLoading) return;
+        
+        try {
+            isLoading = true;
+            const response = await fetch(`/api/friends-activities/${username}`);
+            if (!response.ok) {
+                throw new Error(`Error fetching activities: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            if (data.success) {
+                // Store all activities
+                allActivities = data.activities;
+                
+                // Calculate pagination
+                const startIndex = 0;
+                const endIndex = currentPage * activitiesPerPage;
+                const activitiesToShow = allActivities.slice(startIndex, endIndex);
+                
+                // Check if we have more activities to load
+                hasMoreActivities = endIndex < allActivities.length;
+                
+                // Clear existing activities if it's the first page
+                if (currentPage === 1) {
+                    activitiesFeed.innerHTML = '';
+                }
+                
+                renderActivitiesFeed(activitiesToShow, currentPage > 1);
+            } else {
+                console.error('Failed to fetch activities:', data.message);
+            }
+        } catch (error) {
+            console.error('Error fetching activities:', error);
+        } finally {
+            isLoading = false;
+        }
+    };
+
+    // Modify renderActivitiesFeed to support pagination and lazy loading
+    const renderActivitiesFeed = (activities, append = false) => {
         // Filter for only reviews and library additions, and remove duplicates
         const seenActivities = new Set();
         const uniqueActivities = activities.filter(activity => {
@@ -167,139 +213,44 @@ document.addEventListener('DOMContentLoaded', async () => {
             return false;
         });
 
-        // Sort activities by timestamp in descending order (most recent first)
-        uniqueActivities.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-    
-        activitiesFeed.innerHTML = '';
+        if (!append) {
+            activitiesFeed.innerHTML = '';
+        }
 
-        // Create container for all activities
-        const activitiesContainer = document.createElement('div');
-        activitiesContainer.classList.add('space-y-4');
+        // Create container for activities if it doesn't exist
+        let activitiesContainer = activitiesFeed.querySelector('.activities-container');
+        if (!activitiesContainer) {
+            activitiesContainer = document.createElement('div');
+            activitiesContainer.classList.add('activities-container', 'space-y-4');
+            activitiesFeed.appendChild(activitiesContainer);
+        }
 
-        // Show first 10 activities initially
-        const initialActivities = uniqueActivities.slice(0, 10);
-        const remainingActivities = uniqueActivities.slice(10);
-
-        // Render initial activities
-        initialActivities.forEach(async (activity) => {
+        // Render activities
+        uniqueActivities.forEach(async (activity) => {
             const activityElement = createActivityElement(activity);
             activitiesContainer.appendChild(activityElement);
         });
 
-        // Add show more/less button if there are remaining activities
-        if (remainingActivities.length > 0) {
-            const showMoreButton = document.createElement('button');
-            showMoreButton.classList.add(
-                'w-32',
-                'h-10',
-                'mx-auto',
-                'mt-4',
-                'mb-4',
-                'flex',
-                'items-center',
-                'justify-center',
-                'bg-white',
-                'rounded-lg',
-                'border',
-                'border-gray-200',
-                'hover:border-green-500',
-                'transition-all',
-                'duration-300',
-                'transform',
-                'hover:-translate-y-0.5',
-                'group'
-            );
-            
-            // Create the arrow icon container
-            const arrowContainer = document.createElement('div');
-            arrowContainer.classList.add(
-                'flex',
-                'flex-row',
-                'items-center',
-                'gap-2',
-                'text-gray-600',
-                'group-hover:text-green-600',
-                'transition-colors',
-                'duration-300'
-            );
+        // Add infinite scroll observer
+        if (!activitiesFeed.querySelector('.infinite-scroll-trigger')) {
+            const trigger = document.createElement('div');
+            trigger.classList.add('infinite-scroll-trigger', 'h-4');
+            activitiesContainer.appendChild(trigger);
 
-            // Create the arrow icon
-            const arrowIcon = document.createElement('div');
-            arrowIcon.classList.add(
-                'w-4',
-                'h-4',
-                'transform',
-                'transition-transform',
-                'duration-300',
-                'group-hover:scale-110'
-            );
-            arrowIcon.innerHTML = `
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                </svg>
-            `;
-
-            // Create the text element
-            const buttonText = document.createElement('span');
-            buttonText.classList.add(
-                'text-sm',
-                'font-medium'
-            );
-            buttonText.textContent = `Show ${Math.min(5, remainingActivities.length)} more`;
-
-            // Add elements to the container
-            arrowContainer.appendChild(arrowIcon);
-            arrowContainer.appendChild(buttonText);
-            showMoreButton.appendChild(arrowContainer);
-
-            showMoreButton.dataset.remainingActivities = JSON.stringify(remainingActivities);
-            showMoreButton.dataset.currentIndex = '0';
-            showMoreButton.dataset.showingMore = 'false';
-
-            showMoreButton.addEventListener('click', () => {
-                const isShowingMore = showMoreButton.dataset.showingMore === 'true';
-                const currentIndex = parseInt(showMoreButton.dataset.currentIndex);
-                const remainingActivities = JSON.parse(showMoreButton.dataset.remainingActivities);
-
-                if (isShowingMore) {
-                    // Remove the last 5 activities
-                    const activitiesToRemove = activitiesContainer.querySelectorAll('.activity');
-                    for (let i = activitiesToRemove.length - 1; i >= activitiesToRemove.length - 5; i--) {
-                        if (activitiesToRemove[i]) {
-                            activitiesToRemove[i].remove();
-                        }
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting && !isLoading && hasMoreActivities) {
+                        currentPage++;
+                        fetchActivities();
                     }
-                    buttonText.textContent = `Show ${Math.min(5, remainingActivities.length - currentIndex)} more`;
-                    arrowIcon.classList.remove('rotate-180');
-                    showMoreButton.dataset.showingMore = 'false';
-                } else {
-                    // Add next 5 activities
-                    const nextActivities = remainingActivities.slice(currentIndex, currentIndex + 5);
-                    nextActivities.forEach(async (activity) => {
-                        const activityElement = createActivityElement(activity);
-                        activitiesContainer.insertBefore(activityElement, showMoreButton);
-                    });
+                });
+            }, { threshold: 0.1 });
 
-                    const newIndex = currentIndex + 5;
-                    showMoreButton.dataset.currentIndex = newIndex.toString();
-                    
-                    if (newIndex >= remainingActivities.length) {
-                        buttonText.textContent = 'Show less';
-                        arrowIcon.classList.add('rotate-180');
-                    } else {
-                        buttonText.textContent = `Show ${Math.min(5, remainingActivities.length - newIndex)} more`;
-                    }
-                    showMoreButton.dataset.showingMore = 'true';
-                }
-            });
-
-            activitiesContainer.appendChild(showMoreButton);
+            observer.observe(trigger);
         }
-
-        activitiesFeed.appendChild(activitiesContainer);
     };
 
-    // Helper function to create activity element
+    // Modify createActivityElement to support lazy loading
     const createActivityElement = (activity) => {
         const activityElement = document.createElement('div');
         activityElement.classList.add(
@@ -334,7 +285,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     
         if (isReview && canViewReview) {
-            // Initialize like button state based on server data
             const isLikedClass = activity.isLikedByUser ? 'text-red-500' : 'text-gray-600';
             activityContent = `
                 <div class="flex items-start space-x-4">
@@ -363,7 +313,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         </div>
                 
                         ${activity.review ? `
-                            <div class="bg-gray-50 p-4 rounded-lg mb-3">
+                            <div class="bg-gray-50 p-4 rounded-lg mb-3" style="box-shadow: ${getGlowColor(activity.rating)};">
                                 <p class="text-gray-700 text-sm leading-relaxed">
                                     "${activity.review}"
                                 </p>
@@ -391,9 +341,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                     </div> 
                     
                     <div class="flex-shrink-0">
-                        <img src="${activity.thumbnail}" 
+                        <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
+                             data-src="${activity.thumbnail}" 
                              alt="${activity.bookTitle}" 
-                             class="w-20 h-28 object-cover rounded-lg shadow-sm">
+                             class="w-20 h-28 object-cover rounded-lg shadow-sm lazy">
                     </div>
                 </div>
             `;
@@ -459,6 +410,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         activityElement.innerHTML = activityContent;
+        
+        // Initialize lazy loading for images
+        const lazyImages = activityElement.querySelectorAll('img.lazy');
+        lazyImages.forEach(img => {
+            img.src = img.dataset.src;
+        });
+
         return activityElement;
     };
     
@@ -650,36 +608,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     };
 
-    const fetchActivities = async () => {
-        try {
-            const response = await fetch(`/api/friends-activities/${username}`);
-            if (!response.ok) {
-                throw new Error(`Error fetching activities: ${response.statusText}`);
-            }
-    
-            const data = await response.json();
-            if (data.success) {
-                        console.log('Raw activities data from API:', data.activities);
-                        
-                        // Log a sample activity if available
-                        if (data.activities.length > 0) {
-                            console.log('Sample activity structure:', {
-                                firstActivity: data.activities[0],
-                                hasReview: 'review' in data.activities[0],
-                                hasRating: 'rating' in data.activities[0],
-                                propertyNames: Object.keys(data.activities[0])
-                            });
-                        }
-
-                        renderActivitiesFeed(data.activities);
-            } else {
-                console.error('Failed to fetch activities:', data.message);
-            }
-        } catch (error) {
-            console.error('Error fetching activities:', error);
-        }
-    };
-    
     const fetchFriendRequests = async () => {
         console.log(`Fetching friend requests for user: ${username}`);
         try {
@@ -847,7 +775,26 @@ document.addEventListener('DOMContentLoaded', async () => {
             await toggleLikeReview(isbn, likeButton);
         }
     });
+
+    // Initialize lazy loading
+    fetchActivities(1);
+    
+    // Initialize lazy loading for all images
+    const lazyImages = document.querySelectorAll('img.lazy');
+    const imageObserver = new IntersectionObserver((entries, observer) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                const img = entry.target;
+                img.src = img.dataset.src;
+                img.classList.remove('lazy');
+                observer.unobserve(img);
+            }
+        });
+    });
+
+    lazyImages.forEach(img => imageObserver.observe(img));
 });
+
 const checkFriendshipStatus = async (username, friendUsername) => {
     try {
         const response = await fetch(`/api/check-friendship-status`, {
@@ -869,3 +816,21 @@ const checkFriendshipStatus = async (username, friendUsername) => {
         return 'none';
     }
 };
+
+// Add getGlowColor function at the top level
+function getGlowColor(value) {
+    if (value === undefined || value === null) {
+        return 'none'; // No glow for books without ratings
+    }
+
+    let color;
+    if (value <= 33) {
+        color = 'rgba(102, 0, 0, 0.5)'; // Dark red glow
+    } else if (value <= 66) {
+        color = 'rgba(255, 193, 37, 0.5)'; // Yellow glow
+    } else {
+        color = 'rgba(32, 154, 32, 0.5)'; // Green glow
+    }
+
+    return `0 0 15px ${color}, 0 0 20px ${color}`; // Subtle double glow effect
+}
