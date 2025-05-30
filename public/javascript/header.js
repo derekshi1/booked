@@ -558,7 +558,9 @@ const NOTIFICATIONS_PER_PAGE = 10;
                 // Render Nudges
                 if (nudgesData.nudges && nudgesData.nudges.length > 0) {
                     console.log('Rendering nudges:', nudgesData.nudges);
-                    nudgesData.nudges.forEach(nudge => {
+                    // Only take the last 3 nudges
+                    const lastThreeNudges = nudgesData.nudges.slice(-3);
+                    lastThreeNudges.forEach(nudge => {
                         console.log('Processing nudge:', nudge);
                         const nudgeElement = document.createElement('div');
                         nudgeElement.classList.add(
@@ -959,27 +961,91 @@ function clearSuggestions() {
 }
 
 function renderNotificationItem(activity) {
-    if (activity.type === 'nudge') {
-        return `
-            <div class="notification-item p-3 border-b hover:bg-gray-50 ${activity.isRead ? '' : 'bg-blue-50'}">
-                <div class="flex items-center">
-                    <div class="text-blue-500 mr-2">
-                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v3.586L7.707 9.293a1 1 0 00-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 10.586V7z" clip-rule="evenodd"/>
-                        </svg>
-                    </div>
-                    <div>
-                        <p class="text-sm">
-                            <span class="font-semibold">${activity.bookTitle}</span> 
-                            tells you that you haven't been reading lately...
-                        </p>
-                        <span class="text-xs text-gray-500">${formatTimeAgo(activity.timestamp)}</span>
-                    </div>
+    const notificationItem = document.createElement('div');
+    notificationItem.classList.add(
+        'notification-item',
+        'p-3',
+        'border-b',
+        'hover:bg-gray-50',
+        'transition-all',
+        'duration-200'
+    );
+
+    // Add red outline for unread activities
+    if (!activity.isRead && (activity.action === 'reviewed' || activity.action === 'liked')) {
+        notificationItem.classList.add('border-2', 'border-red-500', 'rounded');
+    }
+
+    // Create the notification content based on activity type
+    let content = '';
+    if (activity.action === 'reviewed') {
+        content = `
+            <div class="flex items-start">
+                <img src="${activity.thumbnail || '../placeholder.png'}" 
+                     alt="${activity.bookTitle}" 
+                     class="w-12 h-16 object-cover rounded mr-3">
+                <div class="flex-1">
+                    <p class="text-sm">
+                        <span class="font-semibold">${activity.username}</span> 
+                        reviewed "${activity.bookTitle}"
+                    </p>
+                    ${activity.rating ? `
+                        <div class="flex items-center mt-1">
+                            <div class="text-yellow-400 flex">
+                                ${'★'.repeat(activity.rating)}${'☆'.repeat(5-activity.rating)}
+                            </div>
+                            <span class="text-xs text-gray-500 ml-1">${activity.rating}/5</span>
+                        </div>
+                    ` : ''}
+                    ${activity.review ? `
+                        <p class="text-sm text-gray-600 mt-1">${activity.review}</p>
+                    ` : ''}
+                    <span class="text-xs text-gray-500">${formatTimeAgo(activity.timestamp)}</span>
+                </div>
+            </div>
+        `;
+    } else if (activity.action === 'liked') {
+        content = `
+            <div class="flex items-center">
+                <div class="text-red-500 mr-2">
+                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" 
+                              d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" 
+                              clip-rule="evenodd"/>
+                    </svg>
+                </div>
+                <div>
+                    <p class="text-sm">
+                        <span class="font-semibold">${activity.username}</span> 
+                        liked your review of "${activity.bookTitle}"
+                    </p>
+                    <span class="text-xs text-gray-500">${formatTimeAgo(activity.timestamp)}</span>
+                </div>
+            </div>
+        `;
+    } else {
+        content = `
+            <div class="flex items-center">
+                <div class="text-blue-500 mr-2">
+                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" 
+                              d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v3.586L7.707 9.293a1 1 0 00-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 10.586V7z" 
+                              clip-rule="evenodd"/>
+                    </svg>
+                </div>
+                <div>
+                    <p class="text-sm">
+                        <span class="font-semibold">${activity.username}</span> 
+                        ${activity.action} "${activity.bookTitle}"
+                    </p>
+                    <span class="text-xs text-gray-500">${formatTimeAgo(activity.timestamp)}</span>
                 </div>
             </div>
         `;
     }
-    // ... existing notification rendering code ...
+
+    notificationItem.innerHTML = content;
+    return notificationItem;
 }
 
 let notificationState = {
