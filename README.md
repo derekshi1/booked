@@ -54,13 +54,13 @@ npm run dev
 ```
 
 ## Project Structure
-├── public/ # Static files and client-side code
-│ ├── html/ # HTML pages
-│ ├── javascript/ # Client-side JavaScript
-│ └── css/ # Stylesheets
-├── server.js # Main server file
-├── package.json # Project dependencies
-└── .env # Environment variables
+├── public/ # Static files and client-side code  
+│ ├── html/ # HTML pages  
+│ ├── javascript/ # Client-side JavaScript  
+│ └── css/ # Stylesheets  
+├── server.js # Main server file  
+├── package.json # Project dependencies  
+└── .env # Environment variables  
 
 ##Contact
 For comments, concerns, or support please feel free to contact derekscreek@gmail.com
