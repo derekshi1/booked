@@ -21,9 +21,8 @@
 Create a `.env` file in the root directory with the following variables:
 
 ```env
-MONGODB_URI=your_mongodb_connection_string
-JWT_SECRET=your_jwt_secret
-GOOGLE_BOOKS_API_KEY=your_google_books_api_key
+MONGODB_URI= mongodb_connection_string
+API_KEY= google_books_api_key
 ```
 
 ## Installation
