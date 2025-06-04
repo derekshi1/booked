@@ -10,25 +10,57 @@
 
 - **Clean and Intuitive Interface**: Enjoy a user-friendly experience with a clean and organized space that makes finding, reading, and discussing books a pleasure.
 
-## How It Works
+## Prerequisites
 
-### 1. **Vector Search for Recommendations**
-   - Booked uses vector search to analyze your reading history and preferences, finding books that align with your tastes.
+- Node.js (v14 or higher)
+- MongoDB (v4.4 or higher)
+- Google Books API key
 
-### 2. **Connect with Others**
-   - Engage with a community of readers through forums, discussions, and book clubs. Share your thoughts and get recommendations from others.
+## Environment Variables
 
-### 3. **Enjoy a Clean, Distraction-Free Interface**
-   - The application is designed with simplicity in mind, offering a clean and clutter-free space where you can focus on what matters most—your love for books.
+Create a `.env` file in the root directory with the following variables:
 
-## Getting Started
+```env
+MONGODB_URI=your_mongodb_connection_string
+JWT_SECRET=your_jwt_secret
+GOOGLE_BOOKS_API_KEY=your_google_books_api_key
+```
 
-1. **Sign Up**: Create an account and set up your reading profile.
-2. **Explore**: Browse through recommended books and connect with other users.
-3. **Engage**: Join discussions, share recommendations, and enjoy your reading journey.
+## Installation
 
-## Contributions
-We welcome contributions from the community. Feel free to open an issue or contact us.
+1. Clone the repository:
+```bash
+git clone https://github.com/yourusername/booked.git
+cd booked
+```
+
+2. Install dependencies:
+```bash
+npm install
+```
+
+3. Set up environment variables:
+- Copy `.env.example` to `.env`
+- Fill in your environment variables
+
+4. Start the server:
+```bash
+npm start
+```
+
+For development with auto-reload:
+```bash
+npm run dev
+```
+
+## Project Structure
+├── public/ # Static files and client-side code
+│ ├── html/ # HTML pages
+│ ├── javascript/ # Client-side JavaScript
+│ └── css/ # Stylesheets
+├── server.js # Main server file
+├── package.json # Project dependencies
+└── .env # Environment variables
 
 ##Contact
 For comments, concerns, or support please feel free to contact derekscreek@gmail.com
