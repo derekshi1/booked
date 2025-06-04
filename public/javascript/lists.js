@@ -319,42 +319,42 @@ function showCreateListModal(existingList = null) {
     // Step 1: List Details
     function showStep1() {
         modal.innerHTML = `
-    <div class="bg-white rounded-lg p-6 overflow-y-auto max-h-[90vh]" style="width: 40vw; max-width: 90vw;">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-xl font-bold">${existingList ? 'Edit List' : 'Create New List'}</h2>
+            <div class="bg-white rounded-lg p-8 overflow-y-auto" style="width: 60vw; max-width: 1200px; max-height: 90vh;">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold">${existingList ? 'Edit List' : 'Create New List'}</h2>
                     <button onclick="this.closest('.fixed').remove()" class="text-gray-500 hover:text-gray-700">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                         </svg>
                     </button>
                 </div>
-                <form id="list-details-form" class="space-y-4">
+                <form id="list-details-form" class="space-y-6">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700">List Name</label>
+                        <label class="block text-lg font-medium text-gray-700 mb-2">List Name</label>
                         <input type="text" name="listName" required value="${existingList?.listName || ''}"
-                               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-lg p-3">
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700">Description</label>
+                        <label class="block text-lg font-medium text-gray-700 mb-2">Description</label>
                         <textarea name="description" rows="4"
-                                  class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">${existingList?.description || ''}</textarea>
+                                  class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-lg p-3">${existingList?.description || ''}</textarea>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700">Visibility</label>
+                        <label class="block text-lg font-medium text-gray-700 mb-2">Visibility</label>
                         <select name="visibility" required
-                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-lg p-3">
                             <option value="public" ${existingList?.visibility === 'public' ? 'selected' : ''}>Public</option>
                             <option value="friends" ${existingList?.visibility === 'friends' ? 'selected' : ''}>Friends Only</option>
                             <option value="private" ${existingList?.visibility === 'private' ? 'selected' : ''}>Private</option>
                         </select>
                     </div>
-                    <div class="flex justify-end space-x-2">
+                    <div class="flex justify-end space-x-4 mt-8">
                         <button type="button" onclick="this.closest('.fixed').remove()"
-                                class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200">
+                                class="px-6 py-3 text-lg font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200">
                             Cancel
                         </button>
                         <button type="submit"
-                                class="px-4 py-2 text-sm font-medium text-white bg-blue-500 rounded-md hover:bg-blue-600">
+                                class="px-6 py-3 text-lg font-medium text-white bg-blue-500 rounded-md hover:bg-blue-600">
                             Next: Add Books
                         </button>
                     </div>
@@ -376,42 +376,56 @@ function showCreateListModal(existingList = null) {
     // Step 2: Add/Edit Books
     function showStep2(listDetails) {
         modal.innerHTML = `
-    <div class="bg-white rounded-lg p-6 overflow-y-auto max-h-[90vh]" style="width: 40vw; max-width: 90vw;">
-                <div class="flex justify-between items-center mb-4">
-                    <div>
-                        <h2 class="text-xl font-bold">${existingList ? 'Edit List' : 'Create New List'}</h2>
-                        <p class="text-sm text-gray-500 mt-1">Adding books to "${listDetails.listName}"</p>
+            <div class="bg-white rounded-lg overflow-hidden flex flex-col" style="width: 60vw; max-width: 1200px; height: 70vh;">
+                <!-- Header -->
+                <div class="p-6 border-b">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h2 class="text-2xl font-bold">${existingList ? 'Edit List' : 'Create New List'}</h2>
+                            <p class="text-lg text-gray-500 mt-2">Adding books to "${listDetails.listName}"</p>
+                        </div>
+                        <button onclick="this.closest('.fixed').remove()" class="text-gray-500 hover:text-gray-700">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
                     </div>
-                    <button onclick="this.closest('.fixed').remove()" class="text-gray-500 hover:text-gray-700">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                        </svg>
-                    </button>
                 </div>
-                <div class="space-y-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">Search and Add Books</label>
-                        <div class="relative">
-                            <input type="text" 
-                                   id="bookSearchInput" 
-                                   placeholder="Search for books..."
-                                   class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                            <div id="searchResults" 
-                                 class="absolute z-10 w-full bg-white mt-1 rounded-md shadow-lg max-h-60 overflow-y-auto">
+
+                <!-- Main Content -->
+                <div class="flex-1 overflow-y-auto p-6">
+                    <div class="space-y-6">
+                        <!-- Search Section -->
+                        <div>
+                            <label class="block text-lg font-medium text-gray-700 mb-2">Search and Add Books</label>
+                            <div class="relative">
+                                <input type="text" 
+                                       id="bookSearchInput" 
+                                       placeholder="Search for books..."
+                                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-lg p-3">
+                                <div id="searchResults" 
+                                     class="absolute z-10 w-full bg-white mt-1 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                                </div>
                             </div>
                         </div>
+
+                        <!-- Selected Books Section -->
+                        <div id="selectedBooksContainer" class="${existingList?.books?.length ? '' : 'hidden'}">
+                            <label class="block text-lg font-medium text-gray-700 mb-4">Selected Books</label>
+                            <div id="selectedBooks" class="space-y-4 max-h-[400px] overflow-y-auto p-4 bg-gray-50 rounded-lg"></div>
+                        </div>
                     </div>
-                    <div id="selectedBooksContainer" class="mt-4 ${existingList?.books?.length ? '' : 'hidden'}">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Selected Books</label>
-                        <div id="selectedBooks" class="space-y-2 max-h-[300px] overflow-y-auto"></div>
-                    </div>
-                    <div class="flex justify-end space-x-2 mt-4">
+                </div>
+
+                <!-- Footer with Buttons -->
+                <div class="p-6 border-t bg-gray-50">
+                    <div class="flex justify-end space-x-4">
                         <button type="button" onclick="showStep1()"
-                                class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200">
+                                class="px-6 py-3 text-lg font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors duration-200">
                             Back
                         </button>
                         <button type="button" onclick="saveList()"
-                                class="px-4 py-2 text-sm font-medium text-white bg-blue-500 rounded-md hover:bg-blue-600">
+                                class="px-6 py-3 text-lg font-medium text-white bg-blue-500 rounded-md hover:bg-blue-600 transition-colors duration-200">
                             ${existingList ? 'Save Changes' : 'Create List'}
                         </button>
                     </div>
@@ -477,35 +491,6 @@ function showCreateListModal(existingList = null) {
         };
     }
 
-    // Helper function to create book element
-    function createBookElement(book) {
-        const bookElement = document.createElement('div');
-        bookElement.className = 'flex items-center p-2 bg-white rounded shadow-sm mb-2';
-        bookElement.dataset.isbn = book.isbn;
-        bookElement.innerHTML = `
-            <img src="${book.thumbnail}" alt="${book.title}" class="w-12 h-16 object-cover mr-3 rounded">
-            <div class="flex-1">
-                <div class="font-semibold">${book.title}</div>
-                <div class="text-sm text-gray-600">${book.authors}</div>
-            </div>
-            <button class="ml-2 text-red-500 hover:text-red-700">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                </svg>
-            </button>
-        `;
-
-        bookElement.querySelector('button').addEventListener('click', () => {
-            bookElement.remove();
-            const selectedBooks = document.getElementById('selectedBooks');
-            if (selectedBooks.children.length === 0) {
-                document.getElementById('selectedBooksContainer').classList.add('hidden');
-            }
-        });
-
-        return bookElement;
-    }
-
     // Start with step 1
     showStep1();
     document.body.appendChild(modal);
@@ -558,10 +543,10 @@ function setupBookSearch() {
         return;
     }
 
-    // Add immediate visual feedback for the search results container
+    // Update search results container styling
     searchResults.style.display = 'none';
     searchResults.style.position = 'absolute';
-    searchResults.style.zIndex = '50';
+    searchResults.style.zIndex = '9999'; // Increased z-index to ensure it's above other elements
     searchResults.style.width = '100%';
     searchResults.style.maxHeight = '300px';
     searchResults.style.overflowY = 'auto';
@@ -569,6 +554,13 @@ function setupBookSearch() {
     searchResults.style.border = '1px solid #e5e7eb';
     searchResults.style.borderRadius = '0.375rem';
     searchResults.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1)';
+    searchResults.style.marginTop = '4px';
+
+    // Ensure the parent container has proper positioning
+    const searchContainer = searchInput.parentElement;
+    if (searchContainer) {
+        searchContainer.style.position = 'relative';
+    }
 
     searchInput.addEventListener('input', (e) => {
         console.log('Input event fired:', e.target.value); // Debug log
@@ -651,10 +643,10 @@ function displayBookSuggestions(suggestions) {
 
     searchResults.innerHTML = '';
     
-    // Make sure the container is visible and properly positioned
+    // Update container styling
     searchResults.style.display = 'block';
     searchResults.style.position = 'absolute';
-    searchResults.style.zIndex = '50';
+    searchResults.style.zIndex = '9999';
     searchResults.style.width = '100%';
     searchResults.style.maxHeight = '300px';
     searchResults.style.overflowY = 'auto';
@@ -662,6 +654,7 @@ function displayBookSuggestions(suggestions) {
     searchResults.style.border = '1px solid #e5e7eb';
     searchResults.style.borderRadius = '0.375rem';
     searchResults.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1)';
+    searchResults.style.marginTop = '4px';
     
     if (suggestions.length === 0) {
         searchResults.innerHTML = '<div class="p-4 text-gray-500">No books found</div>';
