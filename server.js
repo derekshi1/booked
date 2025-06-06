@@ -2813,7 +2813,12 @@ app.post('/api/mark-notifications-read', async (req, res) => {
         // Mark all activities as read for this user
         try {
             await Activity.updateMany(
-                { userId: { $in: user.friends }, readBy: { $ne: user._id } },
+                { 
+                    $or: [
+                        { userId: { $in: user.friends }, readBy: { $ne: user._id } },
+                        { userId: user._id, action: 'nudge', readBy: { $ne: user._id } }
+                    ]
+                },
                 { $addToSet: { readBy: user._id } }
             );
         } catch (activityError) {
@@ -3501,5 +3506,145 @@ app.post('/api/auth/google-register', async (req, res) => {
     } catch (err) {
         console.error('Error during Google registration:', err);
         res.status(500).send('Internal server error');
+    }
+});
+
+// Series Recommendations Route
+app.get('/api/series-recommendations', async (req, res) => {
+  try {
+    const pythonProcess = spawn(pythonCommand, ['public/functions/series_recommendations.py']);
+
+    let recommendations = '';
+    pythonProcess.stdout.on('data', (data) => {
+      recommendations += data.toString();
+    });
+
+    pythonProcess.stderr.on('data', (data) => {
+      console.error(`stderr: ${data}`);
+    });
+
+    pythonProcess.on('close', (code) => {
+      if (code !== 0) {
+        console.error(`Python process exited with code ${code}`);
+        return res.status(500).json({ success: false, message: 'Error generating series recommendations' });
+      }
+      try {
+        const recommendationsJSON = JSON.parse(recommendations);
+        console.log('Parsed series recommendations JSON:', JSON.stringify(recommendationsJSON, null, 2));
+        res.status(200).json(recommendationsJSON);
+      } catch (error) {
+        console.error('Error parsing series recommendations:', error);
+        res.status(500).json({ success: false, message: 'Error parsing series recommendations' });
+      }
+    });
+
+  } catch (error) {
+    console.error('Error during series recommendations generation:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
+// Add this after your other schema definitions
+const bookMetadataSchema = new mongoose.Schema({
+    isbn: { type: String, required: true, unique: true },
+    title: { type: String, required: true },
+    authors: [String],
+    description: String,
+    categories: [String],
+    pageCount: Number,
+    publishedDate: String,
+    averageRating: Number,
+    ratingsCount: Number,
+    thumbnail: String,
+    lastUpdated: { type: Date, default: Date.now }
+});
+
+const BookMetadata = mongoose.model('BookMetadata', bookMetadataSchema);
+
+// Add these new endpoints for book metadata
+app.get('/api/book-metadata/:isbn', async (req, res) => {
+    try {
+        const { isbn } = req.params;
+        
+        // First try to get from our database
+        let bookData = await BookMetadata.findOne({ isbn });
+        
+        if (bookData) {
+            console.log('Found book metadata in database for ISBN:', isbn);
+            return res.json({ success: true, data: bookData });
+        }
+
+        // If not in database, fetch from Google Books API
+        const response = await fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}&key=${process.env.API_KEY}`);
+        const data = await response.json();
+
+        if (data.items && data.items[0]) {
+            const volumeInfo = data.items[0].volumeInfo;
+            
+            // Create new book metadata entry
+            bookData = new BookMetadata({
+                isbn,
+                title: volumeInfo.title,
+                authors: volumeInfo.authors || [],
+                description: volumeInfo.description,
+                categories: volumeInfo.categories || [],
+                pageCount: volumeInfo.pageCount,
+                publishedDate: volumeInfo.publishedDate,
+                averageRating: volumeInfo.averageRating,
+                ratingsCount: volumeInfo.ratingsCount,
+                thumbnail: volumeInfo.imageLinks?.thumbnail,
+                lastUpdated: new Date()
+            });
+
+            await bookData.save();
+            console.log('Saved new book metadata to database for ISBN:', isbn);
+            
+            return res.json({ success: true, data: bookData });
+        }
+
+        return res.status(404).json({ success: false, message: 'Book not found' });
+    } catch (error) {
+        console.error('Error fetching book metadata:', error);
+        res.status(500).json({ success: false, message: 'Error fetching book metadata' });
+    }
+});
+
+// Add endpoint to update book metadata
+app.post('/api/book-metadata/:isbn/update', async (req, res) => {
+    try {
+        const { isbn } = req.params;
+        
+        // Fetch fresh data from Google Books API
+        const response = await fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}&key=${process.env.API_KEY}`);
+        const data = await response.json();
+
+        if (data.items && data.items[0]) {
+            const volumeInfo = data.items[0].volumeInfo;
+            
+            // Update or create book metadata
+            const bookData = await BookMetadata.findOneAndUpdate(
+                { isbn },
+                {
+                    title: volumeInfo.title,
+                    authors: volumeInfo.authors || [],
+                    description: volumeInfo.description,
+                    categories: volumeInfo.categories || [],
+                    pageCount: volumeInfo.pageCount,
+                    publishedDate: volumeInfo.publishedDate,
+                    averageRating: volumeInfo.averageRating,
+                    ratingsCount: volumeInfo.ratingsCount,
+                    thumbnail: volumeInfo.imageLinks?.thumbnail,
+                    lastUpdated: new Date()
+                },
+                { upsert: true, new: true }
+            );
+
+            return res.json({ success: true, data: bookData });
+        }
+
+        return res.status(404).json({ success: false, message: 'Book not found' });
+    } catch (error) {
+        console.error('Error updating book metadata:', error);
+        res.status(500).json({ success: false, message: 'Error updating book metadata' });
     }
 });

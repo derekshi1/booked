@@ -658,6 +658,9 @@ const CACHE_KEYS = {
     FICTION: 'nyt_fiction_cache',
     YA: 'nyt_ya_cache',
     NONFICTION: 'nyt_nonfiction_cache',
+    SERIES: 'series_cache',
+    BUSINESS: 'business_cache',
+    PHILOSOPHY: 'philosophy_cache',
     LAST_FETCH: 'nyt_last_fetch'
 };
 
@@ -1018,5 +1021,494 @@ const renderNF = (books) => {
         imgElement.addEventListener('error', onErrorFallback);
     });
 };
+
+// Add these new functions after the existing fetch functions
+async function fetchSeriesRecommendations() {
+    // Check cache first
+    if (isCacheValid()) {
+        const cachedData = localStorage.getItem(CACHE_KEYS.SERIES);
+        if (cachedData) {
+            return JSON.parse(cachedData);
+        }
+    }
+
+    try {
+        // Use our dedicated endpoint instead of direct API calls
+        const response = await fetch('/api/series-recommendations');
+        const data = await response.json();
+        
+        if (data.success && data.books) {
+            // Cache the new data
+            localStorage.setItem(CACHE_KEYS.SERIES, JSON.stringify(data.books));
+            localStorage.setItem(CACHE_KEYS.LAST_FETCH, new Date().getTime().toString());
+            return data.books;
+        } else {
+            console.error('Error fetching series recommendations:', data.message);
+            // If fetch fails, try to use cached data even if expired
+            const cachedData = localStorage.getItem(CACHE_KEYS.SERIES);
+            return cachedData ? JSON.parse(cachedData) : [];
+        }
+    } catch (error) {
+        console.error('Error fetching series recommendations:', error);
+        // If fetch fails, try to use cached data even if expired
+        const cachedData = localStorage.getItem(CACHE_KEYS.SERIES);
+        return cachedData ? JSON.parse(cachedData) : [];
+    }
+}
+
+async function fetchBusinessBooks() {
+    if (isCacheValid()) {
+        const cachedData = localStorage.getItem(CACHE_KEYS.BUSINESS);
+        if (cachedData) {
+            return JSON.parse(cachedData);
+        }
+    }
+
+    try {
+        const allBooks = [];
+
+        // Fetch from NYT Business Books
+        const nytResponse = await fetch('https://api.nytimes.com/svc/books/v3/lists/current/business-books.json?api-key=07KGzNSRt9XlvFc8Esd006b7fqiGA8cc');
+        const nytData = await nytResponse.json();
+        
+        if (nytData.results && nytData.results.books) {
+            allBooks.push(...nytData.results.books.map(book => ({
+                title: book.title,
+                authors: [book.author],
+                thumbnail: book.book_image,
+                isbn: book.primary_isbn13,
+                description: book.description || 'No description available',
+                popularity: {
+                    isBestseller: true,
+                    weeksOnList: book.weeks_on_list || 0,
+                    rank: book.rank || 999
+                }
+            })));
+        }
+
+        // Fetch from NYT Advice, How-To & Miscellaneous
+        const nytAdviceResponse = await fetch('https://api.nytimes.com/svc/books/v3/lists/current/advice-how-to-and-miscellaneous.json?api-key=07KGzNSRt9XlvFc8Esd006b7fqiGA8cc');
+        const nytAdviceData = await nytAdviceResponse.json();
+        
+        if (nytAdviceData.results && nytAdviceData.results.books) {
+            allBooks.push(...nytAdviceData.results.books.map(book => ({
+                title: book.title,
+                authors: [book.author],
+                thumbnail: book.book_image,
+                isbn: book.primary_isbn13,
+                description: book.description || 'No description available',
+                popularity: {
+                    isBestseller: true,
+                    weeksOnList: book.weeks_on_list || 0,
+                    rank: book.rank || 999
+                }
+            })));
+        }
+
+        // Fetch from OpenLibrary Business Books
+        const openLibraryResponse = await fetch('https://openlibrary.org/subjects/business.json?limit=20');
+        const openLibraryData = await openLibraryResponse.json();
+        
+        if (openLibraryData.works) {
+            allBooks.push(...openLibraryData.works.map(work => ({
+                title: work.title,
+                authors: work.authors ? work.authors.map(author => author.name) : ['Unknown Author'],
+                thumbnail: `https://covers.openlibrary.org/b/id/${work.cover_id}-L.jpg`,
+                isbn: work.isbn || 'no-isbn',
+                description: work.description || 'No description available',
+                popularity: {
+                    rating: work.rating?.average || 0,
+                    ratingsCount: work.rating?.count || 0,
+                    isBestseller: false
+                }
+            })));
+        }
+
+        // Fetch from Google Books API with popularity filters
+        const businessQuery = 'subject:"business" OR subject:"management" OR subject:"leadership" OR subject:"entrepreneurship" OR subject:"professional development"';
+        
+        const response = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${businessQuery}&maxResults=40&orderBy=relevance&key=AIzaSyCFDaqjpgA8K_NqqCw93xorS3zumc_52u8`);
+        const data = await response.json();
+        if (data.items) {
+            allBooks.push(...data.items.map(book => ({
+                title: book.volumeInfo.title,
+                authors: book.volumeInfo.authors || ['Unknown Author'],
+                thumbnail: book.volumeInfo.imageLinks?.thumbnail || 'https://via.placeholder.com/128x192?text=No+Image',
+                isbn: book.volumeInfo.industryIdentifiers?.[0]?.identifier || 'no-isbn',
+                description: book.volumeInfo.description || 'No description available',
+                popularity: {
+                    rating: book.volumeInfo.averageRating || 0,
+                    ratingsCount: book.volumeInfo.ratingsCount || 0,
+                    isBestseller: false
+                }
+            })));
+        }
+
+        // Filter and sort books by popularity
+        const filteredBooks = allBooks.filter(book => {
+            // Keep NYT bestsellers
+            if (book.popularity.isBestseller) return true;
+            
+            // For other sources, require minimum ratings and rating score
+            if (book.popularity.ratingsCount >= 50 && book.popularity.rating >= 3.8) return true;
+            
+            return false;
+        });
+
+        // Sort by popularity metrics
+        const sortedBooks = filteredBooks.sort((a, b) => {
+            // NYT bestsellers first
+            if (a.popularity.isBestseller && !b.popularity.isBestseller) return -1;
+            if (!a.popularity.isBestseller && b.popularity.isBestseller) return 1;
+            
+            // Then by weeks on list for NYT books
+            if (a.popularity.isBestseller && b.popularity.isBestseller) {
+                return a.popularity.weeksOnList - b.popularity.weeksOnList;
+            }
+            
+            // Then by rating and number of ratings for other sources
+            const aScore = a.popularity.rating * Math.log(a.popularity.ratingsCount + 1);
+            const bScore = b.popularity.rating * Math.log(b.popularity.ratingsCount + 1);
+            return bScore - aScore;
+        });
+
+        // Remove duplicates based on ISBN
+        const uniqueBooks = Array.from(new Map(sortedBooks.map(book => [book.isbn, book])).values());
+
+        // Cache the results
+        localStorage.setItem(CACHE_KEYS.BUSINESS, JSON.stringify(uniqueBooks));
+        localStorage.setItem(CACHE_KEYS.LAST_FETCH, new Date().getTime().toString());
+        
+        return uniqueBooks;
+    } catch (error) {
+        console.error('Error fetching business books:', error);
+        const cachedData = localStorage.getItem(CACHE_KEYS.BUSINESS);
+        return cachedData ? JSON.parse(cachedData) : [];
+    }
+}
+
+// Add these new render functions
+const renderSeriesRecommendations = (books) => {
+    const seriesContainer = document.getElementById('seriesContainer');
+    seriesContainer.innerHTML = '';
+    books.forEach(book => {
+        const bookElement = document.createElement('div');
+        bookElement.classList.add('recommendation-card', 'p-4', 'bg-gray-100', 'rounded', 'shadow', 'book-card');
+
+        const generateRandomColor = () => {
+            const letters = '89ABCDEF';
+            let color = '#';
+            for (let i = 0; i < 6; i++) {
+                color += letters[Math.floor(Math.random() * letters.length)];
+            }
+            return color;
+        };
+
+        const onErrorFallback = (event) => {
+            const parentElement = event.target.closest('.relative.group');
+            const randomColor = generateRandomColor();
+            parentElement.querySelector('img').remove();
+
+            parentElement.innerHTML += `
+                <div class="w-full h-60 flex flex-col justify-center items-center text-center p-4" style="background-color: ${randomColor};">
+                    <h2 class="text-lg font-bold text-white">${book.title}</h2>
+                    <p class="text-gray-300">by ${book.authors.join(', ')}</p>
+                </div>
+            `;
+        };
+
+        bookElement.innerHTML = `
+            <div class="relative group book-card">
+                <a href="../html/book.html?isbn=${book.isbn}" class="block relative overflow-hidden rounded-lg shadow-md hover:shadow-lg transition duration-200 ease-in-out group">
+                    <img 
+                        src="${book.thumbnail}" 
+                        alt="${book.title}" 
+                        class="w-full h-full object-cover rounded-t-lg"
+                    />
+                    <div class="absolute bottom-0 left-0 w-full p-2 bg-black bg-opacity-50 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200 ease-in-out">
+                        <h2 class="text-sm font-bold">${book.title}</h2>
+                        <p class="text-gray-300 text-xs">by ${book.authors.join(', ')}</p>
+                    </div>
+                </a>
+            </div>
+        `;
+
+        seriesContainer.appendChild(bookElement);
+
+        const imgElement = bookElement.querySelector('img');
+        imgElement.addEventListener('error', onErrorFallback);
+    });
+};
+
+const renderBusinessBooks = (books) => {
+    const businessContainer = document.getElementById('businessContainer');
+    businessContainer.innerHTML = '';
+    books.forEach(book => {
+        const bookElement = document.createElement('div');
+        bookElement.classList.add('recommendation-card', 'p-4', 'bg-gray-100', 'rounded', 'shadow', 'book-card');
+
+        const generateRandomColor = () => {
+            const letters = '89ABCDEF';
+            let color = '#';
+            for (let i = 0; i < 6; i++) {
+                color += letters[Math.floor(Math.random() * letters.length)];
+            }
+            return color;
+        };
+
+        const onErrorFallback = (event) => {
+            const parentElement = event.target.closest('.relative.group');
+            const randomColor = generateRandomColor();
+            parentElement.querySelector('img').remove();
+
+            parentElement.innerHTML += `
+                <div class="w-full h-60 flex flex-col justify-center items-center text-center p-4" style="background-color: ${randomColor};">
+                    <h2 class="text-lg font-bold text-white">${book.title}</h2>
+                    <p class="text-gray-300">by ${book.authors.join(', ')}</p>
+                </div>
+            `;
+        };
+
+        bookElement.innerHTML = `
+            <div class="relative group book-card">
+                <a href="../html/book.html?isbn=${book.isbn}" class="block relative overflow-hidden rounded-lg shadow-md hover:shadow-lg transition duration-200 ease-in-out group">
+                    <img 
+                        src="${book.thumbnail}" 
+                        alt="${book.title}" 
+                        class="w-full h-full object-cover rounded-t-lg"
+                    />
+                    <div class="absolute bottom-0 left-0 w-full p-2 bg-black bg-opacity-50 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200 ease-in-out">
+                        <h2 class="text-sm font-bold">${book.title}</h2>
+                        <p class="text-gray-300 text-xs">by ${book.authors.join(', ')}</p>
+                    </div>
+                </a>
+            </div>
+        `;
+
+        businessContainer.appendChild(bookElement);
+
+        const imgElement = bookElement.querySelector('img');
+        imgElement.addEventListener('error', onErrorFallback);
+    });
+};
+
+// Add these new scroll event listeners
+document.getElementById('scrollLeftSeries').addEventListener('click', () => {
+    document.getElementById('seriesContainer').scrollBy({
+        top: 0,
+        left: -document.getElementById('seriesContainer').clientWidth,
+        behavior: 'smooth'
+    });
+});
+
+document.getElementById('scrollRightSeries').addEventListener('click', () => {
+    document.getElementById('seriesContainer').scrollBy({
+        top: 0,
+        left: document.getElementById('seriesContainer').clientWidth,
+        behavior: 'smooth'
+    });
+});
+
+document.getElementById('scrollLeftBusiness').addEventListener('click', () => {
+    document.getElementById('businessContainer').scrollBy({
+        top: 0,
+        left: -document.getElementById('businessContainer').clientWidth,
+        behavior: 'smooth'
+    });
+});
+
+document.getElementById('scrollRightBusiness').addEventListener('click', () => {
+    document.getElementById('businessContainer').scrollBy({
+        top: 0,
+        left: document.getElementById('businessContainer').clientWidth,
+        behavior: 'smooth'
+    });
+});
+
+// Add these new fetch calls to your existing fetch calls
+fetchSeriesRecommendations().then(books => {
+    renderSeriesRecommendations(books);
+}).catch(error => {
+    console.error('Error handling series recommendations:', error);
+    renderPlaceholderRecommendations();
+});
+
+fetchBusinessBooks().then(books => {
+    renderBusinessBooks(books);
+}).catch(error => {
+    console.error('Error handling business books:', error);
+    renderPlaceholderRecommendations();
+});
+
+async function fetchPhilosophyBooks() {
+    try {
+        const allBooks = [];
+
+        // Fetch from NYT Philosophy & Religion list
+        const nytResponse = await fetch('https://api.nytimes.com/svc/books/v3/lists/current/philosophy-religion.json?api-key=07KGzNSRt9XlvFc8Esd006b7fqiGA8cc');
+        const nytData = await nytResponse.json();
+        
+        if (nytData.results && nytData.results.books) {
+            allBooks.push(...nytData.results.books.map(book => ({
+                title: book.title,
+                authors: [book.author],
+                thumbnail: book.book_image,
+                isbn: book.primary_isbn13,
+                description: book.description || 'No description available',
+                popularity: {
+                    isBestseller: true,
+                    weeksOnList: book.weeks_on_list || 0,
+                    rank: book.rank || 999
+                }
+            })));
+        }
+
+        // Fetch from Google Books API with philosophical themes
+        const philosophyQueries = [
+            'subject:"philosophy"',
+            'subject:"ethics"',
+            'subject:"existentialism"',
+            'subject:"stoicism"',
+            'subject:"mindfulness"',
+            'subject:"consciousness"',
+            'subject:"meaning of life"',
+            'subject:"critical thinking"',
+            'subject:"logic"',
+            'subject:"metaphysics"'
+        ];
+        
+        for (const query of philosophyQueries) {
+            const response = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${query}&maxResults=20&orderBy=relevance&key=AIzaSyCFDaqjpgA8K_NqqCw93xorS3zumc_52u8`);
+            const data = await response.json();
+            if (data.items) {
+                allBooks.push(...data.items.map(book => ({
+                    title: book.volumeInfo.title,
+                    authors: book.volumeInfo.authors || ['Unknown Author'],
+                    thumbnail: book.volumeInfo.imageLinks?.thumbnail || 'https://via.placeholder.com/128x192?text=No+Image',
+                    isbn: book.volumeInfo.industryIdentifiers?.[0]?.identifier || 'no-isbn',
+                    description: book.volumeInfo.description || 'No description available',
+                    popularity: {
+                        rating: book.volumeInfo.averageRating || 0,
+                        ratingsCount: book.volumeInfo.ratingsCount || 0,
+                        isBestseller: false
+                    }
+                })));
+            }
+        }
+
+        // Filter and sort books by popularity and recency
+        const filteredBooks = allBooks.filter(book => {
+            // Keep NYT bestsellers
+            if (book.popularity.isBestseller) return true;
+            
+            // For other sources, require minimum ratings and rating score
+            if (book.popularity.ratingsCount >= 50 && book.popularity.rating >= 3.8) return true;
+            
+            return false;
+        });
+
+        // Sort by popularity metrics
+        const sortedBooks = filteredBooks.sort((a, b) => {
+            // NYT bestsellers first
+            if (a.popularity.isBestseller && !b.popularity.isBestseller) return -1;
+            if (!a.popularity.isBestseller && b.popularity.isBestseller) return 1;
+            
+            // Then by weeks on list for NYT books
+            if (a.popularity.isBestseller && b.popularity.isBestseller) {
+                return a.popularity.weeksOnList - b.popularity.weeksOnList;
+            }
+            
+            // Then by rating and number of ratings for other sources
+            const aScore = a.popularity.rating * Math.log(a.popularity.ratingsCount + 1);
+            const bScore = b.popularity.rating * Math.log(b.popularity.ratingsCount + 1);
+            return bScore - aScore;
+        });
+
+        // Remove duplicates based on ISBN
+        const uniqueBooks = Array.from(new Map(sortedBooks.map(book => [book.isbn, book])).values());
+        
+        return uniqueBooks;
+    } catch (error) {
+        console.error('Error fetching philosophy books:', error);
+        return [];
+    }
+}
+
+const renderPhilosophyBooks = (books) => {
+    const philosophyContainer = document.getElementById('philosophyContainer');
+    philosophyContainer.innerHTML = '';
+    books.forEach(book => {
+        const bookElement = document.createElement('div');
+        bookElement.classList.add('recommendation-card', 'p-4', 'bg-gray-100', 'rounded', 'shadow', 'book-card');
+
+        const generateRandomColor = () => {
+            const letters = '89ABCDEF';
+            let color = '#';
+            for (let i = 0; i < 6; i++) {
+                color += letters[Math.floor(Math.random() * letters.length)];
+            }
+            return color;
+        };
+
+        const onErrorFallback = (event) => {
+            const parentElement = event.target.closest('.relative.group');
+            const randomColor = generateRandomColor();
+            parentElement.querySelector('img').remove();
+
+            parentElement.innerHTML += `
+                <div class="w-full h-60 flex flex-col justify-center items-center text-center p-4" style="background-color: ${randomColor};">
+                    <h2 class="text-lg font-bold text-white">${book.title}</h2>
+                    <p class="text-gray-300">by ${book.authors.join(', ')}</p>
+                </div>
+            `;
+        };
+
+        bookElement.innerHTML = `
+            <div class="relative group book-card">
+                <a href="../html/book.html?isbn=${book.isbn}" class="block relative overflow-hidden rounded-lg shadow-md hover:shadow-lg transition duration-200 ease-in-out group">
+                    <img 
+                        src="${book.thumbnail}" 
+                        alt="${book.title}" 
+                        class="w-full h-full object-cover rounded-t-lg"
+                    />
+                    <div class="absolute bottom-0 left-0 w-full p-2 bg-black bg-opacity-50 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200 ease-in-out">
+                        <h2 class="text-sm font-bold">${book.title}</h2>
+                        <p class="text-gray-300 text-xs">by ${book.authors.join(', ')}</p>
+                    </div>
+                </a>
+            </div>
+        `;
+
+        philosophyContainer.appendChild(bookElement);
+
+        const imgElement = bookElement.querySelector('img');
+        imgElement.addEventListener('error', onErrorFallback);
+    });
+};
+
+// Add scroll event listeners for philosophy section
+document.getElementById('scrollLeftPhilosophy').addEventListener('click', () => {
+    document.getElementById('philosophyContainer').scrollBy({
+        top: 0,
+        left: -document.getElementById('philosophyContainer').clientWidth,
+        behavior: 'smooth'
+    });
+});
+
+document.getElementById('scrollRightPhilosophy').addEventListener('click', () => {
+    document.getElementById('philosophyContainer').scrollBy({
+        top: 0,
+        left: document.getElementById('philosophyContainer').clientWidth,
+        behavior: 'smooth'
+    });
+});
+
+// Add this to your existing fetch calls
+fetchPhilosophyBooks().then(books => {
+    renderPhilosophyBooks(books);
+}).catch(error => {
+    console.error('Error handling philosophy books:', error);
+    renderPlaceholderRecommendations();
+});
 
 });
