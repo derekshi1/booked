@@ -466,6 +466,8 @@ function addToLibrary(isbn) {
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
+                    console.log('Book added successfully, showing review popup...');
+                    showReviewPopup(isbn, book.title);
                     alert('Book added to your library!');
                 } else {
                     alert('Failed to add book to library: ' + data.message);
@@ -482,7 +484,153 @@ function addToLibrary(isbn) {
         });
 }
 
+// Add these new functions for the review popup
+function showReviewPopup(bookIsbn, bookTitle) {
+    console.log('showReviewPopup called with:', { bookIsbn, bookTitle });
+    const modal = document.getElementById('bookReviewModal');
+    console.log('Modal element:', modal);
+    
+    if (!modal) {
+        console.error('Review modal element not found!');
+        return;
+    }
 
+    const closeModal = document.getElementById('closeBookReviewModal');
+    const ratingInput = document.getElementById('bookRating');
+    const ratingValue = document.getElementById('bookRatingValue');
+    const saveReviewButton = document.getElementById('saveBookReview');
+    const reviewLaterButton = document.getElementById('reviewBookLater');
+    const reviewText = document.getElementById('bookReviewText');
+    const visibility = document.getElementById('bookVisibility');
+    const reviewDate = document.getElementById('bookReviewDate');
+    const username = localStorage.getItem('username');
+
+    // Fetch existing review if any
+    fetch(`/api/library/review/${username}/${bookIsbn}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                reviewText.value = data.review || '';
+                ratingInput.value = data.rating || 50;
+                ratingValue.textContent = data.rating || 50;
+                updateSliderBackground(ratingInput, data.rating || null);
+
+                // Handle visibility
+                if (data.visibility) {
+                    visibility.value = data.visibility;
+                } else {
+                    visibility.value = 'public';  // Default to 'public' if not available
+                }
+
+                if (data.reviewDate) {
+                    const reviewDateObj = new Date(data.reviewDate);
+                    const formattedDate = reviewDateObj.toLocaleString();
+                    reviewDate.textContent = `Reviewed on: ${formattedDate}`;
+                } else {
+                    reviewDate.textContent = ''; // Clear if no date
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching existing review:', error);
+        });
+
+    // Show the modal
+    console.log('Showing modal...');
+    modal.classList.remove('hidden');
+    console.log('Modal classes after showing:', modal.classList);
+
+    // Update rating value display and slider background
+    ratingInput.addEventListener('input', () => {
+        const value = ratingInput.value;
+        ratingValue.textContent = value;
+        updateSliderBackground(ratingInput, value);
+    });
+
+    // Initial slider background update
+    updateSliderBackground(ratingInput, ratingInput.value);
+
+    // Close modal handlers
+    closeModal.onclick = () => {
+        modal.classList.add('hidden');
+    };
+
+    window.onclick = (event) => {
+        if (event.target === modal) {
+            modal.classList.add('hidden');
+        }
+    };
+
+    // Save review handler
+    saveReviewButton.onclick = async () => {
+        const reviewData = {
+            username,
+            isbn: bookIsbn,
+            review: reviewText.value,
+            rating: parseInt(ratingInput.value),
+            visibility: visibility.value,
+            reviewDate: new Date().toISOString()
+        };
+
+        // Disable the save button to prevent multiple clicks
+        saveReviewButton.disabled = true;
+
+        try {
+            const response = await fetch('/api/library/review', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(reviewData)
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                alert('Review saved successfully!');
+                modal.classList.add('hidden');
+                // Refresh reviews section
+                fetchAndDisplayReviews(bookIsbn);
+            } else {
+                alert('Failed to save review: ' + data.message);
+            }
+        } catch (error) {
+            console.error('Error saving review:', error);
+            alert('Error saving review. Please try again.');
+        } finally {
+            // Re-enable the save button after the request finishes
+            saveReviewButton.disabled = false;
+        }
+    };
+
+    // Review later handler
+    reviewLaterButton.onclick = () => {
+        modal.classList.add('hidden');
+    };
+}
+
+function updateSliderBackground(slider, value) {
+    if (value === null) {
+        slider.style.background = '#444444'; // Set to dark grey if the value is null (no rating)
+    } else {
+        const gradientColor = getGradientColor(value);
+        slider.style.background = `linear-gradient(90deg, ${gradientColor} ${value}%, #ffffff ${value}%)`;
+    }
+
+    // Update the slider thumb color
+    const style = document.createElement('style');
+    style.innerHTML = `
+        input[type=range] {
+            border: 2px solid #000000; /* Black border around the slider */
+        }
+        input[type=range]::-webkit-slider-thumb {
+            background: ${value === null ? '#444444' : getGradientColor(value)};
+        }
+        input[type=range]::-moz-range-thumb {
+            background: ${value === null ? '#444444' : getGradientColor(value)};
+        }
+    `;
+    document.head.appendChild(style);
+}
 
 async function fetchAndDisplayReviews(isbn) {
     const loggedInUsername = localStorage.getItem('username'); // Add this line at the top

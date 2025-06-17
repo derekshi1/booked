@@ -81,11 +81,37 @@
         </div>
     </main>
     <div id="myModal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
-        <div class="modal-content bg-white p-6 rounded relative w-11/12 md:w-3/4 lg:w-1/2">
+        <div class="modal-content bg-white p-6 rounded shadow-lg relative w-11/12 md:w-3/4 lg:w-1/2">
             <span class="close absolute top-4 right-4 text-2xl cursor-pointer" onclick="closeModal()">&times;</span>
             <div id="viewerCanvas" class="w-full h-96"></div>
         </div>
     </div>
 
+    <!-- Review Modal -->
+    <div id="bookReviewModal" class="book-review-modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
+        <div class="modal-content bg-white p-6 rounded-lg shadow-xl w-96">
+            <span class="close-button absolute top-4 right-4 text-2xl cursor-pointer" id="closeBookReviewModal">&times;</span>
+            <h2 class="text-2xl font-bold mb-4">Review</h2>
+            <p id="bookReviewDate" class="text-gray-500 text-sm mb-4"></p>
+            <textarea id="bookReviewText" placeholder="Add a review..." class="w-full p-2 border rounded-lg mb-4 h-32"></textarea>
+            <div class="visibility-container mb-4">
+                <label for="bookVisibility" class="block mb-2">Visibility:</label>
+                <select id="bookVisibility" name="visibility" class="w-full p-2 border rounded-lg">
+                    <option value="public">Public</option>
+                    <option value="friends">Friends</option>
+                    <option value="private">Private</option>
+                </select>
+            </div>
+            <div class="rating-container mb-4">
+                <label for="bookRating" class="block mb-2">Rating:</label>
+                <input type="range" id="bookRating" name="rating" min="0" max="100" class="w-full">
+                <span id="bookRatingValue" class="text-gray-600">50</span>
+            </div>
+            <div class="flex justify-between">
+                <button id="saveBookReview" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">Save Review</button>
+                <button id="reviewBookLater" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">Review Later</button>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
