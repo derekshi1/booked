@@ -2528,7 +2528,7 @@ app.get('/api/unified-search', async (req, res) => {
 
         // Finally search for books
         if (!type || type === 'books') {
-            const apiKey = 'AIzaSyCFDaqjpgA8K_NqqCw93xorS3zumc_52u8';
+            const apiKey = process.env.API_KEY;
             const googleBooksResponse = await fetch(
                 `https://www.googleapis.com/books/v1/volumes?q=${query}&key=${apiKey}&maxResults=20` // Increased to 10 since we'll filter some out
             );
@@ -3052,7 +3052,7 @@ app.post('/api/generate-images', async (req, res) => {
         const numImages = Math.min(sentences.length, 5); // Max 5 images
 
         const images = [];
-
+        const hf_api = process.env.hf_api_key
         // Generate images using Hugging Face API
         for (let i = 0; i < numImages; i++) {
             const prompt = `Book cover illustration for: ${sentences[i].trim()}. Artistic, detailed, high quality.`;
@@ -3061,7 +3061,7 @@ app.post('/api/generate-images', async (req, res) => {
                 const hfResponse = await fetch('https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0', {
                     method: 'POST',
                     headers: {
-                        'Authorization': `Bearer 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`,
+                        'Authorization': `Bearer ${hf_api}`,
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
