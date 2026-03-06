@@ -218,7 +218,6 @@ app.post('/api/users/:username/lists', async (req, res) => {
   }
 });
 
-// Endpoint to get count of unread activities
 app.get('/api/activities/unread-count/:username', async (req, res) => {
     const { username } = req.params;
 
@@ -3022,6 +3021,83 @@ app.post('/api/dismiss-friend-suggestion', async (req, res) => {
 
 
 // Get profile picture endpoint
+
+// Add endpoint to generate images for video
+app.post('/api/generate-images', async (req, res) => {
+    try {
+        const { isbn } = req.body;
+
+        if (!isbn) {
+            return res.status(400).json({ success: false, message: 'ISBN is required' });
+        }
+
+        // Fetch book description from Google Books API
+        const apiKey = 'AIzaSyCFDaqjpgA8K_NqqCw93xorS3zumc_52u8';
+        const googleResponse = await fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}&key=${apiKey}`);
+        const googleData = await googleResponse.json();
+
+        if (!googleData.items || googleData.items.length === 0) {
+            return res.status(404).json({ success: false, message: 'Book not found' });
+        }
+
+        const book = googleData.items[0].volumeInfo;
+        const description = book.description || book.title;
+
+        if (!description) {
+            return res.status(400).json({ success: false, message: 'No description available for this book' });
+        }
+
+        // Split description into chunks for multiple images
+        const sentences = description.split('.').filter(s => s.trim().length > 10);
+        const numImages = Math.min(sentences.length, 5); // Max 5 images
+
+        const images = [];
+
+        // Generate images using Hugging Face API
+        for (let i = 0; i < numImages; i++) {
+            const prompt = `Book cover illustration for: ${sentences[i].trim()}. Artistic, detailed, high quality.`;
+
+            try {
+                const hfResponse = await fetch('https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer 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`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        inputs: prompt,
+                        options: {
+                            wait_for_model: true,
+                        },
+                    }),
+                });
+
+                if (!hfResponse.ok) {
+                    console.error('HF API error:', hfResponse.status, hfResponse.statusText);
+                    continue;
+                }
+
+                const imageBlob = await hfResponse.blob();
+                const buffer = await imageBlob.arrayBuffer();
+                const base64 = Buffer.from(buffer).toString('base64');
+                const imageUrl = `data:image/png;base64,${base64}`;
+
+                images.push(imageUrl);
+            } catch (error) {
+                console.error('Error generating image:', error);
+            }
+        }
+
+        if (images.length === 0) {
+            return res.status(500).json({ success: false, message: 'Failed to generate any images' });
+        }
+
+        res.json({ success: true, images });
+    } catch (error) {
+        console.error('Error in generate-images:', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+});
 
 // Add endpoint to get user's archetype
 app.get('/api/users/:username/archetype', async (req, res) => {
