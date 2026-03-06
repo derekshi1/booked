@@ -55,10 +55,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const bookElement = document.createElement('div');
                     bookElement.className = 'flex flex-col items-center mt-6'; 
                     bookElement.innerHTML = `
-                    <a href="../html/book.html?isbn=${book.isbn}" class="relative group block">
+                    <a href="../html/book.html?isbn=${book.isbn}" class="relative block library-hover-group">
                             <div class="relative group book-card">
                                 <img src="${book.thumbnail}" alt="${book.title}" class="w-40 h-50 object-cover rounded-md shadow-md">
-                                <div class="absolute bottom-0 left-0 right-0 bg-gray-900 bg-opacity-75 text-white text-sm text-center p-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <div class="absolute bottom-0 left-0 right-0 bg-gray-900 bg-opacity-75 text-white text-sm text-center p-2 library-card-overlay">
                                     ${book.title} <br><span class="text-xs">By ${authorsText}</span>
                                 </div>
                             </div>
@@ -73,6 +73,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     `;
                     currentReadsGrid.appendChild(bookElement);
                 });
+                debugLibraryHover(currentReadsGrid, 'Current Reads');
     
                 if (isOwnLibrary) {
                     const endButtons = document.querySelectorAll('.end-currently-reading-btn');
@@ -232,10 +233,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
     
             bookDiv.innerHTML = `
-                <div class="relative group book-card" style="box-shadow: ${getGlowColor(book.rating)}">
-                    <a href="../html/book.html?isbn=${book.isbn}" class="block relative overflow-hidden rounded-lg shadow-md hover:shadow-lg transition duration-200 ease-in-out group">
+                <div class="relative group book-card library-hover-group" style="box-shadow: ${getGlowColor(book.rating)}">
+                    <a href="../html/book.html?isbn=${book.isbn}" class="block relative overflow-hidden rounded-lg shadow-md hover:shadow-lg transition duration-200 ease-in-out">
                         <img src="${book.thumbnail}" alt="${book.title}" class="w-full h-full object-cover rounded-t-lg">
-                        <div class="absolute bottom-0 left-0 w-full p-2 bg-black bg-opacity-50 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200 ease-in-out">
+                        <div class="absolute bottom-0 left-0 w-full p-2 bg-black bg-opacity-50 text-white library-card-overlay">
                             <h2 class="text-sm font-bold">${book.title}</h2>
                             <p class="text-gray-300 text-xs">by ${book.authors}</p>
                         </div>
@@ -248,10 +249,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 </div>
             `;
             console.log(`[RENDER BOOKS] Appending book  with ISBN: ${book.isbn}`);
+           
 
-    
             libraryGrid.appendChild(bookDiv);
         });
+        debugLibraryHover(libraryGrid, 'Library Grid');
     
         // Attach event listeners to comment buttons
         const commentButtons = document.querySelectorAll('.comment-button');
@@ -376,10 +378,10 @@ async function renderReadingList(books) {
         const bookDiv = document.createElement('div');
         bookDiv.classList.add('library-card', 'relative', 'p-6', 'rounded-lg', 'shadow-lg', 'cursor-pointer', 'hover:shadow-2xl', 'transition', 'duration-300', 'ease-in-out');
         bookDiv.innerHTML = `
-            <div class="relative group book-card library-card" style="border: 4px solid ${getGradientColor(book.rating)};">
-                <a href="../html/book.html?isbn=${book.isbn}" class="block relative overflow-hidden rounded-lg shadow-md hover:shadow-lg transition duration-200 ease-in-out group">
+            <div class="relative group book-card library-card library-hover-group" style="border: 4px solid ${getGradientColor(book.rating)};">
+                <a href="../html/book.html?isbn=${book.isbn}" class="block relative overflow-hidden rounded-lg shadow-md hover:shadow-lg transition duration-200 ease-in-out">
                     <img src="${book.thumbnail}" alt="${book.title}" class="w-full h-64 object-cover rounded-t-lg">
-                    <div class="absolute bottom-0 left-0 w-full p-2 bg-black bg-opacity-50 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200 ease-in-out">
+                    <div class="absolute bottom-0 left-0 w-full p-2 bg-black bg-opacity-50 text-white library-card-overlay">
                         <h2 class="text-sm font-bold">${book.title}</h2>
                         <p class="text-gray-300 text-xs">by ${book.authors}</p>
                     </div>
@@ -391,6 +393,7 @@ async function renderReadingList(books) {
         `;
         readingListGrid.appendChild(bookDiv);
     });
+    debugLibraryHover(readingListGrid, 'Reading List');
 }
 
 // Call fetchAndDisplayReadingList to load the first page of the reading list
@@ -434,6 +437,28 @@ fetchAndDisplayReadingList(currentReadingPage);
         updateSliderBackground(ratingInput, currentRating);
     });
 });
+
+/** Debug: attach hover logs and log overlay/CSS state. Call after rendering cards. */
+function debugLibraryHover(container, label) {
+    if (!container) return;
+    const groups = container.querySelectorAll('.library-hover-group');
+    const overlays = container.querySelectorAll('.library-card-overlay');
+    console.log(`[HOVER DEBUG ${label}] .library-hover-group: ${groups.length}, .library-card-overlay: ${overlays.length}`);
+    groups.forEach((el, i) => {
+        const overlay = el.querySelector('.library-card-overlay');
+        el.addEventListener('mouseenter', () => {
+            const style = overlay ? getComputedStyle(overlay) : null;
+            console.log(`[HOVER DEBUG ${label}] mouseenter card ${i + 1}`, {
+                hasOverlay: !!overlay,
+                overlayOpacity: style ? style.opacity : 'N/A',
+                overlayPointerEvents: style ? style.pointerEvents : 'N/A',
+            });
+        });
+        el.addEventListener('mouseleave', () => {
+            console.log(`[HOVER DEBUG ${label}] mouseleave card ${i + 1}`);
+        });
+    });
+}
 
 function addPlaceholderCards(container, message) {
 

@@ -171,11 +171,20 @@ body {
 }
 
 
-.group:hover .group-hover\\:opacity-100 {
+/* Library page: hover overlay (title/author) – dedicated class so it works after pagination */
+.library-hover-group:hover .library-card-overlay {
     opacity: 1;
 }
-
-.group-hover\\:opacity-100 {
+.library-card-overlay {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease-in-out;
+}
+/* Remove button and other group-hover elements (comment button, etc.) */
+.group:hover .group-hover\:opacity-100 {
+    opacity: 1;
+}
+.group-hover\:opacity-100 {
     opacity: 0;
 }
 /* Other component styles */
@@ -608,11 +617,20 @@ body {
 }
 
 
-.group:hover .group-hover\\:opacity-100 {
+/* Library page: hover overlay (title/author) – dedicated class so it works after pagination */
+.library-hover-group:hover .library-card-overlay {
     opacity: 1;
 }
-
-.group-hover\\:opacity-100 {
+.library-card-overlay {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease-in-out;
+}
+/* Remove button and other group-hover elements (comment button, etc.) */
+.group:hover .group-hover\:opacity-100 {
+    opacity: 1;
+}
+.group-hover\:opacity-100 {
     opacity: 0;
 }
 /* Other component styles */

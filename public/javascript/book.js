@@ -30,74 +30,75 @@ document.addEventListener('DOMContentLoaded', async () => {
             <img src="${book.imageLinks ? book.imageLinks.thumbnail.replace('zoom=1', '') + '&zoom=1' : 'https://via.placeholder.com/128x192?text=No+Image'}" alt="${book.title}" class="book-card card book-cover w-60 h-96 object-cover mb-8">
         </div>
 
-        <!-- Button section: Preview and Add Buttons side by side -->
-        <div class="flex items-center gap-4 mt-4">
-            <!-- Preview Button -->
-            <button id="previewButton" onclick="loadBook('${isbn}')" class="px-4 py-2 bg-green-500 text-white rounded h-48px w-40">Preview</button>
-            
-            <!-- Add Button Next to Preview Button -->
-            <div class="add-button-container">
-                <button id="addButton" class="add-button relative flex items-center justify-center">
-                    <div class="icon-container absolute left-2.8 flex flex-col space-y-1">
-                        <div class="line w-5 h-0.5 bg-white"></div>
-                        <div class="line w-5 h-0.5 bg-white"></div>
-                        <div class="line w-5 h-0.5 bg-white"></div>
-                    </div>
-                    <div class="plus-icon absolute top-0 right-0 w-2 h-2 rounded-full bg-white text-green-600 text-xs flex items-center justify-center">
-                        +
-                    </div>
-                </button>
+        <!-- Button section: Preview and Add on top row, Generate Video centered below -->
+        <div class="flex flex-col items-start gap-4 mt-4">
+            <div class="flex items-start gap-4">
+                <button id="previewButton" onclick="loadBook('${isbn}')" class="px-4 py-2 bg-green-500 text-white rounded h-48px w-40">Preview</button>
 
-                <!-- Dropdown Menu Overlay -->
-                <div id="dropdownMenu" class="hidden fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50">
-                    <div class="bg-white rounded-lg shadow-xl w-80 transform transition-all duration-300 scale-95 opacity-0">
-                        <div class="py-2">
-                            <div class="px-4 py-3 border-b border-gray-100 flex justify-between items-center">
-                                <h3 class="text-lg font-semibold text-gray-700">Add to...</h3>
-                                <button id="closeDropdown" class="text-gray-400 hover:text-gray-500 transition-colors duration-200">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                                    </svg>
-                                </button>
+                <div class="add-button-container">
+                    <button id="addButton" class="add-button relative flex items-center justify-center">
+                        <div class="icon-container absolute left-2.8 flex flex-col space-y-1">
+                            <div class="line w-5 h-0.5 bg-white"></div>
+                            <div class="line w-5 h-0.5 bg-white"></div>
+                            <div class="line w-5 h-0.5 bg-white"></div>
+                        </div>
+                        <div class="plus-icon absolute top-0 right-0 w-2 h-2 rounded-full bg-white text-green-600 text-xs flex items-center justify-center">
+                            +
+                        </div>
+                    </button>
+
+                    <!-- Dropdown Menu Overlay -->
+                    <div id="dropdownMenu" class="hidden fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50">
+                        <div class="bg-white rounded-lg shadow-xl w-80 transform transition-all duration-300 scale-95 opacity-0">
+                            <div class="py-2">
+                                <div class="px-4 py-3 border-b border-gray-100 flex justify-between items-center">
+                                    <h3 class="text-lg font-semibold text-gray-700">Add to...</h3>
+                                    <button id="closeDropdown" class="text-gray-400 hover:text-gray-500 transition-colors duration-200">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                        </svg>
+                                    </button>
+                                </div>
+                                <ul class="menu-list py-2">
+                                    <li>
+                                        <button id="addToLibraryButton" class="w-full text-left px-4 py-3 text-gray-700 hover:bg-green-50 flex items-center gap-3 transition-colors duration-200">
+                                            <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
+                                            </svg>
+                                            <span>Library</span>
+                                        </button>
+                                    </li>
+                                    <li>
+                                        <button id="addToReadingListButton" class="w-full text-left px-4 py-3 text-gray-700 hover:bg-green-50 flex items-center gap-3 transition-colors duration-200">
+                                            <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
+                                            </svg>
+                                            <span>Reading List</span>
+                                        </button>
+                                    </li>
+                                    <li>
+                                        <button id="addToTop5Button" class="w-full text-left px-4 py-3 text-gray-700 hover:bg-green-50 flex items-center gap-3 transition-colors duration-200">
+                                            <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"></path>
+                                            </svg>
+                                            <span>Top 5</span>
+                                        </button>
+                                    </li>
+                                    <li>
+                                        <button id="addToCurrentlyReadingButton" class="w-full text-left px-4 py-3 text-gray-700 hover:bg-green-50 flex items-center gap-3 transition-colors duration-200">
+                                            <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                                            </svg>
+                                            <span>Currently Reading</span>
+                                        </button>
+                                    </li>
+                                </ul>
                             </div>
-                            <ul class="menu-list py-2">
-                                <li>
-                                    <button id="addToLibraryButton" class="w-full text-left px-4 py-3 text-gray-700 hover:bg-green-50 flex items-center gap-3 transition-colors duration-200">
-                                        <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
-                                        </svg>
-                                        <span>Library</span>
-                                    </button>
-                                </li>
-                                <li>
-                                    <button id="addToReadingListButton" class="w-full text-left px-4 py-3 text-gray-700 hover:bg-green-50 flex items-center gap-3 transition-colors duration-200">
-                                        <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
-                                        </svg>
-                                        <span>Reading List</span>
-                                    </button>
-                                </li>
-                                <li>
-                                    <button id="addToTop5Button" class="w-full text-left px-4 py-3 text-gray-700 hover:bg-green-50 flex items-center gap-3 transition-colors duration-200">
-                                        <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"></path>
-                                        </svg>
-                                        <span>Top 5</span>
-                                    </button>
-                                </li>
-                                <li>
-                                    <button id="addToCurrentlyReadingButton" class="w-full text-left px-4 py-3 text-gray-700 hover:bg-green-50 flex items-center gap-3 transition-colors duration-200">
-                                        <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                                        </svg>
-                                        <span>Currently Reading</span>
-                                    </button>
-                                </li>
-                            </ul>
                         </div>
                     </div>
                 </div>
             </div>
+            <button id="generateVideoButton" onclick="generateVideo('${isbn}')" class="px-4 py-2 bg-blue-500 text-white rounded h-48px w-40">Generate Video</button>
         </div>
     </div>
     <!-- Center Content (flexible width) -->
@@ -835,4 +836,74 @@ function getGradientColor(value) {
     }
 
     return `rgb(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)})`;
+}
+
+async function generateVideo(isbn) {
+    try {
+        // Show loading state
+        const button = document.getElementById('generateVideoButton');
+        const originalText = button.textContent;
+        button.textContent = 'Generating...';
+        button.disabled = true;
+
+        const response = await fetch('/api/generate-images', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ isbn }),
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            // Display the generated images
+            displayGeneratedImages(data.images);
+            alert('Images generated successfully! Video generation coming soon.');
+        } else {
+            alert('Failed to generate images: ' + data.message);
+        }
+    } catch (error) {
+        console.error('Error generating video:', error);
+        alert('Error generating video. Please try again.');
+    } finally {
+        // Reset button state
+        const button = document.getElementById('generateVideoButton');
+        button.textContent = 'Generate Video';
+        button.disabled = false;
+    }
+}
+
+function displayGeneratedImages(images) {
+    // Create a modal or section to display the images
+    const modal = document.createElement('div');
+    modal.classList.add('fixed', 'inset-0', 'bg-black', 'bg-opacity-50', 'flex', 'items-center', 'justify-center', 'z-50');
+    modal.innerHTML = `
+        <div class="bg-white p-6 rounded-lg shadow-xl max-w-4xl max-h-4xl overflow-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-bold">Generated Images</h2>
+                <button id="closeImageModal" class="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                ${images.map(image => `
+                    <div class="image-item">
+                        <img src="${image}" alt="Generated image" class="w-full h-48 object-cover rounded">
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    // Close modal functionality
+    document.getElementById('closeImageModal').onclick = () => {
+        document.body.removeChild(modal);
+    };
+
+    modal.onclick = (event) => {
+        if (event.target === modal) {
+            document.body.removeChild(modal);
+        }
+    };
 }
