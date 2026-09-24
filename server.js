@@ -17,14 +17,19 @@ require('dotenv').config();
 
 const mongoUri = process.env.MONGODB_URI;
 
-mongoose.connect(mongoUri, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-}).then(() => {
-    console.log('MongoDB connected successfully');
-}).catch(err => {
-    console.error('MongoDB connection error:', err);
-});
+// Mongoose doesn't retry a failed *initial* connection, so a network blip at
+// startup would leave every query timing out until the next restart
+async function connectToMongo(attempt = 1) {
+    try {
+        await mongoose.connect(mongoUri);
+        console.log('MongoDB connected successfully');
+    } catch (err) {
+        const delayMs = Math.min(attempt * 2000, 30000);
+        console.error(`MongoDB connection error (attempt ${attempt}), retrying in ${delayMs / 1000}s:`, err.message);
+        setTimeout(() => connectToMongo(attempt + 1), delayMs);
+    }
+}
+connectToMongo();
 // Mongoose Schema and Model for Users
 const userSchema = new mongoose.Schema({
   username: { type: String, required: true, unique: true },
