@@ -9,7 +9,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 
     
-    await updateSocialTabNotification();
     const socialTabClicked = sessionStorage.getItem('socialTabClicked') === 'true';  // Check if tab was clicked
 
     let socialLinkClickedAway = false;  // Flag to check if user clicked away

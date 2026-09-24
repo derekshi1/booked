@@ -82,7 +82,7 @@
             </div>
             <div>
                 <label for="password" class="block text-sm font-medium text-white mb-2">Password</label>
-                <input type="password" id="password" name="password" 
+                <input type="password" id="password" name="password" minlength="8" 
                     class="input-field w-full p-3 rounded-lg text-white placeholder-white focus:outline-none" 
                     placeholder="Create a password" required>
             </div>
@@ -116,57 +116,16 @@
             </a>
         </p>
     </div>
+    <script src="../javascript/auth-client.js"></script>
     <script src="../javascript/register.js"></script>
     <script>
-        // Google Sign-In
-        document.getElementById('googleSignIn').addEventListener('click', async (e) => {
-            e.preventDefault();
-            try {
-                const client = google.accounts.oauth2.initTokenClient({
-                    client_id: '14363939556-rfd3scpioaorp8a4tj65on03hblb5rs9.apps.googleusercontent.com', 
-                    callback: async (response) => {
-                        if (response.access_token) {
-                            const userInfo = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-                                headers: { Authorization: `Bearer ${response.access_token}` }
-                            }).then(res => res.json());
+        redirectIfSignedIn();
 
-                            // Show username input field
-                            document.getElementById('googleRegisterForm').classList.remove('hidden');
-                            
-                            // Add event listener for username submission
-                            document.getElementById('googleUsername').addEventListener('keypress', async (event) => {
-                                if (event.key === 'Enter') {
-                                    const username = document.getElementById('googleUsername').value;
-                                    
-                                    const registerResponse = await fetch('/api/auth/google-register', {
-                                        method: 'POST',
-                                        headers: {
-                                            'Content-Type': 'application/json',
-                                        },
-                                        body: JSON.stringify({
-                                            email: userInfo.email,
-                                            name: userInfo.name,
-                                            googleId: userInfo.sub,
-                                            username: username
-                                        }),
-                                    });
-
-                                    if (registerResponse.ok) {
-                                        localStorage.setItem('username', username);
-                                        window.location.href = '../html/index.html';
-                                    } else {
-                                        const error = await registerResponse.text();
-                                        document.getElementById('message').textContent = error;
-                                    }
-                                }
-                            });
-                        }
-                    },
-                });
-                client.requestAccessToken();
-            } catch (error) {
-                document.getElementById('message').textContent = 'An error occurred with Google Sign-In';
-            }
+        setUpGoogleSignIn({
+            buttonId: 'googleSignIn',
+            formId: 'googleRegisterForm',
+            inputId: 'googleUsername',
+            messageId: 'message',
         });
     </script>
 </body>

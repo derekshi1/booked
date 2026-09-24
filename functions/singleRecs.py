@@ -1,6 +1,8 @@
+import os
 import sys
 import json
-from sentence_transformers import SentenceTransformer, util
+from sentence_transformers import util
+from models import get_sentence_model
 import random
 import asyncio
 import aiohttp
@@ -8,9 +10,9 @@ from cachetools import TTLCache
 
 # Define the Google Books API URL
 GOOGLE_BOOKS_API_URL = "https://www.googleapis.com/books/v1/volumes"
-API_KEY = 'AIzaSyCFDaqjpgA8K_NqqCw93xorS3zumc_52u8'
+API_KEY = os.getenv('API_KEY')
 # Load the pre-trained sentence transformer model
-model = SentenceTransformer('paraphrase-MiniLM-L6-v2')
+model = get_sentence_model()
 
 # Set up cache for book info (TTL 10 minutes)
 book_cache = TTLCache(maxsize=1000, ttl=600)

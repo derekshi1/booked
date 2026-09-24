@@ -5,7 +5,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const username = localStorage.getItem('username');
     const userSection = document.getElementById('userSection');
     const recommendationsContainer = document.getElementById('recommendationsContainer');
-    const apiKey = 'AIzaSyCFDaqjpgA8K_NqqCw93xorS3zumc_52u8'
     const reviewsSection = document.getElementById('reviewsSection');
     const reviewsContainer = document.getElementById('reviewsContainer');
     const loggedInUsername = localStorage.getItem('username'); // Add this line at the top
@@ -14,7 +13,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (isbn) {
         try {
             console.log(`Fetching data for ISBN: ${isbn}`);  // Logging ISBN
-            const response = await fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}&key=${apiKey}`);
+            const response = await fetch(`/api/google-books/volumes?q=isbn:${isbn}`);
             const data = await response.json();
             console.log(`API response: `, data);  // Logging API response
             if (data.totalItems > 0) {
@@ -159,7 +158,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 
             function addToCurrentlyReading(isbn) {
-                const apiKey = 'AIzaSyCFDaqjpgA8K_NqqCw93xorS3zumc_52u8';
                 const username = localStorage.getItem('username');
             
                 if (!username) {
@@ -168,7 +166,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             
                 // Fetch book details using the Google Books API
-                fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}&key=${apiKey}`)
+                fetch(`/api/google-books/volumes?q=isbn:${isbn}`)
                     .then(response => response.json())
                     .then(data => {
                         const book = data.items[0].volumeInfo;
@@ -335,7 +333,6 @@ function initialize(isbn) {
 }
 
 function addToTop5(isbn) {
-    const apiKey = 'AIzaSyCFDaqjpgA8K_NqqCw93xorS3zumc_52u8'
 
     const username = localStorage.getItem('username');
     if (!username) {
@@ -343,7 +340,7 @@ function addToTop5(isbn) {
         return;
     }
 
-    fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}&key=${apiKey}`)
+    fetch(`/api/google-books/volumes?q=isbn:${isbn}`)
         .then(response => response.json())
         .then(data => {
             const book = data.items[0].volumeInfo;
@@ -386,14 +383,13 @@ function addToTop5(isbn) {
 
 
 function addToReadingList(isbn) {
-    const apiKey = 'AIzaSyCFDaqjpgA8K_NqqCw93xorS3zumc_52u8'
     const username = localStorage.getItem('username');
     if (!username) {
         alert('You need to be logged in to add books to your top 5.');
         return;
     }
 
-    fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}&key=${apiKey}`)
+    fetch(`/api/google-books/volumes?q=isbn:${isbn}`)
         .then(response => response.json())
         .then(data => {
             const book = data.items[0].volumeInfo;
@@ -435,14 +431,13 @@ function addToReadingList(isbn) {
 }
 
 function addToLibrary(isbn) {
-    const apiKey = 'AIzaSyCFDaqjpgA8K_NqqCw93xorS3zumc_52u8'
     const username = localStorage.getItem('username');
     if (!username) {
         alert('You need to be logged in to add books to your library.');
         return;
     }
 
-    fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}&key=${apiKey}`)
+    fetch(`/api/google-books/volumes?q=isbn:${isbn}`)
         .then(response => response.json())
         .then(data => {
             const book = data.items[0].volumeInfo;

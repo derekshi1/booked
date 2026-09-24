@@ -1,0 +1,21 @@
+# Runs on every push to main: builds the Docker image and deploys it to Cloud Run.
+# Secrets are env vars on the Cloud Run service, not in this repo; deploying a new
+# image keeps them.
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args: ['build', '-t', '${_IMAGE}:${COMMIT_SHA}', '-t', '${_IMAGE}:latest', '.']
+  - name: gcr.io/cloud-builders/docker
+    args: ['push', '--all-tags', '${_IMAGE}']
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: gcloud
+    args: ['run', 'deploy', 'booked', '--image', '${_IMAGE}:${COMMIT_SHA}', '--region', 'us-central1']
+
+substitutions:
+  _IMAGE: us-central1-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy/booked
+
+options:
+  dynamicSubstitutions: true
+  logging: CLOUD_LOGGING_ONLY
+
+# Installing torch and the other ML packages takes a while
+timeout: 1800s

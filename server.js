@@ -1,13 +1,14 @@
 const express = require('express');
 const mongoose = require('mongoose');
-const { spawn } = require('child_process');
-const pythonCommand = process.platform === 'win32' ? 'python' : 'python3';
+const { startWorker, runPythonTask } = require('./python-worker');
+const cookieParser = require('cookie-parser');
+const { registerAuthRoutes, requireSession, setSession } = require('./auth');
 const multer = require('multer'); // Add this to your imports
 const path = require('path');
 const crypto = require('crypto');
 
 const app = express();
-const port = 8080;
+const port = process.env.PORT || 8080;
 
 
 // MongoDB Connection
@@ -27,6 +28,7 @@ mongoose.connect(mongoUri, {
 const userSchema = new mongoose.Schema({
   username: { type: String, required: true, unique: true },
   password: { type: String, required: true },
+  googleId: { type: String, unique: true, sparse: true },
   friends: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], default: [] },
   friendRequests: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'FriendRequest' }], default: [] },
   profilePicture: { type: String, default: '../profile.png' },
@@ -86,6 +88,10 @@ const friendRequestSchema = new mongoose.Schema({
 
 
 // Models
+userListSchema.index({ username: 1 });
+activitySchema.index({ userId: 1, timestamp: -1 });
+friendRequestSchema.index({ to: 1, status: 1 });
+
 const UserList = mongoose.model('UserList', userListSchema);
 const User = mongoose.model('User', userSchema);
 const Activity = mongoose.model('Activity', activitySchema);
@@ -178,14 +184,58 @@ const userLibrarySchema = new mongoose.Schema({
     endDate: Date
   }]
 });
+userLibrarySchema.index({ username: 1 });
+userLibrarySchema.index({ 'books.isbn': 1 });
 const UserLibrary = mongoose.model('UserLibrary', userLibrarySchema);
 
+// Cloud Run terminates HTTPS in front of the app; trust it so secure cookies work
+app.set('trust proxy', 1);
 app.use(express.static('public'));
 app.use(express.json());
+app.use(cookieParser());
+registerAuthRoutes(app, User);
+
+// Proxy Google Books requests so the API key stays on the server
+app.get('/api/google-books/volumes', async (req, res) => {
+  try {
+    const params = new URLSearchParams(req.originalUrl.split('?')[1] || '');
+    params.delete('key');
+    params.set('key', process.env.API_KEY);
+    const response = await fetch(`https://www.googleapis.com/books/v1/volumes?${params}`);
+    res.status(response.status).json(await response.json());
+  } catch (error) {
+    console.error('Google Books proxy error:', error);
+    res.status(502).json({ error: 'Failed to fetch from Google Books' });
+  }
+});
+
+// Proxy NYT best-seller lists; cached because NYT allows only ~5 requests/minute
+const nytCache = new Map();
+const NYT_CACHE_TTL_MS = 60 * 60 * 1000;
+app.get('/api/nyt/lists/:list', async (req, res) => {
+  const { list } = req.params;
+  if (!/^[a-z0-9-]+$/.test(list)) {
+    return res.status(400).json({ error: 'Invalid list name' });
+  }
+  const cached = nytCache.get(list);
+  if (cached && Date.now() - cached.time < NYT_CACHE_TTL_MS) {
+    return res.json(cached.data);
+  }
+  try {
+    const response = await fetch(`https://api.nytimes.com/svc/books/v3/lists/current/${list}.json?api-key=${process.env.NYT_API_KEY}`);
+    const data = await response.json();
+    if (response.ok) nytCache.set(list, { time: Date.now(), data });
+    res.status(response.status).json(data);
+  } catch (error) {
+    console.error('NYT proxy error:', error);
+    res.status(502).json({ error: 'Failed to fetch from NYT' });
+  }
+});
 
 // Serve the main page
 app.get('/', (req, res) => {
-  res.sendFile(__dirname + '/public/html/index.html');
+  // Visitors start at the login page, which forwards signed-in users to the homepage
+  res.redirect('/html/login.html');
 });
 
 app.post('/api/users/:username/lists', async (req, res) => {
@@ -222,97 +272,48 @@ app.get('/api/activities/unread-count/:username', async (req, res) => {
     const { username } = req.params;
 
     try {
-        const user = await User.findOne({ username });
+        const user = await User.findOne({ username }, { friends: 1 }).lean();
         if (!user) {
-            console.log('❌ User not found');
             return res.status(404).json({ success: false, message: 'User not found' });
         }
 
-        // Count unread activities from friends, filtering out any problematic ones
-        const unreadActivities = await Activity.find({
-            userId: { $in: user.friends },
-            readBy: { $ne: user._id },
-            action: { $in: ['reviewed', 'added to library', 'added to top 5', 'added to reading list'] }
-        }).populate('userId', 'username');
+        // Friends whose accounts still exist (activities from deleted users aren't counted)
+        const existingFriendIds = await User.find({ _id: { $in: user.friends } }).distinct('_id');
 
-        // Filter out any activities with missing or invalid data
-        const validUnreadActivities = unreadActivities.filter(activity => {
-            try {
-                // Check if activity has all required fields
-                return activity.userId && 
-                       activity.action && 
-                       (activity.action === 'reviewed' ? activity.bookTitle : true);
-            } catch (error) {
-                console.log('Filtered out invalid activity:', error);
-                return false;
-            }
-        });
-
-        const unreadActivitiesCount = validUnreadActivities.length;
-
-        // Count unread friend requests
-        const unreadFriendRequests = await FriendRequest.find({
-            to: user._id,
-            status: 'pending',
-            isRead: false
-        }).populate('from', 'username');
-
-        const unreadFriendRequestsCount = unreadFriendRequests.length;
-
-        // Get unread likes on user's reviews
-        const userLibrary = await UserLibrary.findOne({ username });
-        let unreadLikesCount = 0;
-        let unreadLikesDetails = [];
-
-        if (userLibrary && userLibrary.books) {
-            userLibrary.books.forEach(book => {
-                if (book.likes) {
-                    try {
-                        // Get unread likes with full details, filtering out invalid ones
-                        const unreadLikes = book.likes.filter(like => {
-                            try {
-                                return !like.isRead && 
-                                       typeof like === 'object' && 
-                                       like.username;
-                            } catch (error) {
-                                console.log('Filtered out invalid like:', error);
-                                return false;
-                            }
-                        });
-                        
-                        if (unreadLikes.length > 0) {
-                            unreadLikesDetails.push({
-                                bookTitle: book.title,
-                                isbn: book.isbn,
-                                unreadLikes: unreadLikes.map(like => ({
-                                    username: like.username,
-                                    timestamp: like.timestamp,
-                                    isRead: like.isRead
-                                }))
-                            });
-                            console.log(`Book "${book.title}" has ${unreadLikes.length} unread likes:`, unreadLikes);
-                        }
-                        unreadLikesCount += unreadLikes.length;
-                    } catch (error) {
-                        console.log(`Error processing likes for book "${book.title}":`, error);
-                        // Skip this book's likes but continue with others
-                    }
-                }
-            });
-        }
-
-        // Count unread nudges
-        const unreadNudges = await Activity.find({
-            userId: user._id,
-            action: 'nudge',
-            readBy: { $ne: user._id }
-        }).populate('userId', 'username');
-
-        const unreadNudgesCount = unreadNudges.length;
+        // Polled every minute by every open page, so count in the database instead of loading documents
+        const [unreadActivitiesCount, unreadFriendRequestsCount, likesResult, unreadNudgesCount] = await Promise.all([
+            Activity.countDocuments({
+                userId: { $in: existingFriendIds },
+                readBy: { $ne: user._id },
+                action: { $in: ['reviewed', 'added to library', 'added to top 5', 'added to reading list'] },
+                // Reviews without a book title are malformed; skip them
+                $or: [{ action: { $ne: 'reviewed' } }, { bookTitle: { $nin: [null, ''] } }]
+            }),
+            FriendRequest.countDocuments({
+                to: user._id,
+                status: 'pending',
+                isRead: false
+            }),
+            UserLibrary.aggregate([
+                { $match: { username } },
+                { $limit: 1 },
+                { $unwind: '$books' },
+                { $unwind: '$books.likes' },
+                // Likes without a username are from an old format; skip them
+                { $match: { 'books.likes.isRead': { $ne: true }, 'books.likes.username': { $nin: [null, ''] } } },
+                { $count: 'count' }
+            ]),
+            Activity.countDocuments({
+                userId: user._id,
+                action: 'nudge',
+                readBy: { $ne: user._id }
+            })
+        ]);
+        const unreadLikesCount = likesResult[0]?.count || 0;
 
         // Total unread count
         const totalUnreadCount = unreadActivitiesCount + unreadFriendRequestsCount + unreadLikesCount + unreadNudgesCount;
-       
+
         res.json({ 
             success: true, 
             unreadCount: totalUnreadCount,
@@ -363,44 +364,12 @@ app.post('/api/activities/mark-read/:username', async (req, res) => {
 
 
 
-// User Registration
-app.post('/api/auth/register', async (req, res) => {
-  const { username, password } = req.body;
-  try {
-    const user = new User({ username, password });
-    await user.save();
-    res.status(201).send('User created');
-  } catch (err) {
-    res.status(400).send('Error creating user');
-  }
-});
-
-// User Login
-app.post('/api/auth/login', async (req, res) => {
-  const { username, password } = req.body;
-  console.log(`Login attempt: username=${username}, password=${password}`);
-  try {
-    const user = await User.findOne({ username });
-    if (!user) {
-      console.log(`User not found: username=${username}`);
-      return res.status(400).send('Invalid username or password');
-    }
-
-    if (password !== user.password) {
-      console.log(`Invalid password for user: username=${username}`);
-      return res.status(400).send('Invalid username or password');
-    }
-
-    console.log(`User logged in successfully: username=${username}`);
-    res.status(200).send('Logged in');
-  } catch (err) {
-    console.error('Error during login:', err);
-    res.status(500).send('Internal server error');
-  }
-});
-
-app.post('/api/auth/change-username', async (req, res) => {
+// Change username (login, registration and Google sign-in live in auth.js)
+app.post('/api/auth/change-username', requireSession, async (req, res) => {
   const { oldUsername, newUsername } = req.body;
+  if (req.sessionUsername !== oldUsername) {
+    return res.status(403).send('You can only change your own username');
+  }
 
   try {
     // Find the user by the old username
@@ -419,6 +388,7 @@ app.post('/api/auth/change-username', async (req, res) => {
     user.username = newUsername;
     await user.save();
 
+    setSession(req, res, newUsername);
     res.status(200).send('Username updated successfully');
   } catch (err) {
     console.error('Error updating username:', err);
@@ -663,36 +633,8 @@ app.get('/api/recommendations/:username', async (req, res) => {
           return res.status(200).json({ success: true, recommendations: [] });
       }
 
-      // Spawn Python process with both library and username as arguments
-      const pythonProcess = spawn(pythonCommand, [
-          'public/functions/recommendations.py', 
-          JSON.stringify(library)
-      ]);
-
-      let recommendations = '';
-      pythonProcess.stdout.on('data', (data) => {
-          recommendations += data.toString();
-      });
-
-      pythonProcess.stderr.on('data', (data) => {
-          console.error(`stderr: ${data}`);
-      });
-
-      pythonProcess.on('close', (code) => {
-        if (code !== 0) {
-            console.error(`Python process exited with code ${code}`);
-            return res.status(500).json({ success: false, message: 'Error generating recommendations' });
-        }
-        console.log('Raw recommendations output:', recommendations);  // Debugging line to print raw output
-        try {
-            const recommendationsJSON = JSON.parse(recommendations);
-            console.log('Parsed recommendations JSON:', JSON.stringify(recommendationsJSON, null, 2));
-            res.status(200).json({ success: true, recommendations: recommendationsJSON });
-        } catch (error) {
-            console.error('Error parsing recommendations:', error);
-            res.status(500).json({ success: false, message: 'Error parsing recommendations' });
-        }
-    });
+      const recommendations = await runPythonTask('recommendations', { library });
+      res.status(200).json({ success: true, recommendations });
 
 
   } catch (error) {
@@ -725,7 +667,7 @@ app.get('/api/recommendations/:username', async (req, res) => {
       let recommendations = '';
 
       const pythonProcessCF = spawn(pythonCommand, [
-          'public/functions/NetflixRecommendations.py',
+          'functions/NetflixRecommendations.py',
           username, // Pass username to the collaborative filtering script
           '10'      // Number of recommendations to generate
       ]);
@@ -767,7 +709,7 @@ app.get('/api/recommendations/:username', async (req, res) => {
       const fallbackToContentBased = async () => {
           console.log(`Calling content-based recommendations for user: ${username}`);
           const pythonProcessCB = spawn(pythonCommand, [
-              'public/functions/recommendations.py', 
+              'functions/recommendations.py', 
               JSON.stringify(library)
           ]);
 
@@ -835,36 +777,8 @@ app.get('/api/group-recommendations', async (req, res) => {
       const uniqueBooks = Array.from(new Set(combinedLibrary.map(book => book.isbn)))
           .map(isbn => combinedLibrary.find(book => book.isbn === isbn));
 
-      // Spawn Python process with the combined library
-      const pythonProcess = spawn(pythonCommand, [
-          'public/functions/recommendations.py',
-          JSON.stringify(uniqueBooks)
-      ]);
-
-      let recommendations = '';
-      pythonProcess.stdout.on('data', (data) => {
-          recommendations += data.toString();
-      });
-
-      pythonProcess.stderr.on('data', (data) => {
-          console.error(`stderr: ${data}`);
-      });
-
-      pythonProcess.on('close', (code) => {
-          if (code !== 0) {
-              console.error(`Python process exited with code ${code}`);
-              return res.status(500).json({ success: false, message: 'Error generating recommendations' });
-          }
-          console.log('Raw recommendations output:', recommendations); // Debugging line
-          try {
-              const recommendationsJSON = JSON.parse(recommendations);
-              console.log('Parsed recommendations JSON:', JSON.stringify(recommendationsJSON, null, 2));
-              res.status(200).json({ success: true, recommendations: recommendationsJSON });
-          } catch (error) {
-              console.error('Error parsing recommendations:', error);
-              res.status(500).json({ success: false, message: 'Error parsing recommendations' });
-          }
-      });
+      const recommendations = await runPythonTask('recommendations', { library: uniqueBooks });
+      res.status(200).json({ success: true, recommendations });
 
   } catch (error) {
       console.error('Error during recommendations generation:', error);
@@ -880,31 +794,8 @@ app.get('/api/book-recommendations', async (req, res) => {
   }
 
   try {
-    const pythonProcess = spawn(pythonCommand, ['public/functions/singleRecs.py', isbn]);
-
-    let recommendations = '';
-    pythonProcess.stdout.on('data', (data) => {
-      recommendations += data.toString();
-    });
-
-    pythonProcess.stderr.on('data', (data) => {
-      console.error(`stderr: ${data.toString()}`);
-  });
-  
-
-    pythonProcess.on('close', (code) => {
-      if (code !== 0) {
-        console.error(`Python process exited with code ${code}`);
-        return res.status(500).json({ success: false, message: 'Error generating recommendations' });
-      }
-      try {
-        const recommendationsJSON = JSON.parse(recommendations);
-        res.status(200).json({ success: true, recommendations: recommendationsJSON });
-      } catch (error) {
-        console.error('Error parsing recommendations:', error);
-        res.status(500).json({ success: false, message: 'Error parsing recommendations' });
-      }
-    });
+    const recommendations = await runPythonTask('single', { isbn });
+    res.status(200).json({ success: true, recommendations });
   } catch (error) {
     console.error('Error during recommendations generation:', error);
     res.status(500).json({ success: false, message: 'Internal server error' });
@@ -1417,37 +1308,20 @@ app.get('/api/reviews/books/:isbn', async (req, res) => {
 
 // Endpoint to generate book lists
 
-app.post('/api/generate-lists', (req, res) => {
+app.post('/api/generate-lists', async (req, res) => {
   const query = req.body.query;
 
   if (!query) {
     return res.status(400).json({ error: 'No query provided' });
   }
 
-  const pythonProcess = spawn(pythonCommand, ['public/functions/listgeneration.py', query]);
-
-  let list = '';
-  pythonProcess.stdout.on('data', (data) => {
-    list += data.toString();
-  });
-
-  pythonProcess.stderr.on('data', (data) => {
-    console.error(`stderr: ${data}`);
-  });
-
-  pythonProcess.on('close', (code) => {
-    if (code !== 0) {
-      console.error(`Python process exited with code ${code}`);
-      return res.status(500).json({ error: 'Error generating recommendations' });
-    }
-    try {
-      const listJSON = JSON.parse(list);
-      res.status(200).json({ success: true, list: listJSON.list });
-    } catch (error) {
-      console.error('Error parsing list:', error);
-      res.status(500).json({ error: 'Error parsing list' });
-    }
-  });
+  try {
+    const list = await runPythonTask('lists', { query });
+    res.status(200).json({ success: true, list });
+  } catch (error) {
+    console.error('Error generating list:', error);
+    res.status(500).json({ error: 'Error generating recommendations' });
+  }
 });
 
 // New Opposite Recommendations Route
@@ -1466,31 +1340,8 @@ app.get('/api/opposite-recommendations/:username', async (req, res) => {
       return res.status(200).json({ success: true, recommendations: [] });
     }
 
-    const pythonProcess = spawn(pythonCommand, ['public/functions/oppositerecommendations.py', JSON.stringify(library)]);
-
-    let recommendations = '';
-    pythonProcess.stdout.on('data', (data) => {
-      recommendations += data.toString();
-    });
-
-    pythonProcess.stderr.on('data', (data) => {
-      console.error(`stderr: ${data}`);
-    });
-
-    pythonProcess.on('close', (code) => {
-      if (code !== 0) {
-        console.error(`Python process exited with code ${code}`);
-        return res.status(500).json({ success: false, message: 'Error generating recommendations' });
-      }
-      try {
-        const recommendationsJSON = JSON.parse(recommendations);
-        console.log('Parsed recommendations JSON:', JSON.stringify(recommendationsJSON, null, 2));
-        res.status(200).json({ success: true, recommendations: recommendationsJSON });
-      } catch (error) {
-        console.error('Error parsing recommendations:', error);
-        res.status(500).json({ success: false, message: 'Error parsing recommendations' });
-      }
-    });
+    const recommendations = await runPythonTask('opposite', { library });
+    res.status(200).json({ success: true, recommendations });
 
   } catch (error) {
     console.error('Error during recommendations generation:', error);
@@ -2190,6 +2041,8 @@ app.put('/api/lists/:listId', async (req, res) => {
 
 app.listen(port, () => {
   console.log(`Server listening at http://localhost:${port}`);
+  // Load the ML models up front so the first recommendation request is fast
+  startWorker();
 });
 
 // Like a list
@@ -3032,7 +2885,7 @@ app.post('/api/generate-images', async (req, res) => {
         }
 
         // Fetch book description from Google Books API
-        const apiKey = 'AIzaSyCFDaqjpgA8K_NqqCw93xorS3zumc_52u8';
+        const apiKey = process.env.API_KEY;
         const googleResponse = await fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}&key=${apiKey}`);
         const googleData = await googleResponse.json();
 
@@ -3195,6 +3048,7 @@ const reviewSchema = new mongoose.Schema({
 
 // Create compound index for username and isbn to ensure uniqueness
 reviewSchema.index({ username: 1, isbn: 1 }, { unique: true });
+reviewSchema.index({ isbn: 1 });
 
 // Create Review model
 const Review = mongoose.model('Review', reviewSchema);
@@ -3262,87 +3116,24 @@ app.post('/api/migrate-reviews', async (req, res) => {
     }
 });
 
-// Google Authentication Endpoints
-app.post('/api/auth/google-login', async (req, res) => {
-    const { email, name, googleId, username } = req.body;
-
-    try {
-        // Check if user exists by username
-        let user = await User.findOne({ username });
-        
-        if (!user) {
-            return res.status(400).send('Username not found. Please register first.');
-        }
-
-        // Verify the Google ID matches
-        if (user.password !== googleId) {
-            return res.status(400).send('Invalid Google account');
-        }
-
-        res.status(200).send('Logged in');
-    } catch (err) {
-        console.error('Error during Google login:', err);
-        res.status(500).send('Internal server error');
-    }
-});
-
-app.post('/api/auth/google-register', async (req, res) => {
-    const { email, name, googleId, username } = req.body;
-
-    try {
-        // Check if username is already taken
-        const existingUser = await User.findOne({ username });
-        if (existingUser) {
-            return res.status(400).send('Username is already taken');
-        }
-
-        // Create new user with custom username
-        const user = new User({
-            username,
-            password: googleId, // Store Google ID as password
-            profilePicture: '../profile.png'
-        });
-        await user.save();
-
-        res.status(201).send('User created');
-    } catch (err) {
-        console.error('Error during Google registration:', err);
-        res.status(500).send('Internal server error');
-    }
-});
-
 // Series Recommendations Route
+// Series picks are the same for every user, so compute once and cache
+const SERIES_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
+let seriesCache = null;
+let seriesInFlight = null;
 app.get('/api/series-recommendations', async (req, res) => {
+  if (seriesCache && Date.now() - seriesCache.time < SERIES_CACHE_TTL_MS) {
+    return res.status(200).json(seriesCache.data);
+  }
   try {
-    const pythonProcess = spawn(pythonCommand, ['public/functions/series_recommendations.py']);
-
-    let recommendations = '';
-    pythonProcess.stdout.on('data', (data) => {
-      recommendations += data.toString();
-    });
-
-    pythonProcess.stderr.on('data', (data) => {
-      console.error(`stderr: ${data}`);
-    });
-
-    pythonProcess.on('close', (code) => {
-      if (code !== 0) {
-        console.error(`Python process exited with code ${code}`);
-        return res.status(500).json({ success: false, message: 'Error generating series recommendations' });
-      }
-      try {
-        const recommendationsJSON = JSON.parse(recommendations);
-        console.log('Parsed series recommendations JSON:', JSON.stringify(recommendationsJSON, null, 2));
-        res.status(200).json(recommendationsJSON);
-      } catch (error) {
-        console.error('Error parsing series recommendations:', error);
-        res.status(500).json({ success: false, message: 'Error parsing series recommendations' });
-      }
-    });
-
+    seriesInFlight ??= runPythonTask('series').finally(() => { seriesInFlight = null; });
+    const data = await seriesInFlight;
+    if (data.success) seriesCache = { time: Date.now(), data };
+    res.status(200).json(data);
   } catch (error) {
     console.error('Error during series recommendations generation:', error);
-    res.status(500).json({ success: false, message: 'Internal server error' });
+    if (seriesCache) return res.status(200).json(seriesCache.data);
+    res.status(500).json({ success: false, message: 'Error generating series recommendations' });
   }
 });
 

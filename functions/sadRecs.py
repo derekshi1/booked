@@ -8,7 +8,8 @@ from dotenv import load_dotenv
 
 # Google Books API URL and API Key
 GOOGLE_BOOKS_API_URL = "https://www.googleapis.com/books/v1/volumes"  # Replace with your actual server URL
-API_KEY = 'AIzaSyCFDaqjpgA8K_NqqCw93xorS3zumc_52u8'
+load_dotenv()
+API_KEY = os.getenv('API_KEY')
 
 def get_book_info():
     sad_keywords = ['sad', 'tragic', 'heartbreaking', 'melancholy', 'grief', 'loss', 'tearjerker']

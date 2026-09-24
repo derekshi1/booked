@@ -514,7 +514,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     const profileImage = document.getElementById('profileImage');
 
     // Handle logout
-    logoutButton.addEventListener('click', () => {
+    logoutButton.addEventListener('click', async () => {
+        try {
+            await fetch('/api/auth/logout', { method: 'POST' }); // End the server session
+        } catch (error) {
+            console.error('Error logging out:', error);
+        }
         localStorage.removeItem('username'); // Clear the username from localStorage
         window.location.href = '../html/login.html'; // Redirect to login page
     });

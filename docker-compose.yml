@@ -1,20 +1,8 @@
-version: '3.8'
-
 services:
   app:
     build: .
     ports:
-    - "8080:8080"
+      - "8080:8080"
     env_file:
       - .env
-    environment:
-      - MONGODB_URI=${MONGODB_URI}
-      - API_KEY=${API_KEY}
-      - JWT_SECRET=${JWT_SECRET}
-    volumes:
-      - .:/usr/src/app
-      - /usr/src/app/node_modules
     restart: unless-stopped
-
-volumes:
-  mongodb_data: 

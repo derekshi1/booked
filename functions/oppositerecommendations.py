@@ -2,7 +2,8 @@ import sys
 import json
 import random
 import requests
-from sentence_transformers import SentenceTransformer, util
+from sentence_transformers import util
+from models import get_sentence_model
 import os
 from dotenv import load_dotenv
 
@@ -12,7 +13,7 @@ GOOGLE_BOOKS_API_URL = "https://www.googleapis.com/books/v1/volumes"
 API_KEY = os.getenv("API_KEY")
 
 # Load the pre-trained sentence transformer model
-model = SentenceTransformer('paraphrase-MiniLM-L6-v2')
+model = get_sentence_model()
 
 def get_book_info(query):
     params = {

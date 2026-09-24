@@ -3,7 +3,8 @@ import json
 import random
 import asyncio
 import aiohttp
-from sentence_transformers import SentenceTransformer, util
+from sentence_transformers import util
+from models import get_sentence_model
 from collections import defaultdict
 import os
 from dotenv import load_dotenv
@@ -25,25 +26,17 @@ API_KEY = os.getenv("API_KEY")
 NYT_API_KEY = os.getenv("NYT_API_KEY")
 
 # Load the pre-trained sentence transformer model
-model = SentenceTransformer('paraphrase-MiniLM-L6-v2')
-model.eval()  # Set to evaluation mode for faster inference
+model = get_sentence_model()
 if torch.cuda.is_available():
     model = model.cuda()
-
-# Cache for embeddings
-embedding_cache = {}
 
 @lru_cache(maxsize=1000)
 def get_embedding(text):
     """Get cached embedding for text"""
     if not text:
         return None
-    if text in embedding_cache:
-        return embedding_cache[text]
     with torch.no_grad():
-        embedding = model.encode(text, convert_to_tensor=True)
-        embedding_cache[text] = embedding
-        return embedding
+        return model.encode(text, convert_to_tensor=True)
 
 def clean_genre(genre):
     """Clean and standardize genre names"""

@@ -2,9 +2,13 @@ node_modules
 npm-debug.log
 .git
 .gitignore
+.env
+.env.*
 README.md
 .DS_Store
+**/.DS_Store
+**/__pycache__
 *.log
 coverage
 .vscode
-.idea 
+.idea

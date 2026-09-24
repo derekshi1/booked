@@ -1,3 +1,19 @@
+// Visitors must sign in or choose "Continue as guest" on the login page first
+(function requireLoginOrGuest() {
+    const username = localStorage.getItem('username');
+    if (!username) {
+        if (sessionStorage.getItem('guest') !== 'true') window.location.replace('../html/login.html');
+        return;
+    }
+    // The username in localStorage is only trusted while the server session is valid
+    fetch('/api/auth/me').then(response => {
+        if (response.status === 401) {
+            localStorage.removeItem('username');
+            window.location.replace('../html/login.html');
+        }
+    }).catch(error => console.error('Error checking session:', error));
+})();
+
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('DOM Content Loaded - Starting initial notification setup');
     const username = localStorage.getItem('username');
@@ -70,8 +86,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     console.log('Social tab appended to logoAndHomeContainer');
 
-    await updateSocialTabNotification();
-
     if (!currentPath.includes('social.html')) {
         socialLink.addEventListener('click', () => {
             console.log('Social tab clicked on a different page');
@@ -140,7 +154,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         `;
     }
 
-    document.getElementById('closeNotificationDropdown').addEventListener('click', () => {
+    // Guests have no notification dropdown
+    document.getElementById('closeNotificationDropdown')?.addEventListener('click', () => {
         document.getElementById('notificationDropdown').classList.add('hidden');
     });
     const searchIcon = document.querySelector('.search-icon');  // Get the search icon element
@@ -241,34 +256,6 @@ async function fetchSuggestions(query) {
         return [];
     }
 }
-
-async function updateSocialTabNotification() {
-    try {
-        const username = localStorage.getItem('username');
-
-        const response = await fetch(`/api/activities/unread-count/${username}`);
-        const data = await response.json();
-
-        const notificationBadge = document.getElementById('notificationBadge');
-
-        if (data.success) {
-            const unreadCount = data.unreadCount;
-            console.log("Notification number:", unreadCount);
-
-            if (unreadCount > 0) {
-                // Show the notification badge with the unread count
-                notificationBadge.textContent = unreadCount;
-                notificationBadge.style.display = 'inline-block'; // Show the badge
-            } else {
-                // Hide the notification badge if there are no unread notifications
-                notificationBadge.style.display = 'none';  // Hide badge if there are no unread notifications
-            }
-        }
-    } catch (error) {
-        console.error('Error fetching unread notifications:', error);
-    }
-}
-
 
 function displaySuggestions(suggestions) {
     const suggestionsBox = document.getElementById('suggestionsBox');
@@ -772,6 +759,7 @@ const NOTIFICATIONS_PER_PAGE = 10;
 async function updateNotificationCount(totalCount) {
     console.log('updateNotificationCount called with totalCount:', totalCount);
     const username = localStorage.getItem('username');
+    if (!username) return;
     
     // Always fetch the latest unread count from the server
     try {
@@ -868,12 +856,17 @@ async function declineFriendRequest(requestId, friendUsername) {
         }
     }
 
-    // Initial fetch of notification count
+    // Initial fetch of notification count (this also sets the social tab badge)
     console.log('Making initial notification count fetch');
     await updateNotificationCount();
     
-    // Update notifications every minute
-    setInterval(updateNotificationCount, 60000);
+    // Update notifications every minute, but not while the tab is in the background
+    setInterval(() => {
+        if (!document.hidden) updateNotificationCount();
+    }, 60000);
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) updateNotificationCount();
+    });
 }
 
 

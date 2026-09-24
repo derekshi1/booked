@@ -127,3 +127,5 @@ node_modules/mongodb/src/operations/list_collections.ts
 /node_modules
 /node_modules/mongodb
 /node_modules/mongodb/src
+!.env.example
+__pycache__/

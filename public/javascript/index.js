@@ -660,23 +660,27 @@ const CACHE_KEYS = {
     NONFICTION: 'nyt_nonfiction_cache',
     SERIES: 'series_cache',
     BUSINESS: 'business_cache',
-    PHILOSOPHY: 'philosophy_cache',
-    LAST_FETCH: 'nyt_last_fetch'
+    PHILOSOPHY: 'philosophy_cache'
 };
 
-// Helper function to check if cache is valid
-function isCacheValid() {
-    const lastFetch = localStorage.getItem(CACHE_KEYS.LAST_FETCH);
+// Each row keeps its own timestamp so the rows don't all expire (and refetch) at once
+function isCacheValid(key) {
+    const lastFetch = localStorage.getItem(`${key}_time`);
     if (!lastFetch) return false;
     
     const now = new Date().getTime();
     return (now - parseInt(lastFetch)) < NYT_CACHE_DURATION;
 }
 
+function cacheSet(key, data) {
+    localStorage.setItem(key, JSON.stringify(data));
+    localStorage.setItem(`${key}_time`, new Date().getTime().toString());
+}
+
 // Modified fetch functions to use caching
 async function fetchNYTimesBestSellers() {
     // Check cache first
-    if (isCacheValid()) {
+    if (isCacheValid(CACHE_KEYS.FICTION)) {
         const cachedData = localStorage.getItem(CACHE_KEYS.FICTION);
         if (cachedData) {
             return JSON.parse(cachedData);
@@ -685,8 +689,7 @@ async function fetchNYTimesBestSellers() {
 
     // If cache is invalid or doesn't exist, fetch new data
     try {
-        const apiKey = '07KGzNSRt9XlvFc8Esd006b7fqiGA8cc'; 
-        const response = await fetch(`https://api.nytimes.com/svc/books/v3/lists/current/hardcover-fiction.json?api-key=${apiKey}`);
+        const response = await fetch(`/api/nyt/lists/hardcover-fiction`);
         const data = await response.json();
         
         const processedData = data.results.books.map(book => ({
@@ -697,8 +700,7 @@ async function fetchNYTimesBestSellers() {
         }));
 
         // Cache the new data
-        localStorage.setItem(CACHE_KEYS.FICTION, JSON.stringify(processedData));
-        localStorage.setItem(CACHE_KEYS.LAST_FETCH, new Date().getTime().toString());
+        cacheSet(CACHE_KEYS.FICTION, processedData);
         
         return processedData;
     } catch (error) {
@@ -711,7 +713,7 @@ async function fetchNYTimesBestSellers() {
 
 async function fetchNYTimesyadult() {
     // Check cache first
-    if (isCacheValid()) {
+    if (isCacheValid(CACHE_KEYS.YA)) {
         const cachedData = localStorage.getItem(CACHE_KEYS.YA);
         if (cachedData) {
             return JSON.parse(cachedData);
@@ -719,8 +721,7 @@ async function fetchNYTimesyadult() {
     }
 
     try {
-        const apiKey = 'Glpuj6w9AxVo6kx0vpfy8x3hdBr10eHu';
-        const response = await fetch(`https://api.nytimes.com/svc/books/v3/lists/current/young-adult-hardcover.json?api-key=${apiKey}`);
+        const response = await fetch(`/api/nyt/lists/young-adult-hardcover`);
         const data = await response.json();
         
         const processedData = data.results.books.map(book => ({
@@ -731,8 +732,7 @@ async function fetchNYTimesyadult() {
         }));
 
         // Cache the new data
-        localStorage.setItem(CACHE_KEYS.YA, JSON.stringify(processedData));
-        localStorage.setItem(CACHE_KEYS.LAST_FETCH, new Date().getTime().toString());
+        cacheSet(CACHE_KEYS.YA, processedData);
         
         return processedData;
     } catch (error) {
@@ -744,7 +744,7 @@ async function fetchNYTimesyadult() {
 
 async function fetchNF() {
     // Check cache first
-    if (isCacheValid()) {
+    if (isCacheValid(CACHE_KEYS.NONFICTION)) {
         const cachedData = localStorage.getItem(CACHE_KEYS.NONFICTION);
         if (cachedData) {
             return JSON.parse(cachedData);
@@ -752,8 +752,7 @@ async function fetchNF() {
     }
 
     try {
-        const apiKey = 'Glpuj6w9AxVo6kx0vpfy8x3hdBr10eHu';
-        const response = await fetch(`https://api.nytimes.com/svc/books/v3/lists/current/hardcover-nonfiction.json?api-key=${apiKey}`);
+        const response = await fetch(`/api/nyt/lists/hardcover-nonfiction`);
         const data = await response.json();
         
         const processedData = data.results.books.map(book => ({
@@ -764,8 +763,7 @@ async function fetchNF() {
         }));
 
         // Cache the new data
-        localStorage.setItem(CACHE_KEYS.NONFICTION, JSON.stringify(processedData));
-        localStorage.setItem(CACHE_KEYS.LAST_FETCH, new Date().getTime().toString());
+        cacheSet(CACHE_KEYS.NONFICTION, processedData);
         
         return processedData;
     } catch (error) {
@@ -1025,7 +1023,7 @@ const renderNF = (books) => {
 // Add these new functions after the existing fetch functions
 async function fetchSeriesRecommendations() {
     // Check cache first
-    if (isCacheValid()) {
+    if (isCacheValid(CACHE_KEYS.SERIES)) {
         const cachedData = localStorage.getItem(CACHE_KEYS.SERIES);
         if (cachedData) {
             return JSON.parse(cachedData);
@@ -1039,8 +1037,7 @@ async function fetchSeriesRecommendations() {
         
         if (data.success && data.books) {
             // Cache the new data
-            localStorage.setItem(CACHE_KEYS.SERIES, JSON.stringify(data.books));
-            localStorage.setItem(CACHE_KEYS.LAST_FETCH, new Date().getTime().toString());
+            cacheSet(CACHE_KEYS.SERIES, data.books);
             return data.books;
         } else {
             console.error('Error fetching series recommendations:', data.message);
@@ -1057,7 +1054,7 @@ async function fetchSeriesRecommendations() {
 }
 
 async function fetchBusinessBooks() {
-    if (isCacheValid()) {
+    if (isCacheValid(CACHE_KEYS.BUSINESS)) {
         const cachedData = localStorage.getItem(CACHE_KEYS.BUSINESS);
         if (cachedData) {
             return JSON.parse(cachedData);
@@ -1067,9 +1064,14 @@ async function fetchBusinessBooks() {
     try {
         const allBooks = [];
 
-        // Fetch from NYT Business Books
-        const nytResponse = await fetch('https://api.nytimes.com/svc/books/v3/lists/current/business-books.json?api-key=07KGzNSRt9XlvFc8Esd006b7fqiGA8cc');
-        const nytData = await nytResponse.json();
+        // The four sources are independent, so fetch them in parallel
+        const businessQuery = 'subject:"business" OR subject:"management" OR subject:"leadership" OR subject:"entrepreneurship" OR subject:"professional development"';
+        const [nytData, nytAdviceData, openLibraryData, data] = await Promise.all([
+            fetch('/api/nyt/lists/business-books').then(r => r.json()),
+            fetch('/api/nyt/lists/advice-how-to-and-miscellaneous').then(r => r.json()),
+            fetch('https://openlibrary.org/subjects/business.json?limit=20').then(r => r.json()),
+            fetch(`/api/google-books/volumes?q=${businessQuery}&maxResults=40&orderBy=relevance`).then(r => r.json())
+        ]);
         
         if (nytData.results && nytData.results.books) {
             allBooks.push(...nytData.results.books.map(book => ({
@@ -1086,10 +1088,7 @@ async function fetchBusinessBooks() {
             })));
         }
 
-        // Fetch from NYT Advice, How-To & Miscellaneous
-        const nytAdviceResponse = await fetch('https://api.nytimes.com/svc/books/v3/lists/current/advice-how-to-and-miscellaneous.json?api-key=07KGzNSRt9XlvFc8Esd006b7fqiGA8cc');
-        const nytAdviceData = await nytAdviceResponse.json();
-        
+        // NYT Advice, How-To & Miscellaneous
         if (nytAdviceData.results && nytAdviceData.results.books) {
             allBooks.push(...nytAdviceData.results.books.map(book => ({
                 title: book.title,
@@ -1105,10 +1104,7 @@ async function fetchBusinessBooks() {
             })));
         }
 
-        // Fetch from OpenLibrary Business Books
-        const openLibraryResponse = await fetch('https://openlibrary.org/subjects/business.json?limit=20');
-        const openLibraryData = await openLibraryResponse.json();
-        
+        // OpenLibrary Business Books
         if (openLibraryData.works) {
             allBooks.push(...openLibraryData.works.map(work => ({
                 title: work.title,
@@ -1124,11 +1120,7 @@ async function fetchBusinessBooks() {
             })));
         }
 
-        // Fetch from Google Books API with popularity filters
-        const businessQuery = 'subject:"business" OR subject:"management" OR subject:"leadership" OR subject:"entrepreneurship" OR subject:"professional development"';
-        
-        const response = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${businessQuery}&maxResults=40&orderBy=relevance&key=AIzaSyCFDaqjpgA8K_NqqCw93xorS3zumc_52u8`);
-        const data = await response.json();
+        // Google Books API with popularity filters
         if (data.items) {
             allBooks.push(...data.items.map(book => ({
                 title: book.volumeInfo.title,
@@ -1176,8 +1168,7 @@ async function fetchBusinessBooks() {
         const uniqueBooks = Array.from(new Map(sortedBooks.map(book => [book.isbn, book])).values());
 
         // Cache the results
-        localStorage.setItem(CACHE_KEYS.BUSINESS, JSON.stringify(uniqueBooks));
-        localStorage.setItem(CACHE_KEYS.LAST_FETCH, new Date().getTime().toString());
+        cacheSet(CACHE_KEYS.BUSINESS, uniqueBooks);
         
         return uniqueBooks;
     } catch (error) {
@@ -1341,12 +1332,39 @@ fetchBusinessBooks().then(books => {
 });
 
 async function fetchPhilosophyBooks() {
+    if (isCacheValid(CACHE_KEYS.PHILOSOPHY)) {
+        const cachedData = localStorage.getItem(CACHE_KEYS.PHILOSOPHY);
+        if (cachedData) {
+            return JSON.parse(cachedData);
+        }
+    }
+
     try {
         const allBooks = [];
 
-        // Fetch from NYT Philosophy & Religion list
-        const nytResponse = await fetch('https://api.nytimes.com/svc/books/v3/lists/current/philosophy-religion.json?api-key=07KGzNSRt9XlvFc8Esd006b7fqiGA8cc');
-        const nytData = await nytResponse.json();
+        // Google Books queries with philosophical themes
+        const philosophyQueries = [
+            'subject:"philosophy"',
+            'subject:"ethics"',
+            'subject:"existentialism"',
+            'subject:"stoicism"',
+            'subject:"mindfulness"',
+            'subject:"consciousness"',
+            'subject:"meaning of life"',
+            'subject:"critical thinking"',
+            'subject:"logic"',
+            'subject:"metaphysics"'
+        ];
+
+        // Fetch the NYT list and all Google queries in parallel
+        const [nytData, ...googleResults] = await Promise.all([
+            fetch('/api/nyt/lists/philosophy-religion').then(r => r.json()),
+            ...philosophyQueries.map(query =>
+                fetch(`/api/google-books/volumes?q=${query}&maxResults=20&orderBy=relevance`).then(r => r.json())
+            )
+        ]);
+
+        // NYT Philosophy & Religion list
         
         if (nytData.results && nytData.results.books) {
             allBooks.push(...nytData.results.books.map(book => ({
@@ -1363,23 +1381,7 @@ async function fetchPhilosophyBooks() {
             })));
         }
 
-        // Fetch from Google Books API with philosophical themes
-        const philosophyQueries = [
-            'subject:"philosophy"',
-            'subject:"ethics"',
-            'subject:"existentialism"',
-            'subject:"stoicism"',
-            'subject:"mindfulness"',
-            'subject:"consciousness"',
-            'subject:"meaning of life"',
-            'subject:"critical thinking"',
-            'subject:"logic"',
-            'subject:"metaphysics"'
-        ];
-        
-        for (const query of philosophyQueries) {
-            const response = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${query}&maxResults=20&orderBy=relevance&key=AIzaSyCFDaqjpgA8K_NqqCw93xorS3zumc_52u8`);
-            const data = await response.json();
+        for (const data of googleResults) {
             if (data.items) {
                 allBooks.push(...data.items.map(book => ({
                     title: book.volumeInfo.title,
@@ -1426,11 +1428,13 @@ async function fetchPhilosophyBooks() {
 
         // Remove duplicates based on ISBN
         const uniqueBooks = Array.from(new Map(sortedBooks.map(book => [book.isbn, book])).values());
-        
+
+        cacheSet(CACHE_KEYS.PHILOSOPHY, uniqueBooks);
         return uniqueBooks;
     } catch (error) {
         console.error('Error fetching philosophy books:', error);
-        return [];
+        const cachedData = localStorage.getItem(CACHE_KEYS.PHILOSOPHY);
+        return cachedData ? JSON.parse(cachedData) : [];
     }
 }
 

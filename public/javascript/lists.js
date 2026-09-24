@@ -523,7 +523,7 @@ window.showCreateListModal = showCreateListModal;
 document.addEventListener('DOMContentLoaded', () => {
     const username = localStorage.getItem('username');
     if (!username) {
-        window.location.href = '/login.html';
+        window.location.href = '../html/login.html';
         return;
     }
 
@@ -624,8 +624,7 @@ async function handleBookSearch(query) {
 }
 
 async function fetchBookSuggestions(query) {
-    const apiKey = 'AIzaSyCFDaqjpgA8K_NqqCw93xorS3zumc_52u8';
-    const response = await fetch(`https://www.googleapis.com/books/v1/volumes?q=intitle:${query}&key=${apiKey}`);
+    const response = await fetch(`/api/google-books/volumes?q=intitle:${query}`);
     const data = await response.json();
     
     return data.items?.map(item => ({

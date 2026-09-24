@@ -1,7 +1,8 @@
+import os
 import requests
 
 GOOGLE_BOOKS_API_URL = "https://www.googleapis.com/books/v1/volumes"
-API_KEY = 'AIzaSyCFDaqjpgA8K_NqqCw93xorS3zumc_52u8'  # Replace with your API key
+API_KEY = os.getenv('API_KEY')
 
 # Define a list of potential genres
 potential_subjects = [

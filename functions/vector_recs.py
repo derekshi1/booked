@@ -9,12 +9,12 @@ from collections import defaultdict
 from dotenv import load_dotenv
 import os
 
+load_dotenv()
+
 # MongoDB Connection
-client = pymongo.MongoClient("mongodb+srv://derekshi:Rsds0601@library.k27zbxq.mongodb.net/?retryWrites=true&w=majority&appName=library")
+client = pymongo.MongoClient(os.getenv("MONGODB_URI"))
 db = client['book_recommendations']
 collection = db['books']
-
-load_dotenv()
 
 
 # Google Books API URL and API Key
