@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const { startWorker, runPythonTask } = require('./python-worker');
 const cookieParser = require('cookie-parser');
 const { registerAuthRoutes, requireSession, setSession } = require('./auth');
+const { searchBooks } = require('./google-books');
 const multer = require('multer'); // Add this to your imports
 const path = require('path');
 const crypto = require('crypto');
@@ -198,11 +199,7 @@ registerAuthRoutes(app, User);
 // Proxy Google Books requests so the API key stays on the server
 app.get('/api/google-books/volumes', async (req, res) => {
   try {
-    const params = new URLSearchParams(req.originalUrl.split('?')[1] || '');
-    params.delete('key');
-    params.set('key', process.env.API_KEY);
-    const response = await fetch(`https://www.googleapis.com/books/v1/volumes?${params}`);
-    res.status(response.status).json(await response.json());
+    res.json(await searchBooks(new URLSearchParams(req.originalUrl.split('?')[1] || '')));
   } catch (error) {
     console.error('Google Books proxy error:', error);
     res.status(502).json({ error: 'Failed to fetch from Google Books' });
@@ -1946,13 +1943,10 @@ app.get('/api/sample-books', async (req, res) => {
     const searchTerms = ['love', 'mystery', 'adventure', 'science', 'history', 'fantasy'];
     const randomTerm = searchTerms[Math.floor(Math.random() * searchTerms.length)];
     
-    const response = await fetch(
-      `https://www.googleapis.com/books/v1/volumes?q=${randomTerm}&maxResults=10&langRestrict=en`
-    );
-    const data = await response.json();
+    const data = await searchBooks({ q: randomTerm, maxResults: 10, langRestrict: 'en' });
     
     // Format the books data
-    const books = data.items.map(item => ({
+    const books = (data.items || []).map(item => ({
       title: item.volumeInfo.title,
       authors: item.volumeInfo.authors || ['Unknown Author'],
       thumbnail: item.volumeInfo.imageLinks?.thumbnail || '',
@@ -2381,12 +2375,12 @@ app.get('/api/unified-search', async (req, res) => {
 
         // Finally search for books
         if (!type || type === 'books') {
-            const apiKey = process.env.API_KEY;
-            const googleBooksResponse = await fetch(
-                `https://www.googleapis.com/books/v1/volumes?q=${query}&key=${apiKey}&maxResults=20` // Increased to 10 since we'll filter some out
-            );
-            const booksData = await googleBooksResponse.json();
-            
+            // A failed book search shouldn't hide the user and list results
+            const booksData = await searchBooks({ q: query, maxResults: 20 }).catch(error => {
+                console.error('Book search failed:', error);
+                return {};
+            });
+
             if (booksData.items) {
                 // Filter out books without thumbnails and map the results
                 results.books = booksData.items
@@ -2885,9 +2879,7 @@ app.post('/api/generate-images', async (req, res) => {
         }
 
         // Fetch book description from Google Books API
-        const apiKey = process.env.API_KEY;
-        const googleResponse = await fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}&key=${apiKey}`);
-        const googleData = await googleResponse.json();
+        const googleData = await searchBooks({ q: `isbn:${isbn}` });
 
         if (!googleData.items || googleData.items.length === 0) {
             return res.status(404).json({ success: false, message: 'Book not found' });
@@ -3168,8 +3160,7 @@ app.get('/api/book-metadata/:isbn', async (req, res) => {
         }
 
         // If not in database, fetch from Google Books API
-        const response = await fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}&key=${process.env.API_KEY}`);
-        const data = await response.json();
+        const data = await searchBooks({ q: `isbn:${isbn}` });
 
         if (data.items && data.items[0]) {
             const volumeInfo = data.items[0].volumeInfo;
@@ -3189,8 +3180,11 @@ app.get('/api/book-metadata/:isbn', async (req, res) => {
                 lastUpdated: new Date()
             });
 
-            await bookData.save();
-            console.log('Saved new book metadata to database for ISBN:', isbn);
+            // OpenLibrary fallback data is thinner (often no description); show it but don't store it
+            if (data.source !== 'openlibrary') {
+                await bookData.save();
+                console.log('Saved new book metadata to database for ISBN:', isbn);
+            }
             
             return res.json({ success: true, data: bookData });
         }
@@ -3208,8 +3202,11 @@ app.post('/api/book-metadata/:isbn/update', async (req, res) => {
         const { isbn } = req.params;
         
         // Fetch fresh data from Google Books API
-        const response = await fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}&key=${process.env.API_KEY}`);
-        const data = await response.json();
+        const data = await searchBooks({ q: `isbn:${isbn}` });
+        if (data.source === 'openlibrary') {
+            // Don't overwrite stored Google data with the thinner fallback
+            return res.status(503).json({ success: false, message: 'Google Books is unavailable; try again later' });
+        }
 
         if (data.items && data.items[0]) {
             const volumeInfo = data.items[0].volumeInfo;
