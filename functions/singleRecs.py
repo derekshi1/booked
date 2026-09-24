@@ -141,14 +141,16 @@ async def fetch_books_by_genre(session, genre, start_index, max_results):
 
 async def find_books_by_genres(genres, max_results=500):
     books = []
-    genre_list = list(genres)
+    # Books without categories would divide by zero below; search a broad genre instead
+    genre_list = list(genres) or ['fiction']
     random.shuffle(genre_list)
     start_indices = {genre: random.randint(0, 100) for genre in genre_list}
+    results_per_genre = max(1, max_results // len(genre_list))
 
     async with aiohttp.ClientSession() as session:
         tasks = []
         for genre in genre_list:
-            tasks.append(fetch_books_by_genre(session, genre, start_indices[genre], max_results // len(genre_list)))
+            tasks.append(fetch_books_by_genre(session, genre, start_indices[genre], results_per_genre))
 
         results = await asyncio.gather(*tasks)
         for result in results:

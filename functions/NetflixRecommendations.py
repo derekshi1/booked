@@ -21,7 +21,6 @@ load_dotenv()
 
 # MongoDB connection setup
 MONGO_URI = os.getenv("MONGODB_URI")
-sys.stderr.write(f"[DEBUG] MongoDB URI: {MONGO_URI}\n")
 client = MongoClient(MONGO_URI)
 db = client["test"]
 

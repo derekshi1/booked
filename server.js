@@ -2,7 +2,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const { startWorker, runPythonTask } = require('./python-worker');
 const cookieParser = require('cookie-parser');
-const { registerAuthRoutes, requireSession, setSession } = require('./auth');
+const { registerAuthRoutes, requireSession, setSession, getSessionUsername } = require('./auth');
 const { searchBooks } = require('./google-books');
 const multer = require('multer'); // Add this to your imports
 const path = require('path');
@@ -334,27 +334,31 @@ app.get('/api/activities/unread-count/:username', async (req, res) => {
 
 // Mark all activities as read
 // Mark all activities as read
-app.post('/api/activities/mark-read/:username', async (req, res) => {
+app.post('/api/activities/mark-read/:username', requireSession, async (req, res) => {
   const { username } = req.params;
+  if (req.sessionUsername !== username) {
+    return res.status(403).json({ success: false, message: 'You can only mark your own activities as read' });
+  }
 
   try {
     // Find the user by their username
-    const user = await User.findOne({ username });
+    const user = await User.findOne({ username }, { friends: 1 }).lean();
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
 
-    // Find unread activities (those not read by this specific user)
-    const unreadActivities = await Activity.find({ readBy: { $ne: user._id } });
-    console.log(`Marking ${unreadActivities.length} activities as read for user ${username}`);
-
-    // Mark these activities as read for the user by adding the user to the 'readBy' array
-    const updateResult = await Activity.updateMany(
-      { readBy: { $ne: user._id } },  // Ensure the user hasn't already read these activities
-      { $addToSet: { readBy: user._id } }  // Add the user's ID to the 'readBy' array
+    // Only the activities in this user's feed: friends' activities and nudges sent to them
+    // (previously this touched every activity in the database)
+    await Activity.updateMany(
+      {
+        $or: [
+          { userId: { $in: user.friends } },
+          { userId: user._id, action: 'nudge' }
+        ],
+        readBy: { $ne: user._id }
+      },
+      { $addToSet: { readBy: user._id } }
     );
-
-    console.log(`Updated ${updateResult.nModified} activities to mark them as read for ${username}`);
 
     res.status(200).json({ success: true, message: 'All activities marked as read for the user' });
   } catch (error) {
@@ -556,9 +560,16 @@ app.post('/api/library/remove', async (req, res) => {
 });
 
 
+// Query-string values arrive as strings; "16" + "16" is "1616", so parse them first
+function parsePagination(query, defaultLimit = 16) {
+  const page = Math.max(parseInt(query.page, 10) || 1, 1);
+  const limit = Math.min(Math.max(parseInt(query.limit, 10) || defaultLimit, 1), 100);
+  return { page, limit };
+}
+
 app.get('/api/library/:username', async (req, res) => {
   const { username } = req.params;
-  const { page = 1, limit = 16 } = req.query;
+  const { page, limit } = parsePagination(req.query);
 
   try {
     // Calculate the offset for pagination
@@ -978,7 +989,10 @@ app.get('/api/library/:username/ratings', async (req, res) => {
 // Fetch a specific book's review and rating from user's library
 app.get('/api/library/:username/books', async (req, res) => {
   const { username } = req.params;
-  const { sortBy, page = 1, limit = 16, loggedInUsername } = req.query; // Accept the loggedInUsername from the query
+  const { sortBy } = req.query;
+  const { page, limit } = parsePagination(req.query);
+  // Who is viewing comes from the session, not the query string (which anyone can edit)
+  const loggedInUsername = getSessionUsername(req);
 
   try {
     const userLibrary = await UserLibrary.findOne({ username });
@@ -987,6 +1001,10 @@ app.get('/api/library/:username/books', async (req, res) => {
     }
 
     let books = userLibrary.books;
+    const isOwner = username === loggedInUsername;
+    // Look the friendship up once, and only if there are friends-only books to show
+    const isFriend = !isOwner && books.some(book => book.visibility === 'friends')
+      && await checkFriendship(username, loggedInUsername);
 
     // Filter the books based on visibility
     books = books.filter(book => {
@@ -994,10 +1012,10 @@ app.get('/api/library/:username/books', async (req, res) => {
         return true; // Public reviews are visible to everyone
       }
       if (book.visibility === 'private') {
-        return username === loggedInUsername; // Private reviews are only visible to the owner
+        return isOwner; // Private reviews are only visible to the owner
       }
       if (book.visibility === 'friends') {
-        return checkFriendship(username, loggedInUsername); // Friends-only reviews are visible to friends
+        return isOwner || isFriend; // Friends-only reviews are visible to friends
       }
       return false;
     });
@@ -1045,15 +1063,13 @@ async function checkFriendship(username, loggedInUsername) {
   }
 
   try {
-    const user = await User.findOne({ username }).populate('friends');
-    const loggedInUser = await User.findOne({ username: loggedInUsername });
-
-    if (!user || !loggedInUser) {
+    const loggedInUser = await User.findOne({ username: loggedInUsername }, { _id: 1 }).lean();
+    if (!loggedInUser) {
       return false;
     }
 
-    const isFriend = user.friends.some(friend => friend._id.equals(loggedInUser._id));
-    return isFriend;
+    // Friends-only content is visible when the owner's friends list includes the viewer
+    return Boolean(await User.exists({ username, friends: loggedInUser._id }));
   } catch (error) {
     return false;
   }
@@ -1076,6 +1092,16 @@ app.get('/api/library/review/:username/:isbn', async (req, res) => {
     const book = userLibrary.books.find(book => book.isbn === isbn);
     if (!book) {
       return res.status(404).json({ success: false, message: 'Book not found in library' });
+    }
+
+    // Respect the review's visibility (this used to return private reviews to anyone)
+    const viewer = getSessionUsername(req);
+    const visibility = book.visibility || 'public';
+    const canView = visibility === 'public'
+      || viewer === username
+      || (visibility === 'friends' && await checkFriendship(username, viewer));
+    if (!canView) {
+      return res.status(403).json({ success: false, message: 'This review is not visible to you' });
     }
 
     // Return the review and rating for that book
@@ -1200,7 +1226,7 @@ app.post('/api/library/readList/remove', async (req, res) => {
 //get books in reading list
 app.get('/api/library/readList/:username', async (req, res) => {
   const { username } = req.params;
-  const { page = 1, limit = 16 } = req.query; // Accept pagination parameters
+  const { page, limit } = parsePagination(req.query);
 
   try {
     let userLibrary = await UserLibrary.findOne({ username });
@@ -1239,7 +1265,8 @@ app.get('/api/library/readList/:username', async (req, res) => {
 
 app.get('/api/reviews/books/:isbn', async (req, res) => {
   const { isbn } = req.params;
-  const { loggedInUsername } = req.query;
+  // Who is viewing comes from the session, not the query string (which anyone can edit)
+  const loggedInUsername = getSessionUsername(req);
 
   try {
     // Find all reviews for this book
@@ -1247,6 +1274,19 @@ app.get('/api/reviews/books/:isbn', async (req, res) => {
 
     if (!reviews || reviews.length === 0) {
         return res.status(404).json({ success: false, message: 'No reviews found for this book' });
+    }
+
+    // Authors of friends-only reviews whose friends list includes the viewer, in one query
+    const friendsOnlyAuthors = [...new Set(reviews
+      .filter(review => review.visibility === 'friends' && review.username !== loggedInUsername)
+      .map(review => review.username))];
+    let authorsFriendsWithViewer = new Set();
+    if (loggedInUsername && friendsOnlyAuthors.length > 0) {
+      const viewer = await User.findOne({ username: loggedInUsername }, { _id: 1 }).lean();
+      if (viewer) {
+        const authors = await User.find({ username: { $in: friendsOnlyAuthors }, friends: viewer._id }).distinct('username');
+        authorsFriendsWithViewer = new Set(authors);
+      }
     }
 
     const processedReviews = await Promise.all(reviews.map(async (review) => {
@@ -1280,8 +1320,7 @@ app.get('/api/reviews/books/:isbn', async (req, res) => {
             };
         } else if (review.visibility === 'friends') {
             // Check if users are friends
-            const isFriend = await checkFriendship(review.username, loggedInUsername);
-            if (isFriend) {
+            if (authorsFriendsWithViewer.has(review.username)) {
                 return {
                     _id: review._id,
                     username: review.username,
@@ -2764,7 +2803,8 @@ app.post('/api/mark-notifications-read', async (req, res) => {
 // Add this endpoint to get suggested friends
 app.get('/api/suggested-friends/:username', async (req, res) => {
     const { username } = req.params;
-    const { limit = 5, skip = 0 } = req.query;
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 5, 1), 50);
+    const skip = Math.max(parseInt(req.query.skip, 10) || 0, 0);
 
     console.log('\n=== Starting Friend Suggestions Process ===');
     console.log(`Looking for suggestions for user: ${username}`);

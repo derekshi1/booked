@@ -167,4 +167,4 @@ function registerAuthRoutes(app, User) {
   });
 }
 
-module.exports = { registerAuthRoutes, requireSession, setSession };
+module.exports = { registerAuthRoutes, requireSession, setSession, getSessionUsername };
