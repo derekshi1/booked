@@ -69,7 +69,8 @@ async def fetch_book_info(session, genre, start_index, backoff=1):
             if response.status == 200:
                 data = await response.json()
                 return data.get('items', [])
-            elif response.status == 429:
+            elif response.status == 429 and backoff <= 4:
+                # Rate limited: retry a few times (1s, 2s, 4s), then give up
                 await asyncio.sleep(backoff)
                 return await fetch_book_info(session, genre, start_index, backoff * 2)
     except Exception as e:
