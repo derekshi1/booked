@@ -23,6 +23,20 @@
         </div>
     </header>
     <main class="container mx-auto mt-8">
+        <!-- Shown when viewing someone else's library (filled in by library.js) -->
+        <section id="libraryOwnerHeader" class="library-owner-header hidden">
+            <a id="ownerProfileLink" href="#">
+                <img id="ownerAvatar" src="../profile.png" alt="" class="library-owner-avatar">
+            </a>
+            <div class="library-owner-info">
+                <a id="ownerName" href="#" class="library-owner-name"></a>
+                <div class="library-owner-stats">
+                    <span id="ownerBookCount"></span>
+                    <span id="ownerAvgRating"></span>
+                </div>
+            </div>
+            <div id="ownerFriendStatus" class="library-owner-friend"></div>
+        </section>
         <section id="currentReadsSection" class="mb-12">
             <h1 id="currentReadsTitle" class="text-3xl font-bold text-white mb-4"></h1>
             <div id="currentReadsGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">

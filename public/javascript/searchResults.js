@@ -115,6 +115,9 @@ function createUserCard(user) {
         <img src="${user.profilePicture}" alt="${user.username}" class="w-12 h-12 rounded-full">
         <div>
             <h3 class="font-bold text-lg">${user.username}</h3>
+            <a href="../html/library.html?username=${encodeURIComponent(user.username)}"
+               class="text-sm text-green-700 hover:underline"
+               onclick="event.stopPropagation()">View library</a>
         </div>
     `;
     return card;

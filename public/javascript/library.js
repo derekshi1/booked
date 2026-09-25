@@ -131,7 +131,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (sortOptions) sortOptions.style.display = 'none';
         if (saveReviewButton) saveReviewButton.style.display = 'none';
         libraryTitle.innerHTML = `<span class="text-white"><em>${username}'s</em> Library...</span>`;
-        await fetchAndDisplayBooks(currentPage);
+        setUpOwnerHeader();
 
     } else {
         sortLabel.textContent = "Sort by:"; // Set the label text if viewing your own library
@@ -159,6 +159,68 @@ document.addEventListener('DOMContentLoaded', async () => {
         }); 
     }
 
+    // Header for someone else's library: who they are, and whether you're friends
+    async function setUpOwnerHeader() {
+        const header = document.getElementById('libraryOwnerHeader');
+        const profileUrl = `../html/profile.html?username=${encodeURIComponent(username)}`;
+        document.getElementById('ownerProfileLink').href = profileUrl;
+        const ownerName = document.getElementById('ownerName');
+        ownerName.href = profileUrl;
+        ownerName.textContent = username;
+        header.classList.remove('hidden');
+
+        try {
+            const picResponse = await fetch(`/api/profile-pic/${encodeURIComponent(username)}`);
+            if (picResponse.ok) {
+                const { imageUrl } = await picResponse.json();
+                if (imageUrl) document.getElementById('ownerAvatar').src = imageUrl;
+            }
+        } catch (error) {
+            console.error('Error loading profile picture:', error);
+        }
+
+        // Guests can browse libraries but have no friend status
+        if (!loggedInUsername) return;
+        const friendStatus = document.getElementById('ownerFriendStatus');
+        const showBadge = (label, colorClass) => {
+            friendStatus.innerHTML = `<span class="friend-status-badge ${colorClass} text-white py-1 px-3 rounded-full text-sm">${label}</span>`;
+        };
+        try {
+            const response = await fetch('/api/check-friendship-status', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: loggedInUsername, friendUsername: username }),
+            });
+            const data = await response.json();
+            if (!data.success) return;
+            if (data.status === 'friend') return showBadge('✓ Friends', 'bg-green-700');
+            if (data.status === 'pending') return showBadge('Request pending', 'bg-yellow-600');
+
+            friendStatus.innerHTML = `<button id="ownerAddFriend" class="friend-status-badge bg-blue-700 hover:bg-blue-600 text-white py-1 px-3 rounded-full text-sm">+ Add Friend</button>`;
+            document.getElementById('ownerAddFriend').addEventListener('click', async () => {
+                const addResponse = await fetch('/api/add-friend', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: loggedInUsername, friendUsername: username }),
+                });
+                const addData = await addResponse.json();
+                if (addData.success) showBadge('Request pending', 'bg-yellow-600');
+                else alert(addData.message || 'Failed to send friend request');
+            });
+        } catch (error) {
+            console.error('Error checking friendship status:', error);
+        }
+    }
+
+    // Counts come from the server and only include books you're allowed to see
+    function updateOwnerStats(data) {
+        const count = data.totalBooks || 0;
+        document.getElementById('ownerBookCount').textContent = `${count} ${count === 1 ? 'book' : 'books'}`;
+        document.getElementById('ownerAvgRating').innerHTML = data.averageRating == null
+            ? ''
+            : `Avg rating ${renderRatingStars(data.averageRating)} <span class="text-gray-400">(${data.averageRating}/100)</span>`;
+    }
+
     async function fetchAndDisplayBooks(sortBy = 'none', page = 1) {
         try {
 
@@ -176,9 +238,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 console.log(`Fetched ${data.books.length} books for page ${page}`);
 
                 booksData = data.books; // Store the fetched books data
+                if (!isOwnLibrary) updateOwnerStats(data);
                 renderBooks(data.books, sortBy, page, limit);
                 updatePaginationControls(data.currentPage, data.totalPages); // Update pagination controls
             } else {
+                if (!isOwnLibrary) updateOwnerStats(data);
                 addPlaceholderCards(libraryGrid, "Empty Book");
             }
         } catch (error) {
@@ -241,6 +305,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                             <p class="text-gray-300 text-xs">by ${book.authors}</p>
                         </div>
                     </a>
+                    <div class="card-meta">
+                        ${renderRatingStars(book.rating)}
+                        ${book.review ? '<span class="card-has-review" title="Has a written review">💬</span>' : ''}
+                    </div>
                     ${additionalInfo}
                     ${isOwnLibrary || !isOwnLibrary ? `<button class="comment-button ease-in-out-transition absolute top-0 right-0 mt-2 mr-2 text-xs bg-blue-500 text-white px-2 py-1 rounded" data-isbn="${book.isbn}" data-title="${book.title}"></button>` : ''}
                     ${username === loggedInUsername ? 
@@ -662,6 +730,16 @@ async function removeFromReadingList(username, isbn) {
         console.error('Error removing book from reading list:', error);
         alert('Error removing book from reading list.');
     }
+}
+
+// Five stars filled to the book's 0-100 rating, so a library can be scanned at a glance
+function renderRatingStars(rating) {
+    if (typeof rating !== 'number') {
+        return '<span class="card-unrated">Not rated</span>';
+    }
+    const percent = Math.max(0, Math.min(100, rating));
+    return `<span class="card-stars" title="${percent}/100" aria-label="Rated ${percent} out of 100">` +
+        `<span class="card-stars-fill" style="width: ${percent}%"></span></span>`;
 }
 
 function getGlowColor(value) {

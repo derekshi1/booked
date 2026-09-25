@@ -567,6 +567,18 @@ function parsePagination(query, defaultLimit = 16) {
   return { page, limit };
 }
 
+// Books from `owner`'s library that `viewer` may see: owners see everything,
+// friends also see friends-only books, everyone else sees public ones
+async function filterVisibleBooks(books, owner, viewer) {
+  if (viewer && viewer === owner) return books;
+  const isFriend = books.some(book => book.visibility === 'friends')
+    && await checkFriendship(owner, viewer);
+  return books.filter(book => {
+    const visibility = book.visibility || 'public';
+    return visibility === 'public' || (visibility === 'friends' && isFriend);
+  });
+}
+
 app.get('/api/library/:username', async (req, res) => {
   const { username } = req.params;
   const { page, limit } = parsePagination(req.query);
@@ -582,10 +594,11 @@ app.get('/api/library/:username', async (req, res) => {
       userLibrary = new UserLibrary({ username, books: [], readList: [], top5: [] });
       await userLibrary.save();
     }
-    console.log('User Library Books:', userLibrary.books);
+    // Counts and books only include what the viewer is allowed to see
+    const books = await filterVisibleBooks(userLibrary.books, username, getSessionUsername(req));
 
     //Category Counts
-    const categoryCounts = userLibrary.books.reduce((acc, book) => {
+    const categoryCounts = books.reduce((acc, book) => {
       acc[book.categories] = (acc[book.categories] || 0) + 1;
       return acc;
     }, {});
@@ -598,15 +611,15 @@ app.get('/api/library/:username', async (req, res) => {
     console.log('Category Counts:', categoryCounts);
 
     // Fetch the paginated books from the userLibrary
-    const paginatedBooks = userLibrary.books.slice(offset, offset + limit);
+    const paginatedBooks = books.slice(offset, offset + limit);
 
     // Calculate total pages across all books
-    const totalPages = userLibrary.books.reduce((sum, book) => {
+    const totalPages = books.reduce((sum, book) => {
       const pageCount = book.pageCount || 0; // Use 0 if pageCount is null or undefined
       return sum + pageCount;
     }, 0);    
     // Calculate the total number of books in the user's library
-    const totalBooks = userLibrary.books.length;
+    const totalBooks = books.length;
 
     // Calculate the number of pagination pages based on the limit
     const totalPaginationPages = Math.ceil(totalBooks / limit);
@@ -1000,25 +1013,13 @@ app.get('/api/library/:username/books', async (req, res) => {
       return res.status(404).json({ success: false, message: 'No library found for user' });
     }
 
-    let books = userLibrary.books;
-    const isOwner = username === loggedInUsername;
-    // Look the friendship up once, and only if there are friends-only books to show
-    const isFriend = !isOwner && books.some(book => book.visibility === 'friends')
-      && await checkFriendship(username, loggedInUsername);
+    let books = await filterVisibleBooks(userLibrary.books, username, loggedInUsername);
 
-    // Filter the books based on visibility
-    books = books.filter(book => {
-      if (book.visibility === 'public') {
-        return true; // Public reviews are visible to everyone
-      }
-      if (book.visibility === 'private') {
-        return isOwner; // Private reviews are only visible to the owner
-      }
-      if (book.visibility === 'friends') {
-        return isOwner || isFriend; // Friends-only reviews are visible to friends
-      }
-      return false;
-    });
+    // Average rating (0-100) across every visible rated book, not just this page
+    const ratings = books.map(book => book.rating).filter(rating => typeof rating === 'number');
+    const averageRating = ratings.length
+      ? Math.round(ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length)
+      : null;
 
     // Sort the books based on the sortBy parameter
     if (sortBy === 'reviewDate') {
@@ -1049,7 +1050,8 @@ app.get('/api/library/:username/books', async (req, res) => {
       currentPage: parseInt(page),
       totalPages: totalPages,
       totalBooks: books.length,
-      //visibility: book.visibility
+      averageRating,
+      ratedBooks: ratings.length
     });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Internal server error' });

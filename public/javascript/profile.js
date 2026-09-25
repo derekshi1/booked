@@ -47,6 +47,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (username) {
         const booksLink = document.getElementById('booksLink');
         booksLink.href = `../html/library.html?username=${username}`;
+        document.getElementById('viewLibraryButton').href = booksLink.href;
+        if (username !== loggedInUsername) {
+            document.getElementById('archetypeHeading').textContent = `${username}'s Reading Archetype`;
+        }
         document.getElementById('usernameDisplay').textContent = username;
         const friendsLink = document.getElementById('friendsLink');
         friendsLink.href = `../html/friends.html?username=${username}`;
@@ -255,7 +259,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (data.archetype) {
                 const archetypeContainer = document.getElementById('categoryChart').parentElement;
                 archetypeContainer.innerHTML = `
-                     <h3 class="text-xl font-semibold text-white mb-4">Your Reading Archetype: ${data.archetype.name}</h3>
+                     <h3 class="text-xl font-semibold text-white mb-4">${username === loggedInUsername ? 'Your' : `${username}'s`} Reading Archetype: ${data.archetype.name}</h3>
                     <div class=" flex flex-col items-center justify-center h-full">
                         <div class="w-[60px] h-[60px] transform scale-50">
                             <img src="../archetypes/${data.archetype.name.toLowerCase()}_archetype.png" 

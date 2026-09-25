@@ -56,6 +56,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                             </div>
                         </div>
                         <div class="flex items-center space-x-4">
+                            <a href="../html/library.html?username=${encodeURIComponent(friend.username)}"
+                               class="px-4 py-2 bg-green-700 text-white rounded-md hover:bg-green-600 transition-colors">
+                                Library
+                            </a>
                             <button class="nudge-button group relative px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-all duration-200 transform hover:-translate-y-0.5 hover:shadow-lg"
                                     data-username="${friend.username}"
                                     data-tooltip="Nudge this friend to keep reading! Note: you can only nudge once an hour!"

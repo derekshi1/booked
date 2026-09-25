@@ -1759,3 +1759,90 @@ body, main {
 h1, h2, h3, h4, h5, h6 {
     font-family: 'League Spartan', sans-serif;
 }
+/* Library cards: always-visible rating strip under the cover */
+.card-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.4rem 0.25rem 0;
+    min-height: 1.6rem;
+}
+.card-stars {
+    position: relative;
+    display: inline-block;
+    font-size: 0.95rem;
+    line-height: 1;
+    letter-spacing: 1px;
+    color: rgba(255, 255, 255, 0.25);
+}
+.card-stars::before {
+    content: '★★★★★';
+}
+.card-stars-fill {
+    position: absolute;
+    top: 0;
+    left: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    color: #facc15;
+}
+.card-stars-fill::before {
+    content: '★★★★★';
+}
+.card-unrated {
+    font-size: 0.75rem;
+    color: #9ca3af;
+}
+.card-has-review {
+    font-size: 0.9rem;
+}
+
+/* Header shown when viewing someone else's library */
+.library-owner-header {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    margin: 0 0 2.5rem;
+    padding: 1.25rem 1.5rem;
+    background-color: #1f2937;
+    border: 1px solid #374151;
+    border-radius: 12px;
+    color: white;
+}
+.library-owner-header.hidden {
+    display: none;
+}
+.library-owner-avatar {
+    width: 64px;
+    height: 64px;
+    border-radius: 9999px;
+    object-fit: cover;
+    background-color: #4b5563;
+}
+.library-owner-info {
+    flex: 1;
+    min-width: 0;
+}
+.library-owner-name {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: white;
+}
+.library-owner-name:hover {
+    text-decoration: underline;
+}
+.library-owner-stats {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1.25rem;
+    margin-top: 0.25rem;
+    font-size: 0.9rem;
+    color: #d1d5db;
+}
+
+/* The footer is fixed to the bottom of the window; leave room so it doesn't cover the last content */
+body {
+    padding-bottom: 4rem;
+}
