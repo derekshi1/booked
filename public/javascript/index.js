@@ -257,8 +257,12 @@ document.addEventListener('DOMContentLoaded', () => {
                             <p class="text-gray-300 text-xs">by ${authors}</p>
                         </div>
                     </a>
+                    ${recommendation.related_to ? `<p class="rec-reason">Because you liked <em></em></p>` : ''}
                 </div>
             `;
+            // Set the title as text so any HTML in a book title can't inject markup
+            const reasonTitle = recommendationElement.querySelector('.rec-reason em');
+            if (reasonTitle) reasonTitle.textContent = recommendation.related_to;
     
             // Append the recommendation element to the container first
             recommendationsContainer.appendChild(recommendationElement);

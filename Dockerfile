@@ -17,7 +17,7 @@ RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu --extra-index-url https://pypi.org/simple \
     && pip install --no-cache-dir -r requirements.txt \
     && python -m spacy download en_core_web_sm \
-    && python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('paraphrase-MiniLM-L6-v2')"
+    && python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('BAAI/bge-small-en-v1.5')"
 
 # Models are baked in above; skip Hugging Face network checks at runtime
 ENV HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1

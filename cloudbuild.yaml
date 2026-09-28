@@ -8,7 +8,8 @@ steps:
     args: ['push', '--all-tags', '${_IMAGE}']
   - name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
     entrypoint: gcloud
-    args: ['run', 'deploy', 'booked', '--image', '${_IMAGE}:${COMMIT_SHA}', '--region', 'us-central1']
+    # --cpu-boost gives new instances extra CPU while they start, shortening cold starts
+    args: ['run', 'deploy', 'booked', '--image', '${_IMAGE}:${COMMIT_SHA}', '--region', 'us-central1', '--cpu-boost']
 
 substitutions:
   _IMAGE: us-central1-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy/booked

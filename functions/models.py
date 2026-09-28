@@ -6,7 +6,9 @@ sentence-transformer instead of each loading its own.
 import threading
 from functools import lru_cache
 
-SENTENCE_MODEL_NAME = 'paraphrase-MiniLM-L6-v2'
+# bge-small ranked hidden liked books far higher than paraphrase-MiniLM-L6-v2 in
+# evaluate_recs.py, at the same size (384 dimensions)
+SENTENCE_MODEL_NAME = 'BAAI/bge-small-en-v1.5'
 
 
 @lru_cache(maxsize=None)

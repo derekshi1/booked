@@ -1846,3 +1846,15 @@ h1, h2, h3, h4, h5, h6 {
 body {
     padding-bottom: 4rem;
 }
+
+/* Homepage recommendations: why each book was picked */
+.rec-reason {
+    margin-top: 0.4rem;
+    font-size: 0.72rem;
+    line-height: 1.2;
+    color: #d1d5db;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}

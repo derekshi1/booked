@@ -642,6 +642,11 @@ app.get('/api/library/:username', async (req, res) => {
 
 
 
+// Reading-list and currently-reading books, for excluding from recommendations
+function booksToExclude(userLibrary) {
+  return [...(userLibrary.readList || []), ...(userLibrary.currentlyReading?.books || [])];
+}
+
 app.get('/api/recommendations/:username', async (req, res) => {
   const { username } = req.params;
   try {
@@ -659,7 +664,11 @@ app.get('/api/recommendations/:username', async (req, res) => {
           return res.status(200).json({ success: true, recommendations: [] });
       }
 
-      const recommendations = await runPythonTask('recommendations', { library });
+      const recommendations = await runPythonTask('recommendations', {
+        library,
+        // Books on their reading list or being read now aren't useful recommendations either
+        exclude: booksToExclude(userLibrary),
+      });
       res.status(200).json({ success: true, recommendations });
 
 
@@ -1383,7 +1392,7 @@ app.get('/api/opposite-recommendations/:username', async (req, res) => {
       return res.status(200).json({ success: true, recommendations: [] });
     }
 
-    const recommendations = await runPythonTask('opposite', { library });
+    const recommendations = await runPythonTask('opposite', { library, exclude: booksToExclude(userLibrary) });
     res.status(200).json({ success: true, recommendations });
 
   } catch (error) {
@@ -3153,6 +3162,21 @@ app.post('/api/migrate-reviews', async (req, res) => {
             error: error.message
         });
     }
+});
+
+// Adds new books to the recommendation catalog; called nightly by Cloud Scheduler
+app.post('/api/admin/refresh-catalog', async (req, res) => {
+  const token = process.env.CATALOG_REFRESH_TOKEN;
+  if (!token || req.get('X-Refresh-Token') !== token) {
+    return res.status(404).send('Not found');
+  }
+  try {
+    const stats = await runPythonTask('refresh_catalog', { googleBudget: 60 }, { timeoutMs: 290 * 1000 });
+    res.json({ success: true, stats });
+  } catch (error) {
+    console.error('Catalog refresh failed:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
 });
 
 // Series Recommendations Route
