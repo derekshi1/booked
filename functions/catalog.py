@@ -275,8 +275,12 @@ def upsert_records(db, records):
     return len(set(grouped) - set(existing))
 
 
-def embed_missing(db, log=print, batch_size=256):
-    """Embed books that have no embedding yet, or whose text changed since."""
+def embed_missing(db, log=print, batch_size=64, deadline=None):
+    """Embed books that have no embedding yet, or whose text changed since.
+
+    Stops at `deadline` (a time.monotonic() value); the rest get embedded next time.
+    Returns (embedded, still_pending).
+    """
     collection = db[CATALOG_COLLECTION]
     pending = []
     for doc in collection.find({}, {'title': 1, 'categories': 1, 'description': 1, 'embeddingTextHash': 1, 'embeddingModel': 1}):
@@ -287,11 +291,15 @@ def embed_missing(db, log=print, batch_size=256):
         if doc.get('embeddingTextHash') != text_hash or doc.get('embeddingModel') != SENTENCE_MODEL_NAME:
             pending.append((doc['_id'], text, text_hash))
     if not pending:
-        return 0
+        return 0, 0
 
     log(f'Embedding {len(pending)} books')
     model = get_sentence_model()
+    embedded = 0
     for start in range(0, len(pending), batch_size):
+        if deadline and time.monotonic() > deadline:
+            log(f'Time budget reached; {len(pending) - embedded} books left for the next refresh')
+            break
         batch = pending[start:start + batch_size]
         vectors = model.encode([text for _, text, _ in batch], batch_size=64,
                                normalize_embeddings=True, show_progress_bar=False)
@@ -303,11 +311,19 @@ def embed_missing(db, log=print, batch_size=256):
             }})
             for (key, _, text_hash), vector in zip(batch, vectors)
         ], ordered=False)
-    return len(pending)
+        embedded += len(batch)
+    return embedded, len(pending) - embedded
 
 
-def refresh(google_budget=60, nyt_weeks=0, log=print):
-    """Add new books to the catalog and embed them. Safe to run repeatedly."""
+def refresh(google_budget=60, nyt_weeks=0, time_budget=None, log=print):
+    """Add new books to the catalog and embed them. Safe to run repeatedly.
+
+    With `time_budget` (seconds), fetching stops at 40% of it and embedding at the end;
+    whatever is left is picked up by the next refresh.
+    """
+    started = time.monotonic()
+    deadline = started + time_budget if time_budget else None
+    fetch_deadline = started + 0.4 * time_budget if time_budget else None
     db = get_db()
     db[CATALOG_COLLECTION].create_index('isbns')
     stats = {'library': 0, 'nyt': 0, 'google': 0, 'googleQueries': 0, 'newBooks': 0}
@@ -322,6 +338,8 @@ def refresh(google_budget=60, nyt_weeks=0, log=print):
 
     state = db[STATE_COLLECTION].find_one({'_id': 'google'}) or {'subjectIndex': 0, 'startIndex': 0}
     for _ in range(google_budget):
+        if fetch_deadline and time.monotonic() > fetch_deadline:
+            break
         subject = GOOGLE_SUBJECTS[state['subjectIndex']]
         try:
             books = google_books(subject, state['startIndex'])
@@ -340,7 +358,7 @@ def refresh(google_budget=60, nyt_weeks=0, log=print):
             state['startIndex'] = (state['startIndex'] + 40) % MAX_GOOGLE_START_INDEX
     db[STATE_COLLECTION].replace_one({'_id': 'google'}, state, upsert=True)
 
-    stats['embedded'] = embed_missing(db, log=log)
+    stats['embedded'], stats['pendingEmbeddings'] = embed_missing(db, log=log, deadline=deadline)
     stats['catalogSize'] = db[CATALOG_COLLECTION].count_documents({'embeddingModel': SENTENCE_MODEL_NAME})
     db[STATE_COLLECTION].update_one({'_id': 'refresh'}, {'$set': {
         'lastRefresh': datetime.datetime.utcnow(), 'stats': stats}}, upsert=True)
@@ -351,6 +369,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('--google', type=int, default=60, help='Google Books queries to spend')
     parser.add_argument('--nyt-weeks', type=int, default=0, help='past weeks of NYT lists to include')
+    parser.add_argument('--time-budget', type=float, default=None, help='stop after this many seconds')
     args = parser.parse_args()
-    print(refresh(google_budget=args.google, nyt_weeks=args.nyt_weeks,
+    print(refresh(google_budget=args.google, nyt_weeks=args.nyt_weeks, time_budget=args.time_budget,
                   log=lambda message: print(message, file=sys.stderr)))

@@ -64,7 +64,7 @@ To run the same image locally: `docker compose up --build`, then open http://loc
 
 Recommendations are a vector search over a precomputed book catalog (the `catalogbooks` collection):
 
-- `functions/catalog.py` collects books from users' libraries, NYT bestseller lists and Google Books by subject, merges editions, and embeds each book once. Run `python functions/catalog.py --google 250 --nyt-weeks 26` for an initial build; a nightly Cloud Scheduler job calls `POST /api/admin/refresh-catalog` (with the `X-Refresh-Token` header set to `CATALOG_REFRESH_TOKEN`) to add more books using 60 Google queries.
+- `functions/catalog.py` collects books from users' libraries, NYT bestseller lists and Google Books by subject, merges editions, and embeds each book once. Run `python functions/catalog.py --google 250 --nyt-weeks 26` for an initial build; a Cloud Scheduler job calls `POST /api/admin/refresh-catalog` every 4 hours (with the `X-Refresh-Token` header set to `CATALOG_REFRESH_TOKEN`) to add more books using 20 Google queries; each run stops after 4 minutes and leaves any remaining embeddings for the next one.
 - `functions/recommender.py` builds a reader's taste from their books weighted by rating (split into clusters so different tastes aren't averaged together), then ranks the catalog in memory. It powers regular, opposite and "books like this" recommendations.
 - `python functions/evaluate_recs.py` hides some of each reader's highly rated books and reports how often they're recommended back, compared with popular and random picks.
 

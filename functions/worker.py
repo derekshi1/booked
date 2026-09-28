@@ -47,7 +47,9 @@ def run_lists(args):
 
 
 def run_refresh_catalog(args):
-    stats = catalog.refresh(google_budget=int(args.get('googleBudget', 60)), log=lambda m: print(m, file=sys.stderr))
+    stats = catalog.refresh(google_budget=int(args.get('googleBudget', 60)),
+                            time_budget=args.get('timeBudgetSeconds'),
+                            log=lambda m: print(m, file=sys.stderr))
     recommender.get_catalog(force=True)
     return stats
 

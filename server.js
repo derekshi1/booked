@@ -3164,14 +3164,17 @@ app.post('/api/migrate-reviews', async (req, res) => {
     }
 });
 
-// Adds new books to the recommendation catalog; called nightly by Cloud Scheduler
+// Adds new books to the recommendation catalog; called every 4 hours by Cloud Scheduler.
+// Cloud Run stops giving CPU once a request ends, so the refresh must finish within
+// the request: it stops itself after 4 minutes and carries leftover work to the next run.
 app.post('/api/admin/refresh-catalog', async (req, res) => {
   const token = process.env.CATALOG_REFRESH_TOKEN;
   if (!token || req.get('X-Refresh-Token') !== token) {
     return res.status(404).send('Not found');
   }
   try {
-    const stats = await runPythonTask('refresh_catalog', { googleBudget: 60 }, { timeoutMs: 290 * 1000 });
+    const stats = await runPythonTask('refresh_catalog', { googleBudget: 20, timeBudgetSeconds: 240 },
+      { timeoutMs: 290 * 1000 });
     res.json({ success: true, stats });
   } catch (error) {
     console.error('Catalog refresh failed:', error);
