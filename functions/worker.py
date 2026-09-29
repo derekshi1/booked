@@ -25,7 +25,7 @@ lists_lock = threading.Lock()
 
 
 def run_recommendations(args):
-    return recommender.recommend(args['library'], args.get('exclude') or [])
+    return recommender.recommend(args['library'], args.get('exclude') or [], username=args.get('username'))
 
 
 def run_single(args):

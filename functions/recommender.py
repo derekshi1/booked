@@ -77,6 +77,9 @@ NUMBER_WORDS = {w: n for n, w in enumerate(
     'sixteen seventeen eighteen nineteen twenty'.split())}
 CHILDREN = re.compile(r"children|picture book|middle grade|juvenile", re.IGNORECASE)
 SERIES_LIST = re.compile(r'\bseries\b', re.IGNORECASE)
+NOT_A_READ = re.compile(
+    r'word search|crossword|sudoku|puzzle|coloring|colouring|activity book|sticker|journal\b|planner|'
+    r'workbook|calendar|notebook|study guide|test prep|cliffsnotes|sparknotes', re.IGNORECASE)
 
 
 def is_recommendable(doc):
@@ -88,6 +91,8 @@ def is_recommendable(doc):
         if number > 1:
             return False
     categories = doc.get('categories') or []
+    if NOT_A_READ.search(' '.join([doc.get('title') or ''] + categories)):
+        return False  # puzzle books, journals, study guides
     if doc.get('sources') == ['nyt'] and categories and all(SERIES_LIST.search(c) for c in categories):
         return False
     return True
@@ -193,6 +198,12 @@ def same_author(catalog, books):
     return np.array([1.0 if a & names else 0.0 for a in catalog.authors], dtype=np.float32)
 
 
+def rarely_reads_childrens_books(catalog, books):
+    """True unless children's books are at least a fifth of the reader's books."""
+    found = [i for i in (catalog.find(b) for b in books) if i is not None]
+    return not found or sum(catalog.for_children[i] for i in found) / len(found) < 0.2
+
+
 def owned_mask(catalog, owned_vectors, owned_books):
     """Catalog books the reader already has, including other editions."""
     mask = np.zeros(len(catalog.books), dtype=bool)
@@ -280,7 +291,14 @@ def popular_fallback(catalog, exclude, count):
 
 # ---------- public API ----------
 
-def recommend(library, exclude_books=(), count=15):
+def recommend(library, exclude_books=(), count=15, username=None, seed=None):
+    """A varied, labeled mix of 3-4 recommendation categories (see wheel.py)."""
+    import wheel
+    return wheel.spin(library, exclude_books, username=username, count=count, seed=seed)
+
+
+def best_matches(library, exclude_books=(), count=15):
+    """The single closest-to-taste ranking, used by evaluate_recs.py to measure accuracy."""
     catalog = get_catalog()
     if len(catalog.books) == 0:
         return []
@@ -351,9 +369,7 @@ def opposite(library, exclude_books=(), count=15):
     vectors, _, books = reader_vectors(catalog, list(library) + list(exclude_books))
     exclude = owned_mask(catalog, vectors, books) | ~catalog.recommendable
     # "Far from your taste" shouldn't mean picture books for adults who rarely read children's books
-    found = [i for i in (catalog.find(b) for b in books) if i is not None]
-    childrens_share = sum(catalog.for_children[i] for i in found) / len(found) if found else 0
-    if childrens_share < 0.2:
+    if rarely_reads_childrens_books(catalog, books):
         exclude |= catalog.for_children
     if len(vectors) == 0:
         return popular_fallback(catalog, exclude, count)

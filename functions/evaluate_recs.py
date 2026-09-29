@@ -49,7 +49,7 @@ def main():
         owned = {catalog.find(b) for b in visible} - {None}
         for k in (15, 50):
             start = time.perf_counter()
-            recs = recommender.recommend(visible, count=k)
+            recs = recommender.best_matches(visible, count=k)
             timings.append(time.perf_counter() - start)
             found = {book_key(r['title'], r['authors']) for r in recs} & hidden_keys
             recall['recommender'][k].append(len(found) / len(hidden))
@@ -63,7 +63,42 @@ def main():
     for k in (15, 50):
         print(f'Recall@{k} (share of hidden liked books recommended in the top {k}): ' +
               '  '.join(f'{method} {statistics.mean(values[k]):.1%}' for method, values in recall.items()))
-    print(f'recommend() time: median {statistics.median(timings) * 1000:.0f} ms, max {max(timings) * 1000:.0f} ms')
+    print(f'best_matches() time: median {statistics.median(timings) * 1000:.0f} ms, max {max(timings) * 1000:.0f} ms')
+    variety(catalog)
+
+
+def variety(catalog):
+    """How varied the lists are: the wheel (recommend) vs. pure best matches."""
+    import wheel
+    stats = {'best matches': [], 'wheel': []}
+    repeats, timings = [], []
+    for library in get_db().userlibraries.find({}, {'username': 1, 'books': 1}):
+        books = [b for b in library.get('books') or [] if isinstance(b, dict) and b.get('title')]
+        if sum(catalog.find(b) is not None for b in books) < MIN_BOOKS_IN_CATALOG:
+            continue
+        read_authors = {a.lower() for b in books for a in wheel.as_authors(b.get('authors'))}
+        lists = {'best matches': [recommender.best_matches(books)]}
+        spins = []
+        for n in range(3):  # three clicks in a row
+            start = time.perf_counter()
+            spins.append(recommender.recommend(books, username=f'eval-{library["username"]}', seed=n))
+            timings.append(time.perf_counter() - start)
+        lists['wheel'] = spins
+        for name, recs_lists in lists.items():
+            for recs in recs_lists:
+                authors = [a.lower() for r in recs for a in r['authors'][:1]]
+                stats[name].append((len(set(authors)) / max(len(recs), 1),
+                                    sum(a not in read_authors for a in authors) / max(len(authors), 1),
+                                    len({r.get('category') for r in recs})))
+        keys = [{book_key(r['title'], r['authors']) for r in recs} for recs in spins]
+        repeats.append(len(keys[0] & keys[1]) / max(len(keys[0]), 1))
+    print('\nVariety per list of 15:')
+    for name, rows in stats.items():
+        print(f'  {name:13s} distinct authors {statistics.mean(r[0] for r in rows):.0%}, '
+              f'authors new to the reader {statistics.mean(r[1] for r in rows):.0%}')
+    print(f'  wheel: categories per spin {statistics.mean(r[2] for r in stats["wheel"]):.1f}, '
+          f'books repeated on the next click {statistics.mean(repeats):.0%}, '
+          f'median time {statistics.median(timings) * 1000:.0f} ms')
 
 
 if __name__ == '__main__':

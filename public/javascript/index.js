@@ -257,12 +257,20 @@ document.addEventListener('DOMContentLoaded', () => {
                             <p class="text-gray-300 text-xs">by ${authors}</p>
                         </div>
                     </a>
-                    ${recommendation.related_to ? `<p class="rec-reason">Because you liked <em></em></p>` : ''}
+                    <p class="rec-reason"></p>
                 </div>
             `;
-            // Set the title as text so any HTML in a book title can't inject markup
-            const reasonTitle = recommendationElement.querySelector('.rec-reason em');
-            if (reasonTitle) reasonTitle.textContent = recommendation.related_to;
+            // Why this book was picked, e.g. "Because you like *classics*" or "*Maya* rated this 95/100".
+            // Built from text nodes so any HTML in a title or name can't inject markup.
+            const reasonElement = recommendationElement.querySelector('.rec-reason');
+            const reasonParts = recommendation.reason
+                || (recommendation.related_to ? [{ text: 'Because you liked ' }, { text: recommendation.related_to, em: true }] : []);
+            reasonParts.forEach(part => {
+                const node = part.em ? document.createElement('em') : document.createTextNode(part.text);
+                if (part.em) node.textContent = part.text;
+                reasonElement.appendChild(node);
+            });
+            if (reasonParts.length === 0) reasonElement.remove();
     
             // Append the recommendation element to the container first
             recommendationsContainer.appendChild(recommendationElement);

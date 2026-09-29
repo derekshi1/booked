@@ -666,6 +666,7 @@ app.get('/api/recommendations/:username', async (req, res) => {
 
       const recommendations = await runPythonTask('recommendations', {
         library,
+        username, // for the friends' favorites category and not repeating recent picks
         // Books on their reading list or being read now aren't useful recommendations either
         exclude: booksToExclude(userLibrary),
       });

@@ -176,6 +176,7 @@ def nyt_books(weeks_back=0, log=print):
                     'thumbnail': _https(book.get('book_image')),
                     'isbns': isbns,
                     'bestsellerWeeks': book.get('weeks_on_list') or 1,
+                    'nytListDate': date.isoformat(),  # the latest week it was on a list
                     'sources': ['nyt'],
                 })
         date -= datetime.timedelta(days=7)
@@ -240,6 +241,8 @@ def merge(existing, new):
         doc['ratingsCount'] = new['ratingsCount']
         doc['averageRating'] = new.get('averageRating')
     doc['bestsellerWeeks'] = max(doc.get('bestsellerWeeks') or 0, new.get('bestsellerWeeks') or 0)
+    if new.get('nytListDate') and new['nytListDate'] > (doc.get('nytListDate') or ''):
+        doc['nytListDate'] = new['nytListDate']
     doc['sources'] = _union(doc.get('sources'), new.get('sources'))
     # Library stats are recomputed from scratch on every refresh, so overwrite them
     if 'inLibraries' in new:
