@@ -240,6 +240,8 @@ def friends(spin, count, taken):
                 continue
             if R.base_title(book.get('title')) in owned_titles:
                 continue
+            if not book.get('isbn'):
+                continue  # without an ISBN its book page can't load
             index = c.find(book)
             key = index if index is not None else R.base_title(book.get('title'))
             if index is not None and (spin.exclude[index] or index in taken):

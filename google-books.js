@@ -1,6 +1,9 @@
 // Google Books search with a server-side cache and an OpenLibrary fallback.
 // Google allows 1,000 queries/day on the free quota; the cache keeps repeat
 // searches off that quota, and the fallback keeps search working once it's used up.
+// ISBN lookups that neither finds fall back to our own data (see findLocalBook),
+// so every recommended book has a working book page.
+const mongoose = require('mongoose');
 
 const GOOGLE_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 // Fallback results are cached briefly so Google results come back once the quota resets
@@ -84,6 +87,42 @@ async function searchOpenLibrary(googleQuery, limit) {
   };
 }
 
+// Books we already know about: the recommendation catalog, stored metadata, users' libraries.
+// Google doesn't index every ISBN (new NYT releases especially), but every book we
+// recommend is in the catalog, so this keeps its book page from saying "not found".
+async function findLocalBook(isbn) {
+  const db = mongoose.connection.db;
+  if (!db) return null;
+  const catalogBook = await db.collection('catalogbooks').findOne(
+    { isbns: isbn }, { projection: { embedding: 0, embeddingTextHash: 0 } });
+  const book = catalogBook
+    || await db.collection('bookmetadatas').findOne({ isbn })
+    || (await db.collection('userlibraries').findOne({ 'books.isbn': isbn }, { projection: { 'books.$': 1 } }))?.books?.[0];
+  if (!book) return null;
+  const authors = Array.isArray(book.authors) ? book.authors : (book.authors ? [book.authors] : []);
+  const categories = Array.isArray(book.categories) ? book.categories : (book.categories ? [book.categories] : []);
+  return {
+    kind: 'books#volumes',
+    totalItems: 1,
+    items: [{
+      kind: 'books#volume',
+      volumeInfo: {
+        title: book.title,
+        authors,
+        description: book.description,
+        categories,
+        pageCount: book.pageCount,
+        publishedDate: book.publishedDate,
+        averageRating: book.averageRating,
+        ratingsCount: book.ratingsCount,
+        industryIdentifiers: [{ type: isbn.length === 13 ? 'ISBN_13' : 'ISBN_10', identifier: isbn }],
+        imageLinks: book.thumbnail ? { thumbnail: book.thumbnail, smallThumbnail: book.thumbnail } : undefined,
+      },
+    }],
+    source: 'local',
+  };
+}
+
 // `params` are Google Books volume query params (q, maxResults, orderBy, ...), without the key.
 // Resolves to a Google-style { items: [...] } response.
 async function searchBooks(params) {
@@ -94,23 +133,40 @@ async function searchBooks(params) {
 
   const cached = cacheGet(cacheKey);
   if (cached) return cached;
+  const isbn = (query.get('q') || '').match(/^\s*isbn:\s*([\dXx-]+)\s*$/)?.[1]?.replace(/-/g, '');
 
+  let data = null;
+  let ttl = GOOGLE_CACHE_TTL_MS;
   try {
     const url = `https://www.googleapis.com/books/v1/volumes?${query}&key=${process.env.API_KEY}`;
     const response = await fetch(url, { signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) });
     if (response.ok) {
-      const data = await response.json();
-      cacheSet(cacheKey, data, GOOGLE_CACHE_TTL_MS);
-      return data;
+      data = await response.json();
+    } else {
+      console.error(`Google Books returned ${response.status}; falling back to OpenLibrary`);
     }
-    console.error(`Google Books returned ${response.status}; falling back to OpenLibrary`);
   } catch (error) {
     console.error('Google Books request failed; falling back to OpenLibrary:', error.message);
   }
 
-  const limit = Math.min(parseInt(query.get('maxResults'), 10) || 10, 40);
-  const data = await searchOpenLibrary(query.get('q') || '', limit);
-  cacheSet(cacheKey, data, FALLBACK_CACHE_TTL_MS);
+  if (!data) {
+    const limit = Math.min(parseInt(query.get('maxResults'), 10) || 10, 40);
+    data = await searchOpenLibrary(query.get('q') || '', limit).catch(error => {
+      console.error('OpenLibrary search failed:', error.message);
+      return { kind: 'books#volumes', totalItems: 0, items: [] };
+    });
+    ttl = FALLBACK_CACHE_TTL_MS;
+  }
+
+  if (isbn && !data.items?.length) {
+    const local = await findLocalBook(isbn).catch(error => {
+      console.error('Local book lookup failed:', error.message);
+      return null;
+    });
+    if (local) data = local;
+  }
+
+  cacheSet(cacheKey, data, ttl);
   return data;
 }
 
