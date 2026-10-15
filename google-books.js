@@ -1,8 +1,10 @@
 // Google Books search with a server-side cache and an OpenLibrary fallback.
 // Google allows 1,000 queries/day on the free quota; the cache keeps repeat
 // searches off that quota, and the fallback keeps search working once it's used up.
-// ISBN lookups that neither finds fall back to our own data (see findLocalBook),
-// so every recommended book has a working book page.
+// Every book a search returns is remembered by ISBN (see rememberVolumes), because
+// Google often can't find a book by its ISBN even right after returning it in search.
+// ISBN lookups check those first, then fall back to our own data (findLocalBook),
+// so books shown anywhere on the site have a working book page.
 const mongoose = require('mongoose');
 
 const GOOGLE_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
@@ -123,6 +125,68 @@ async function findLocalBook(isbn) {
   };
 }
 
+const IDENTIFIER_ORDER = { ISBN_13: 0, ISBN_10: 1 };
+const REMEMBERED_COLLECTION = 'rememberedvolumes';
+const REMEMBER_DAYS = 60;
+const remembered = new Map(); // isbn -> volume, the in-memory copy of the collection
+
+let rememberedIndexReady = null;
+function rememberedCollection() {
+  const db = mongoose.connection.db;
+  if (!db) return null;
+  const collection = db.collection(REMEMBERED_COLLECTION);
+  rememberedIndexReady ??= collection
+    .createIndex({ updatedAt: 1 }, { expireAfterSeconds: REMEMBER_DAYS * 24 * 60 * 60 })
+    .catch(error => console.error('Could not create remembered-volume index:', error.message));
+  return collection;
+}
+
+// Save each result under all of its ISBNs so its book page can load later
+function rememberVolumes(items) {
+  const operations = [];
+  for (const item of items) {
+    for (const { type, identifier } of item.volumeInfo?.industryIdentifiers || []) {
+      if (!(type in IDENTIFIER_ORDER)) continue;
+      if (remembered.size >= MAX_CACHE_ENTRIES) remembered.delete(remembered.keys().next().value);
+      remembered.set(identifier, item);
+      operations.push({ updateOne: {
+        filter: { _id: identifier },
+        update: { $set: { volume: item, updatedAt: new Date() } },
+        upsert: true,
+      } });
+    }
+  }
+  const collection = rememberedCollection();
+  if (collection && operations.length) {
+    collection.bulkWrite(operations, { ordered: false })
+      .catch(error => console.error('Could not remember volumes:', error.message));
+  }
+}
+
+async function findRememberedVolume(isbn) {
+  let volume = remembered.get(isbn);
+  if (!volume) {
+    const doc = await rememberedCollection()?.findOne({ _id: isbn });
+    volume = doc?.volume;
+    if (volume) remembered.set(isbn, volume);
+  }
+  return volume ? { kind: 'books#volumes', totalItems: 1, items: [volume], source: 'remembered' } : null;
+}
+
+// Pages take a result's first identifier as its ISBN, but Google often lists a library
+// scan ID first (e.g. "STANFORD:36105005292292"), which no ISBN lookup can find. Put real
+// ISBNs first and drop results that have none, since their book page could never load.
+function withIsbnsFirst(data) {
+  const items = (data.items || [])
+    .map(item => {
+      const identifiers = [...(item.volumeInfo?.industryIdentifiers || [])]
+        .sort((a, b) => (IDENTIFIER_ORDER[a.type] ?? 2) - (IDENTIFIER_ORDER[b.type] ?? 2));
+      return { ...item, volumeInfo: { ...item.volumeInfo, industryIdentifiers: identifiers } };
+    })
+    .filter(item => item.volumeInfo.industryIdentifiers[0]?.type in IDENTIFIER_ORDER);
+  return { ...data, totalItems: items.length, items };
+}
+
 // `params` are Google Books volume query params (q, maxResults, orderBy, ...), without the key.
 // Resolves to a Google-style { items: [...] } response.
 async function searchBooks(params) {
@@ -134,6 +198,15 @@ async function searchBooks(params) {
   const cached = cacheGet(cacheKey);
   if (cached) return cached;
   const isbn = (query.get('q') || '').match(/^\s*isbn:\s*([\dXx-]+)\s*$/)?.[1]?.replace(/-/g, '');
+
+  // A book we've already shown: no need to ask Google (which may not find it by ISBN anyway)
+  if (isbn) {
+    const known = await findRememberedVolume(isbn).catch(() => null);
+    if (known) {
+      cacheSet(cacheKey, known, GOOGLE_CACHE_TTL_MS);
+      return known;
+    }
+  }
 
   let data = null;
   let ttl = GOOGLE_CACHE_TTL_MS;
@@ -149,21 +222,30 @@ async function searchBooks(params) {
     console.error('Google Books request failed; falling back to OpenLibrary:', error.message);
   }
 
-  if (!data) {
+  const openLibrary = () => {
     const limit = Math.min(parseInt(query.get('maxResults'), 10) || 10, 40);
-    data = await searchOpenLibrary(query.get('q') || '', limit).catch(error => {
+    return searchOpenLibrary(query.get('q') || '', limit).catch(error => {
       console.error('OpenLibrary search failed:', error.message);
       return { kind: 'books#volumes', totalItems: 0, items: [] };
     });
+  };
+
+  const usedOpenLibrary = !data;
+  if (usedOpenLibrary) {
+    data = await openLibrary();
     ttl = FALLBACK_CACHE_TTL_MS;
   }
+  data = withIsbnsFirst(data);
+  if (!usedOpenLibrary) rememberVolumes(data.items);
 
-  if (isbn && !data.items?.length) {
+  // Google's ISBN index is incomplete: it can return a book in search yet find nothing
+  // when asked for that book's ISBN. Try our own data, then OpenLibrary.
+  if (isbn && !data.items.length) {
     const local = await findLocalBook(isbn).catch(error => {
       console.error('Local book lookup failed:', error.message);
       return null;
     });
-    if (local) data = local;
+    data = local || (usedOpenLibrary ? data : withIsbnsFirst(await openLibrary()));
   }
 
   cacheSet(cacheKey, data, ttl);
