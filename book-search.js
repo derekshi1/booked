@@ -94,7 +94,11 @@ const fromGoogle = (item, position) => {
   };
 };
 
-const OPENLIBRARY_TIMEOUT_MS = 5000;
+// OpenLibrary is occasionally slow, so cache its answers; search still works without them
+const OPENLIBRARY_TIMEOUT_MS = 7000;
+const OPENLIBRARY_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
+const OPENLIBRARY_CACHE_SIZE = 500;
+const openLibraryCache = new Map(); // normalized query -> { docs, expires }
 
 const fromOpenLibrary = (doc, position) => {
   const isbns = doc.isbn || [];
@@ -119,6 +123,10 @@ const fromOpenLibrary = (doc, position) => {
 };
 
 async function openLibraryWorks(query) {
+  const key = normalize(query);
+  const cached = openLibraryCache.get(key);
+  if (cached && cached.expires > Date.now()) return cached.docs;
+
   const params = new URLSearchParams({
     q: query,
     limit: '15',
@@ -128,7 +136,10 @@ async function openLibraryWorks(query) {
     signal: AbortSignal.timeout(OPENLIBRARY_TIMEOUT_MS),
   });
   if (!response.ok) throw new Error(`OpenLibrary search returned ${response.status}`);
-  return (await response.json()).docs || [];
+  const docs = (await response.json()).docs || [];
+  if (openLibraryCache.size >= OPENLIBRARY_CACHE_SIZE) openLibraryCache.delete(openLibraryCache.keys().next().value);
+  openLibraryCache.set(key, { docs, expires: Date.now() + OPENLIBRARY_CACHE_TTL_MS });
+  return docs;
 }
 
 const fromCatalog = (doc) => ({
