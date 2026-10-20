@@ -4,6 +4,7 @@ const { startWorker, runPythonTask } = require('./python-worker');
 const cookieParser = require('cookie-parser');
 const { registerAuthRoutes, requireSession, setSession, getSessionUsername } = require('./auth');
 const { searchBooks } = require('./google-books');
+const { searchBookResults } = require('./book-search');
 const multer = require('multer'); // Add this to your imports
 const path = require('path');
 const crypto = require('crypto');
@@ -2431,26 +2432,12 @@ app.get('/api/unified-search', async (req, res) => {
 
         // Finally search for books
         if (!type || type === 'books') {
-            // A failed book search shouldn't hide the user and list results
-            const booksData = await searchBooks({ q: query, maxResults: 20 }).catch(error => {
+            // English books, one result per book (its best edition), ranked by match and popularity.
+            // A failed book search shouldn't hide the user and list results.
+            results.books = await searchBookResults(query).catch(error => {
                 console.error('Book search failed:', error);
-                return {};
+                return [];
             });
-
-            if (booksData.items) {
-                // Filter out books without thumbnails and map the results
-                results.books = booksData.items
-                    .filter(item => item.volumeInfo.imageLinks?.thumbnail)
-                    .slice(0, 15) // Keep only first 5 books that have thumbnails
-                    .map(item => ({
-                        type: 'book',
-                        title: item.volumeInfo.title,
-                        authors: item.volumeInfo.authors || ['Unknown'],
-                        thumbnail: item.volumeInfo.imageLinks.thumbnail,
-                        isbn: item.volumeInfo.industryIdentifiers?.[0]?.identifier || '',
-                        description: item.volumeInfo.description || ''
-                    }));
-            }
         }
 
         // Combine results in the desired order: users -> lists -> books

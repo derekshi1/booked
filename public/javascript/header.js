@@ -231,14 +231,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
 
-    async function handleInput(event) {
+    // Wait until typing pauses before searching, and ignore answers to older searches,
+    // so each keystroke doesn't cost a Google Books query and results don't flicker
+    let searchTimer = null;
+    let latestSearch = 0;
+    function handleInput(event) {
         const query = event.target.value;
-        if (query.length > 2) {
-            const suggestions = await fetchSuggestions(query);
-            displaySuggestions(suggestions);
-        } else {
+        clearTimeout(searchTimer);
+        if (query.length <= 2) {
             clearSuggestions();
+            return;
         }
+        searchTimer = setTimeout(async () => {
+            const searchId = ++latestSearch;
+            const suggestions = await fetchSuggestions(query);
+            if (searchId === latestSearch) displaySuggestions(suggestions);
+        }, 250);
     }
 
 async function fetchSuggestions(query) {
