@@ -1,3 +1,13 @@
+// Cover image for a Google-style imageLinks object. Only Google's links take a zoom
+// parameter; NYT and OpenLibrary covers are plain image files and break if one is appended.
+function coverUrl(imageLinks) {
+    const url = imageLinks?.thumbnail;
+    if (!url) return 'https://via.placeholder.com/128x192?text=No+Image';
+    const secure = url.replace(/^http:\/\//, 'https://');
+    if (!/books\.google\.com|googleusercontent\.com/.test(secure)) return secure;
+    return /[?&]zoom=/.test(secure) ? secure : `${secure}${secure.includes('?') ? '&' : '?'}zoom=1`;
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
     const params = new URLSearchParams(window.location.search);
     const isbn = params.get('isbn');
@@ -26,7 +36,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     <!-- Left section (fixed) -->
     <div class="w-1/4 fixed top-40 left-20 h-screen">
         <div class="relative"> 
-            <img src="${book.imageLinks ? book.imageLinks.thumbnail.replace('zoom=1', '') + '&zoom=1' : 'https://via.placeholder.com/128x192?text=No+Image'}" alt="${book.title}" class="book-card card book-cover w-60 h-96 object-cover mb-8">
+            <img src="${coverUrl(book.imageLinks)}" alt="${book.title}" class="book-card card book-cover w-60 h-96 object-cover mb-8">
         </div>
 
         <!-- Button section: Preview and Add on top row, Generate Video centered below -->
@@ -106,8 +116,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             <h1 class="text-4xl font-bold mb-3 text-white">${book.title}</h1>
             <h2 class="text-xl mb-3 text-white">by ${book.authors ? book.authors.join(', ') : 'Unknown'}</h2>
             <p class="text-base mb-2 text-white"><strong>Categories:</strong> ${book.categories ? book.categories.join(', ') : 'None'}</p>
-            <p class="text-base mb-2 text-white"><strong>Published:</strong> ${book.publishedDate}</p>
-            <p class="text-base mb-2 text-white"><strong>Pages:</strong> ${book.pageCount}</p>
+            ${book.publishedDate ? `<p class="text-base mb-2 text-white"><strong>Published:</strong> ${book.publishedDate}</p>` : ''}
+            ${book.pageCount ? `<p class="text-base mb-2 text-white"><strong>Pages:</strong> ${book.pageCount}</p>` : ''}
             <p class="text-base mb-2 text-white"><strong>Average Rating:</strong> ${book.averageRating ? book.averageRating : 'N/A'} (${book.ratingsCount ? book.ratingsCount : 0} ratings)</p>
             <p class="text-base mb-2 text-white">${book.description ? book.description : 'No description available'}</p>
 
