@@ -10,6 +10,12 @@ const path = require('path');
 const crypto = require('crypto');
 
 const app = express();
+
+// Express 4 doesn't catch errors thrown in async routes; without this, one bad request
+// could crash the whole server
+process.on('unhandledRejection', (error) => {
+  console.error('Unhandled error in a request:', error);
+});
 const port = process.env.PORT || 8080;
 
 
@@ -199,6 +205,25 @@ const UserLibrary = mongoose.model('UserLibrary', userLibrarySchema);
 app.set('trust proxy', 1);
 app.use(express.static('public'));
 app.use(express.json());
+// Strip MongoDB operators from request input, so a field like {"$ne": null} can't turn
+// User.findOne({ username }) into "match any user"
+function stripMongoOperators(value) {
+  if (Array.isArray(value)) return value.map(stripMongoOperators);
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(Object.entries(value)
+      .filter(([key]) => !key.startsWith('$') && !key.includes('.'))
+      .map(([key, inner]) => [key, stripMongoOperators(inner)]));
+  }
+  return value;
+}
+app.use((req, res, next) => {
+  if (req.body) req.body = stripMongoOperators(req.body);
+  for (const key of Object.keys(req.query)) {
+    if (key.startsWith('$')) delete req.query[key];
+    else req.query[key] = stripMongoOperators(req.query[key]);
+  }
+  next();
+});
 app.use(cookieParser());
 registerAuthRoutes(app, User);
 

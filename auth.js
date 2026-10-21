@@ -16,6 +16,10 @@ if (!jwtSecret) {
 
 const isBcryptHash = (value) => /^\$2[aby]\$\d{2}\$/.test(value || '');
 
+// Request fields must be plain text; an object like {"$ne": null} is rejected rather than
+// reaching a database query (or throwing on .trim())
+const asText = (value) => (typeof value === 'string' ? value.trim() : '');
+
 function setSession(req, res, username) {
   const token = jwt.sign({ username }, jwtSecret, { expiresIn: SESSION_MAX_AGE_MS / 1000 });
   res.cookie(SESSION_COOKIE, token, {
@@ -61,7 +65,7 @@ function validateUsername(username) {
 
 function registerAuthRoutes(app, User) {
   app.post('/api/auth/register', async (req, res) => {
-    const username = req.body.username?.trim();
+    const username = asText(req.body.username);
     const { password } = req.body;
     const usernameError = validateUsername(username);
     if (usernameError) return res.status(400).send(usernameError);
@@ -83,7 +87,7 @@ function registerAuthRoutes(app, User) {
   });
 
   app.post('/api/auth/login', async (req, res) => {
-    const username = req.body.username?.trim();
+    const username = asText(req.body.username);
     const { password } = req.body;
     if (!username || typeof password !== 'string') {
       return res.status(400).send('Invalid username or password');
@@ -120,7 +124,7 @@ function registerAuthRoutes(app, User) {
   // existing account; if none exists it answers needsUsername so the page can ask for one.
   app.post('/api/auth/google', async (req, res) => {
     const { accessToken } = req.body;
-    if (!accessToken) return res.status(400).send('Missing Google token');
+    if (typeof accessToken !== 'string' || !accessToken) return res.status(400).send('Missing Google token');
 
     try {
       const google = await verifyGoogleAccessToken(accessToken);
@@ -132,7 +136,7 @@ function registerAuthRoutes(app, User) {
         return res.status(200).json({ username: existing.username });
       }
 
-      const username = req.body.username?.trim();
+      const username = asText(req.body.username);
       if (!username) return res.status(404).json({ needsUsername: true });
 
       const usernameError = validateUsername(username);
