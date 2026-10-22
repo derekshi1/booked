@@ -53,7 +53,7 @@ The app (Express + the Python scripts in `functions/`) ships as one Docker image
 
 ```bash
 gcloud run deploy booked --source . --region us-central1 --memory 2Gi --allow-unauthenticated \
-  --set-env-vars "MONGODB_URI=...,API_KEY=...,NYT_API_KEY=...,PINECONE_KEY=...,GOOGLE_AUTH_CLIENT_SECRET=..."
+  --set-env-vars "MONGODB_URI=...,API_KEY=...,NYT_API_KEY=..."
 ```
 
 After the first deploy, add the Cloud Run URL to the OAuth client's Authorized JavaScript origins in Google Cloud Console so Google sign-in works.
