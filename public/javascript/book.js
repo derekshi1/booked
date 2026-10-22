@@ -39,7 +39,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             <img src="${coverUrl(book.imageLinks)}" alt="${book.title}" class="book-card card book-cover w-60 h-96 object-cover mb-8">
         </div>
 
-        <!-- Button section: Preview and Add on top row, Generate Video centered below -->
+        <!-- Button section: Preview and Add -->
         <div class="flex flex-col items-start gap-4 mt-4">
             <div class="flex items-start gap-4">
                 <button id="previewButton" onclick="loadBook('${isbn}')" class="px-4 py-2 bg-green-500 text-white rounded h-48px w-40">Preview</button>
@@ -107,7 +107,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                     </div>
                 </div>
             </div>
-            <button id="generateVideoButton" onclick="generateVideo('${isbn}')" class="px-4 py-2 bg-blue-500 text-white rounded h-48px w-40">Generate Video</button>
         </div>
     </div>
     <!-- Center Content (flexible width) -->
@@ -843,72 +842,3 @@ function getGradientColor(value) {
     return `rgb(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)})`;
 }
 
-async function generateVideo(isbn) {
-    try {
-        // Show loading state
-        const button = document.getElementById('generateVideoButton');
-        const originalText = button.textContent;
-        button.textContent = 'Generating...';
-        button.disabled = true;
-
-        const response = await fetch('/api/generate-images', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ isbn }),
-        });
-
-        const data = await response.json();
-
-        if (data.success) {
-            // Display the generated images
-            displayGeneratedImages(data.images);
-            alert('Images generated successfully! Video generation coming soon.');
-        } else {
-            alert('Failed to generate images: ' + data.message);
-        }
-    } catch (error) {
-        console.error('Error generating video:', error);
-        alert('Error generating video. Please try again.');
-    } finally {
-        // Reset button state
-        const button = document.getElementById('generateVideoButton');
-        button.textContent = 'Generate Video';
-        button.disabled = false;
-    }
-}
-
-function displayGeneratedImages(images) {
-    // Create a modal or section to display the images
-    const modal = document.createElement('div');
-    modal.classList.add('fixed', 'inset-0', 'bg-black', 'bg-opacity-50', 'flex', 'items-center', 'justify-center', 'z-50');
-    modal.innerHTML = `
-        <div class="bg-white p-6 rounded-lg shadow-xl max-w-4xl max-h-4xl overflow-auto">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-2xl font-bold">Generated Images</h2>
-                <button id="closeImageModal" class="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
-            </div>
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                ${images.map(image => `
-                    <div class="image-item">
-                        <img src="${image}" alt="Generated image" class="w-full h-48 object-cover rounded">
-                    </div>
-                `).join('')}
-            </div>
-        </div>
-    `;
-
-    document.body.appendChild(modal);
-
-    // Close modal functionality
-    document.getElementById('closeImageModal').onclick = () => {
-        document.body.removeChild(modal);
-    };
-
-    modal.onclick = (event) => {
-        if (event.target === modal) {
-            document.body.removeChild(modal);
-        }
-    };
-}
