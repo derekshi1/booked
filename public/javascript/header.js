@@ -990,12 +990,9 @@ function renderNotificationItem(activity) {
                         <span class="font-semibold">${activity.username}</span> 
                         reviewed "${activity.bookTitle}"
                     </p>
-                    ${activity.rating ? `
+                    ${typeof activity.rating === 'number' ? `
                         <div class="flex items-center mt-1">
-                            <div class="text-yellow-400 flex">
-                                ${'★'.repeat(activity.rating)}${'☆'.repeat(5-activity.rating)}
-                            </div>
-                            <span class="text-xs text-gray-500 ml-1">${activity.rating}/5</span>
+                            ${renderStars(activity.rating, { showNumber: true })}
                         </div>
                     ` : ''}
                     ${activity.review ? `

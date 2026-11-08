@@ -8,7 +8,7 @@ between them, and labels each book with why it's there:
     favorite_authors  "More from John Steinbeck"            (at most 2 books)
     genre_love        "Because you like classics"
     staples           "A classics staple you haven't read"
-    friends           "Maya rated this 95/100"
+    friends           "Maya gave this 4.5 stars"
     bridges           "Where your classics and psychology reads meet"
     cross_format      "Nonfiction for fans of The Grapes of Wrath"
     stretch           "A little outside your usual"
@@ -39,7 +39,7 @@ NOISE = 0.03  # size of the random jitter added to scores
 RECENTLY_SHOWN_PENALTY = 0.3
 RECENTLY_SHOWN_MEMORY = 45  # books per reader, about three spins
 TRENDING_DAYS = 21
-FRIEND_LOVED_RATING = 80
+FRIEND_LOVED_RATING = 4  # stars
 
 # Genre words too broad (or just formats) to be interesting in a label
 GENERIC_GENRES = re.compile(
@@ -249,12 +249,13 @@ def friends(spin, count, taken):
             if key not in loved or rating > loved[key][0]:
                 loved[key] = (rating, library['username'], book)
     # Favor what fits the reader's taste, with some randomness so the same friend picks rotate
-    ranked = sorted(loved.items(), key=lambda kv: -(kv[1][0] / 100
+    ranked = sorted(loved.items(), key=lambda kv: -(kv[1][0] / 5
                     + (0.5 * spin.taste[kv[0]] if isinstance(kv[0], (int, np.integer)) else 0)
                     + 0.1 * spin.rng.random()))
     results = []
     for key, (rating, friend, book) in ranked[:count]:
-        label = reason((friend,), f' rated this {round(rating)}/100')
+        stars = f'{rating:g}'  # 4.5 -> "4.5", 5.0 -> "5"
+        label = reason((friend,), f" gave this {stars} star{'' if stars == '1' else 's'}")
         if isinstance(key, (int, np.integer)):
             results.append((int(key), label))
         else:

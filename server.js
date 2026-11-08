@@ -586,6 +586,15 @@ app.post('/api/library/remove', async (req, res) => {
 });
 
 
+// Ratings are 0.5-5 stars in half-star steps. Anything else (including an old 0-100
+// value from a stale page) counts as no rating rather than being stored wrong.
+function parseStars(value) {
+  const number = typeof value === 'string' && value.trim() !== '' ? Number(value) : value;
+  if (typeof number !== 'number' || !Number.isFinite(number)) return null;
+  const rounded = Math.round(number * 2) / 2;
+  return rounded >= 0.5 && rounded <= 5 ? rounded : null;
+}
+
 // Query-string values arrive as strings; "16" + "16" is "1616", so parse them first
 function parsePagination(query, defaultLimit = 16) {
   const page = Math.max(parseInt(query.page, 10) || 1, 1);
@@ -963,8 +972,9 @@ app.post('/api/library/review', async (req, res) => {
         }
 
         // Update the review in the user's library (old schema)
+        const stars = parseStars(rating);
         book.review = review;
-        book.rating = rating;
+        book.rating = stars;
         book.reviewDate = new Date();
         book.visibility = visibility;
 
@@ -977,7 +987,7 @@ app.post('/api/library/review', async (req, res) => {
             isbn,
             bookTitle: book.title,
             review,
-            rating,
+            rating: stars,
             visibility,
             reviewDate: new Date()
         };
@@ -1051,10 +1061,10 @@ app.get('/api/library/:username/books', async (req, res) => {
 
     let books = await filterVisibleBooks(userLibrary.books, username, loggedInUsername);
 
-    // Average rating (0-100) across every visible rated book, not just this page
+    // Average rating (stars, one decimal) across every visible rated book, not just this page
     const ratings = books.map(book => book.rating).filter(rating => typeof rating === 'number');
     const averageRating = ratings.length
-      ? Math.round(ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length)
+      ? Math.round(ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length * 10) / 10
       : null;
 
     // Sort the books based on the sortBy parameter
@@ -1176,9 +1186,9 @@ app.put('/api/library/review', async (req, res) => {
     }
 
     book.review = review;
-    book.rating = rating;
+    book.rating = parseStars(rating);
     book.reviewDate = reviewDate || new Date(); // Update the date to the provided or current date
-    book.visibility = visiblity;
+    book.visibility = visibility;
 
     await userLibrary.save();
 
@@ -1898,7 +1908,8 @@ app.post('/api/library/:username/currently-reading/end', requireSession, async (
 
     let addedToLibrary = false;
     let reviewed = false;
-    const hasRating = typeof rating === 'number' && rating >= 0 && rating <= 100;
+    const stars = parseStars(rating);
+    const hasRating = stars !== null;
     const reviewText = typeof review === 'string' ? review.trim() : '';
     const safeVisibility = ['public', 'friends', 'private'].includes(visibility) ? visibility : 'public';
     if (addToLibrary) {
@@ -1918,7 +1929,7 @@ app.post('/api/library/:username/currently-reading/end', requireSession, async (
         addedToLibrary = true;
       }
       if (hasRating || reviewText) {
-        if (hasRating) libraryBook.rating = rating;
+        if (hasRating) libraryBook.rating = stars;
         libraryBook.review = reviewText;
         libraryBook.reviewDate = new Date();
         libraryBook.visibility = safeVisibility;
@@ -1939,7 +1950,7 @@ app.post('/api/library/:username/currently-reading/end', requireSession, async (
       if (reviewed) {
         await Review.findOneAndUpdate(
           { username, isbn },
-          { username, isbn, bookTitle: finishedBook.title, review: reviewText, ...(hasRating ? { rating } : {}),
+          { username, isbn, bookTitle: finishedBook.title, review: reviewText, ...(hasRating ? { rating: stars } : {}),
             visibility: safeVisibility, reviewDate: new Date() },
           { upsert: true, new: true }
         );

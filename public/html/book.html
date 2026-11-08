@@ -6,6 +6,7 @@
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Indie+Flower&display=swap" rel="stylesheet">
     <script defer src="../javascript/book.js"></script>
+    <script defer src="../javascript/stars.js"></script>
     <script defer src="../javascript/header.js"></script>
     <script src="https://www.google.com/books/jsapi.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/color-thief/2.3.2/color-thief.umd.js"></script>
@@ -103,9 +104,8 @@
                 </select>
             </div>
             <div class="rating-container mb-4">
-                <label for="bookRating" class="block mb-2">Rating:</label>
-                <input type="range" id="bookRating" name="rating" min="0" max="100" class="w-full">
-                <span id="bookRatingValue" class="text-gray-600">50</span>
+                <span class="block mb-2">Rating:</span>
+                <div id="bookStars"></div>
             </div>
             <div class="flex justify-between">
                 <button id="saveBookReview" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">Save Review</button>

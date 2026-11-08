@@ -6,6 +6,7 @@
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Indie+Flower&display=swap" rel="stylesheet">
     <script defer src="../javascript/library.js"></script>
+    <script defer src="../javascript/stars.js"></script>
     <script defer src="../javascript/header.js"></script>
     <link href="../css/styles.css" rel="stylesheet"> 
 
@@ -87,8 +88,8 @@
                     <p class="finish-subtitle">Rate and review it, and it goes into your library.</p>
                 </div>
             </div>
-            <label for="finishRating" class="finish-label">Rating: <span id="finishRatingValue">not rated</span></label>
-            <input type="range" id="finishRating" min="0" max="100" value="50" class="finish-range">
+            <span class="finish-label">Rating</span>
+            <div id="finishStars"></div>
             <label for="finishReview" class="finish-label">Review <span class="finish-optional">(optional)</span></label>
             <textarea id="finishReview" rows="4" class="finish-textarea" placeholder="What did you think?"></textarea>
             <label for="finishVisibility" class="finish-label">Who can see it</label>
@@ -120,9 +121,8 @@
                 </select>
             </div>
             <div class="rating-container">
-                <label for="rating">Rating:</label>
-                <input type="range" id="rating" name="rating" min="0" max="100">
-                <span id="ratingValue">50</span>
+                <span>Rating:</span>
+                <div id="reviewStars"></div>
             </div>
             <button id="saveReview">Save</button>
         </div>

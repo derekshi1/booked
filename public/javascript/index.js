@@ -260,7 +260,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <p class="rec-reason"></p>
                 </div>
             `;
-            // Why this book was picked, e.g. "Because you like *classics*" or "*Maya* rated this 95/100".
+            // Why this book was picked, e.g. "Because you like *classics*" or "*Maya* gave this 4.5 stars".
             // Built from text nodes so any HTML in a title or name can't inject markup.
             const reasonElement = recommendationElement.querySelector('.rec-reason');
             const reasonParts = recommendation.reason

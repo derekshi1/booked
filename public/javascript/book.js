@@ -501,8 +501,7 @@ function showReviewPopup(bookIsbn, bookTitle) {
     }
 
     const closeModal = document.getElementById('closeBookReviewModal');
-    const ratingInput = document.getElementById('bookRating');
-    const ratingValue = document.getElementById('bookRatingValue');
+    const bookStars = createStarInput(document.getElementById('bookStars'));
     const saveReviewButton = document.getElementById('saveBookReview');
     const reviewLaterButton = document.getElementById('reviewBookLater');
     const reviewText = document.getElementById('bookReviewText');
@@ -516,9 +515,7 @@ function showReviewPopup(bookIsbn, bookTitle) {
         .then(data => {
             if (data.success) {
                 reviewText.value = data.review || '';
-                ratingInput.value = data.rating || 50;
-                ratingValue.textContent = data.rating || 50;
-                updateSliderBackground(ratingInput, data.rating || null);
+                bookStars.value = typeof data.rating === 'number' ? data.rating : null;
 
                 // Handle visibility
                 if (data.visibility) {
@@ -545,15 +542,6 @@ function showReviewPopup(bookIsbn, bookTitle) {
     modal.classList.remove('hidden');
     console.log('Modal classes after showing:', modal.classList);
 
-    // Update rating value display and slider background
-    ratingInput.addEventListener('input', () => {
-        const value = ratingInput.value;
-        ratingValue.textContent = value;
-        updateSliderBackground(ratingInput, value);
-    });
-
-    // Initial slider background update
-    updateSliderBackground(ratingInput, ratingInput.value);
 
     // Close modal handlers
     closeModal.onclick = () => {
@@ -572,7 +560,7 @@ function showReviewPopup(bookIsbn, bookTitle) {
             username,
             isbn: bookIsbn,
             review: reviewText.value,
-            rating: parseInt(ratingInput.value),
+            rating: bookStars.value, // 0.5-5 stars, or null when unrated
             visibility: visibility.value,
             reviewDate: new Date().toISOString()
         };
@@ -611,30 +599,6 @@ function showReviewPopup(bookIsbn, bookTitle) {
     reviewLaterButton.onclick = () => {
         modal.classList.add('hidden');
     };
-}
-
-function updateSliderBackground(slider, value) {
-    if (value === null) {
-        slider.style.background = '#444444'; // Set to dark grey if the value is null (no rating)
-    } else {
-        const gradientColor = getGradientColor(value);
-        slider.style.background = `linear-gradient(90deg, ${gradientColor} ${value}%, #ffffff ${value}%)`;
-    }
-
-    // Update the slider thumb color
-    const style = document.createElement('style');
-    style.innerHTML = `
-        input[type=range] {
-            border: 2px solid #000000; /* Black border around the slider */
-        }
-        input[type=range]::-webkit-slider-thumb {
-            background: ${value === null ? '#444444' : getGradientColor(value)};
-        }
-        input[type=range]::-moz-range-thumb {
-            background: ${value === null ? '#444444' : getGradientColor(value)};
-        }
-    `;
-    document.head.appendChild(style);
 }
 
 async function fetchAndDisplayReviews(isbn) {
@@ -699,11 +663,6 @@ function createReviewElement(review, isFriend) {
 
     const reviewDiv = document.createElement('div');
     reviewDiv.classList.add('review', 'p-4', 'mb-4', 'border', 'rounded', 'bg-white', 'shadow-md');
-    const gradientColor = getGradientColor(review.rating);
-    reviewDiv.style.boxShadow = `0 0 10px 3px ${gradientColor}`; // Glowing effect
-
-    // Apply the gradient color to the review's border
-    reviewDiv.style.border = `2px solid ${gradientColor}`;
     // Add a background color and padding
     reviewDiv.style.backgroundColor = '#ffffff'; // White background
     reviewDiv.style.padding = '16px';
@@ -740,7 +699,7 @@ function createReviewElement(review, isFriend) {
             </button>
         </div>
    
-        <p class="text-sm text-gray-600 mb-2">Rating: <strong>${review.rating}/100</strong></p>
+        <p class="text-sm text-gray-600 mb-2">${renderStars(review.rating, { showNumber: true })}</p>
         <p class="text-gray-600 mb-2 ml-2">${review.review}</p>
         <p class="text-xs text-gray-500">Reviewed on: ${new Date(review.reviewDate).toLocaleDateString()}</p>
     `;
@@ -812,33 +771,3 @@ function renderRecommendations(recommendations) {
         recommendationsContainer.appendChild(bookElement);
     });
 }
-function getGradientColor(value) {
-    // Define the dark pastel colors for green and red with more aesthetic adjustment
-    const darkPastelGreen = [32, 154, 32]; // RGB for dark pastel green
-    const darkPastelYellow = [255, 193, 37];
-    const darkPastelRed = [102, 0, 0]; // RGB for dark pastel red
-
-    let r, g, b;
-    /* add in case i want default border to be white if no rating
-    if (value === undefined || value === null) {
-        // Default to white if there is no rating
-        return `rgb(255, 255, 255)`;
-    }
-    */
-    if (value <= 50) {
-        // Interpolate between red and yellow
-        const factor = value / 50;
-        r = darkPastelRed[0] + ((darkPastelYellow[0] - darkPastelRed[0]) * factor);
-        g = darkPastelRed[1] + ((darkPastelYellow[1] - darkPastelRed[1]) * factor);
-        b = darkPastelRed[2] + ((darkPastelYellow[2] - darkPastelRed[2]) * factor);
-    } else {
-        // Interpolate between yellow and green
-        const factor = (value - 50) / 50;
-        r = darkPastelYellow[0] + ((darkPastelGreen[0] - darkPastelYellow[0]) * factor);
-        g = darkPastelYellow[1] + ((darkPastelGreen[1] - darkPastelYellow[1]) * factor);
-        b = darkPastelYellow[2] + ((darkPastelGreen[2] - darkPastelYellow[2]) * factor);
-    }
-
-    return `rgb(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)})`;
-}
-

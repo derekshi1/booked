@@ -999,9 +999,9 @@ textarea {
     margin-right: 10px;
 }
 
-.rating-container span {
-    width: 40px;
-    text-align: center;
+/* Only the row's own "Rating:" text, not the spans inside the star input */
+.rating-container > span {
+    margin-right: 10px;
 }
 
 #saveReview {
@@ -1774,7 +1774,7 @@ h1, h2, h3, h4, h5, h6 {
     font-size: 0.95rem;
     line-height: 1;
     letter-spacing: 1px;
-    color: rgba(255, 255, 255, 0.25);
+    color: #6b7280; /* unfilled stars: visible on light and dark cards */
 }
 .card-stars::before {
     content: '★★★★★';
@@ -1785,7 +1785,7 @@ h1, h2, h3, h4, h5, h6 {
     left: 0;
     overflow: hidden;
     white-space: nowrap;
-    color: #facc15;
+    color: #f59e0b;
 }
 .card-stars-fill::before {
     content: '★★★★★';
@@ -1984,4 +1984,76 @@ body {
     margin-top: 0.75rem;
     font-size: 0.875rem;
     color: #86efac;
+}
+
+/* Clickable 5-star rating input (stars.js) */
+.star-input {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+.star-input-stars {
+    display: inline-flex;
+    cursor: pointer;
+    border-radius: 4px;
+    outline-offset: 4px;
+}
+.star-input-star {
+    position: relative;
+    display: inline-block;
+    font-size: 1.75rem;
+    line-height: 1;
+    padding: 0 1px;
+    color: #4b5563;
+}
+.star-input-star::before {
+    content: '★';
+}
+.star-input-star-fill {
+    position: absolute;
+    top: 0;
+    left: 1px;
+    width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    color: #f59e0b;
+}
+.star-input-star-fill::before {
+    content: '★';
+}
+.star-input-label {
+    font-size: 0.875rem;
+    color: #9ca3af;
+    min-width: 4.5rem;
+}
+.star-input-clear {
+    font-size: 0.8rem;
+    color: #9ca3af;
+    text-decoration: underline;
+}
+.star-input-clear:hover {
+    color: inherit;
+}
+.star-input-disabled .star-input-stars {
+    cursor: default;
+    opacity: 0.6;
+}
+.stars-number {
+    font-size: 0.8rem;
+    color: #9ca3af;
+}
+
+/* Library, reading list and current reads: every cover the same 2:3 book shape */
+.library-cover,
+.library-card img.library-cover {
+    display: block;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 2 / 3;
+    object-fit: cover;
+    background-color: #374151; /* shows while a cover loads, or if it's missing */
+}
+.library-cover-current {
+    width: 10rem;
 }

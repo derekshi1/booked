@@ -4,14 +4,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     const loggedInUsername = localStorage.getItem('username'); // Get the logged-in username
     const modal = document.getElementById('reviewModal');
     const closeModal = document.getElementById('closeModal');
-    const ratingInput = document.getElementById('rating');
-    const ratingValue = document.getElementById('ratingValue');
+    // Shared with showReviewPopup, which lives outside this handler
+    window.reviewStars = createStarInput(document.getElementById('reviewStars'));
     const saveReviewButton = document.getElementById('saveReview');
     const sortOptions = document.getElementById('sortOptions');
     let booksData = []; // Store fetched books data here
     const sortLabel = document.getElementById('sortLabel'); // Reference to the sort label
 
-    let currentRating = 0;
     let currentPage = 1; // Track the current page
     const limit = 16; // Number of books per page
    
@@ -58,7 +57,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     bookElement.innerHTML = `
                     <a href="../html/book.html?isbn=${book.isbn}" class="relative block library-hover-group">
                             <div class="relative group book-card">
-                                <img src="${book.thumbnail}" alt="${book.title}" class="w-40 h-50 object-cover rounded-md shadow-md">
+                                <img src="${book.thumbnail}" alt="${book.title}" class="library-cover library-cover-current rounded-md shadow-md">
                                 <div class="absolute bottom-0 left-0 right-0 bg-gray-900 bg-opacity-75 text-white text-sm text-center p-2 library-card-overlay">
                                     ${book.title} <br><span class="text-xs">By ${authorsText}</span>
                                 </div>
@@ -100,20 +99,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     // your library right here instead of finding the book again later
     let currentReadsByIsbn = new Map();
     const finishModal = document.getElementById('finishModal');
-    const finishRating = document.getElementById('finishRating');
-    const finishRatingValue = document.getElementById('finishRatingValue');
+    const finishStars = createStarInput(document.getElementById('finishStars'));
     const finishReview = document.getElementById('finishReview');
     const finishVisibility = document.getElementById('finishVisibility');
     const finishMessage = document.getElementById('finishMessage');
     const finishButtons = ['finishSave', 'finishNoReview', 'finishDidNotFinish'].map(id => document.getElementById(id));
     let finishingBook = null;
-    let ratingTouched = false;
 
     function openFinishModal(book) {
         finishingBook = book;
-        ratingTouched = false;
-        finishRating.value = 50;
-        finishRatingValue.textContent = 'not rated';
+        finishStars.value = null;
+        finishStars.disabled = false;
         finishReview.value = '';
         finishVisibility.value = 'public';
         finishMessage.textContent = '';
@@ -131,10 +127,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         finishingBook = null;
     }
 
-    finishRating.addEventListener('input', () => {
-        ratingTouched = true;
-        finishRatingValue.textContent = `${finishRating.value}/100`;
-    });
     document.getElementById('finishClose').addEventListener('click', closeFinishModal);
     finishModal.addEventListener('click', event => { if (event.target === finishModal) closeFinishModal(); });
     document.addEventListener('keydown', event => {
@@ -147,7 +139,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (addToLibrary && withReview) {
             body.review = finishReview.value.trim();
             body.visibility = finishVisibility.value;
-            if (ratingTouched) body.rating = Number(finishRating.value);
+            if (finishStars.value != null) body.rating = finishStars.value;
         }
         finishButtons.forEach(button => { button.disabled = true; });
         try {
@@ -277,7 +269,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('ownerBookCount').textContent = `${count} ${count === 1 ? 'book' : 'books'}`;
         document.getElementById('ownerAvgRating').innerHTML = data.averageRating == null
             ? ''
-            : `Avg rating ${renderRatingStars(data.averageRating)} <span class="text-gray-400">(${data.averageRating}/100)</span>`;
+            : `Avg rating ${renderStars(data.averageRating, { showNumber: true })}`;
     }
 
     async function fetchAndDisplayBooks(sortBy = 'none', page = 1) {
@@ -351,21 +343,19 @@ document.addEventListener('DOMContentLoaded', async () => {
             let additionalInfo = ''; // This will store either the review date or rating
             if (sortBy === 'reviewDate' && isOwnLibrary) {
                 additionalInfo = `<p class="text-gray-500 text-sm">Reviewed on: ${book.reviewDate ? new Date(book.reviewDate).toLocaleString() : 'No Review Date'}</p>`;
-            } else if (sortBy === 'rating' && isOwnLibrary) {
-                additionalInfo = `<p class="text-gray-500 text-sm">Rating: ${book.rating || 'N/A'}</p>`;
             }
     
             bookDiv.innerHTML = `
-                <div class="relative group book-card library-hover-group" style="box-shadow: ${getGlowColor(book.rating)}">
+                <div class="relative group book-card library-hover-group">
                     <a href="../html/book.html?isbn=${book.isbn}" class="block relative overflow-hidden rounded-lg shadow-md hover:shadow-lg transition duration-200 ease-in-out">
-                        <img src="${book.thumbnail}" alt="${book.title}" class="w-full h-full object-cover rounded-t-lg">
+                        <img src="${book.thumbnail}" alt="${book.title}" class="library-cover rounded-t-lg">
                         <div class="absolute bottom-0 left-0 w-full p-2 bg-black bg-opacity-50 text-white library-card-overlay">
                             <h2 class="text-sm font-bold">${book.title}</h2>
                             <p class="text-gray-300 text-xs">by ${book.authors}</p>
                         </div>
                     </a>
                     <div class="card-meta">
-                        ${renderRatingStars(book.rating)}
+                        ${renderStars(book.rating)}
                         ${book.review ? '<span class="card-has-review" title="Has a written review">💬</span>' : ''}
                     </div>
                     ${additionalInfo}
@@ -391,7 +381,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 saveReviewButton.addEventListener('click', async () => {
     const reviewText = document.getElementById('reviewText').value;
-    const rating = ratingInput.value;
+    const rating = window.reviewStars.value; // 0.5-5 stars, or null when unrated
     const visibility = document.getElementById('visibility').value; // Get selected visibility
     const bookIsbn = modal.dataset.isbn;
     const username = localStorage.getItem('username');
@@ -505,9 +495,9 @@ async function renderReadingList(books) {
         const bookDiv = document.createElement('div');
         bookDiv.classList.add('library-card', 'relative', 'p-6', 'rounded-lg', 'shadow-lg', 'cursor-pointer', 'hover:shadow-2xl', 'transition', 'duration-300', 'ease-in-out');
         bookDiv.innerHTML = `
-            <div class="relative group book-card library-card library-hover-group" style="border: 4px solid ${getGradientColor(book.rating)};">
+            <div class="relative group book-card library-card library-hover-group">
                 <a href="../html/book.html?isbn=${book.isbn}" class="block relative overflow-hidden rounded-lg shadow-md hover:shadow-lg transition duration-200 ease-in-out">
-                    <img src="${book.thumbnail}" alt="${book.title}" class="w-full h-64 object-cover rounded-t-lg">
+                    <img src="${book.thumbnail}" alt="${book.title}" class="library-cover rounded-t-lg">
                     <div class="absolute bottom-0 left-0 w-full p-2 bg-black bg-opacity-50 text-white library-card-overlay">
                         <h2 class="text-sm font-bold">${book.title}</h2>
                         <p class="text-gray-300 text-xs">by ${book.authors}</p>
@@ -555,13 +545,6 @@ fetchAndDisplayReadingList(currentReadingPage);
         if (event.target === modal) {
             modal.style.display = 'none';
         }
-    });
-
-    ratingInput.addEventListener('input', (event) => {
-        ratingValue.textContent = event.target.value;
-        currentRating = event.target.value;
-        const gradientColor = getGradientColor(currentRating);
-        updateSliderBackground(ratingInput, currentRating);
     });
 });
 
@@ -622,9 +605,7 @@ async function showReviewPopup(bookIsbn, bookTitle, isReadOnly = false) {
 
         if (data.success) {
             document.getElementById('reviewText').value = data.review || '';
-            document.getElementById('rating').value = data.rating || 50;
-            document.getElementById('ratingValue').textContent = data.rating || 50;
-            updateSliderBackground(document.getElementById('rating'), data.rating || null);
+            window.reviewStars.value = typeof data.rating === 'number' ? data.rating : null;
 
             // Handle visibility
             // Update visibility dropdown
@@ -645,100 +626,32 @@ async function showReviewPopup(bookIsbn, bookTitle, isReadOnly = false) {
             // Make fields read-only if viewing another user's review
             if (isReadOnly) {
                 document.getElementById('reviewText').disabled = true;
-                document.getElementById('rating').disabled = true;
+                window.reviewStars.disabled = true;
                 visibilityDropdown.disabled = true; // Disable visibility if read-only
                 document.getElementById('saveReview').style.display = 'none'; // Hide the save button
             } else {
                 document.getElementById('reviewText').disabled = false;
-                document.getElementById('rating').disabled = false;
+                window.reviewStars.disabled = false;
                 visibilityDropdown.disabled = false; // Enable visibility select
                 document.getElementById('saveReview').style.display = 'inline-block'; // Show the save button
             }
         } else {
             // Clear fields if no data
             document.getElementById('reviewText').value = '';
-            document.getElementById('rating').value = 50;
-            document.getElementById('ratingValue').textContent = 50;
-            updateSliderBackground(document.getElementById('rating'), null);
+            window.reviewStars.value = null;
             document.getElementById('reviewDate').textContent = ''; // Clear if no date
             document.getElementById('visibility').value = 'public'; // Default to public
         }
     } catch (error) {
         console.error('Error fetching book review:', error);
         document.getElementById('reviewText').value = '';
-        document.getElementById('rating').value = 50;
-        document.getElementById('ratingValue').textContent = 50;
-        updateSliderBackground(document.getElementById('rating'), null);
+        window.reviewStars.value = null;
         document.getElementById('reviewDate').textContent = ''; // Clear if no date
         document.getElementById('visibility').value = 'public'; // Default to public
     }
 
     modal.style.display = 'block';
 }
-
-/*
-function getGradientColor(value) {
-    const hue = (value / 100) * 120; // 0 is red, 120 is green
-    return `hsl(${hue}, 60%, 80%)`;
-}
-//if i don't like the bright colors above, switch to the below
-*/
-function getGradientColor(value) {
-    // Define the dark pastel colors for green and red with more aesthetic adjustment
-    const darkPastelGreen = [32, 154, 32]; // RGB for dark pastel green
-    const darkPastelYellow = [255, 193, 37];
-    const darkPastelRed = [102, 0, 0]; // RGB for dark pastel red
-
-    let r, g, b;
-    /* add in case i want default border to be white if no rating
-    if (value === undefined || value === null) {
-        // Default to white if there is no rating
-        return `rgb(255, 255, 255)`;
-    }
-    */
-    if (value <= 50) {
-        // Interpolate between red and yellow
-        const factor = value / 50;
-        r = darkPastelRed[0] + ((darkPastelYellow[0] - darkPastelRed[0]) * factor);
-        g = darkPastelRed[1] + ((darkPastelYellow[1] - darkPastelRed[1]) * factor);
-        b = darkPastelRed[2] + ((darkPastelYellow[2] - darkPastelRed[2]) * factor);
-    } else {
-        // Interpolate between yellow and green
-        const factor = (value - 50) / 50;
-        r = darkPastelYellow[0] + ((darkPastelGreen[0] - darkPastelYellow[0]) * factor);
-        g = darkPastelYellow[1] + ((darkPastelGreen[1] - darkPastelYellow[1]) * factor);
-        b = darkPastelYellow[2] + ((darkPastelGreen[2] - darkPastelYellow[2]) * factor);
-    }
-
-    return `rgb(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)})`;
-}
-
-
-function updateSliderBackground(slider, value) {
-    if (value === null) {
-        slider.style.background = '#444444'; // Set to dark grey if the value is null (no rating)
-    } else {
-        const gradientColor = getGradientColor(value);
-        slider.style.background = `linear-gradient(90deg, ${gradientColor} ${value}%, #ffffff ${value}%)`;
-    }
-
-    // Update the slider thumb color
-    const style = document.createElement('style');
-    style.innerHTML = `
-        input[type=range] {
-            border: 2px solid #000000; /* Black border around the slider */
-        }
-        input[type=range]::-webkit-slider-thumb {
-            background: ${value === null ? '#444444' : getGradientColor(value)};
-        }
-        input[type=range]::-moz-range-thumb {
-            background: ${value === null ? '#444444' : getGradientColor(value)};
-        }
-    `;
-    document.head.appendChild(style);
-}
-
-
 
 function clearBookCards() {
     const libraryGrid = document.getElementById('libraryGrid');
@@ -791,29 +704,3 @@ async function removeFromReadingList(username, isbn) {
     }
 }
 
-// Five stars filled to the book's 0-100 rating, so a library can be scanned at a glance
-function renderRatingStars(rating) {
-    if (typeof rating !== 'number') {
-        return '<span class="card-unrated">Not rated</span>';
-    }
-    const percent = Math.max(0, Math.min(100, rating));
-    return `<span class="card-stars" title="${percent}/100" aria-label="Rated ${percent} out of 100">` +
-        `<span class="card-stars-fill" style="width: ${percent}%"></span></span>`;
-}
-
-function getGlowColor(value) {
-    if (value === undefined || value === null) {
-        return 'none'; // No glow for books without ratings
-    }
-
-    let color;
-    if (value <= 33) {
-        color = 'rgba(102, 0, 0, 0.5)'; // Dark red glow
-    } else if (value <= 66) {
-        color = 'rgba(255, 193, 37, 0.5)'; // Yellow glow
-    } else {
-        color = 'rgba(32, 154, 32, 0.5)'; // Green glow
-    }
-
-    return `0 0 15px ${color}, 0 0 20px ${color}`; // Subtle double glow effect
-}

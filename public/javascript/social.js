@@ -302,17 +302,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                                class="text-lg font-medium text-gray-900 hover:text-gray-700">
                                 ${activity.bookTitle}
                             </a>
-                            ${activity.rating !== null ? `
-                                <div class="ml-2 px-2 py-1 bg-green-50 rounded-full">
-                                    <span class="text-green-800 text-sm font-medium">
-                                        ${activity.rating}/100
-                                    </span>
-                                </div>
+                            ${typeof activity.rating === 'number' ? `
+                                <div class="ml-2">${renderStars(activity.rating, { showNumber: true })}</div>
                             ` : ''}
                         </div>
                 
                         ${activity.review ? `
-                            <div class="bg-gray-50 p-4 rounded-lg mb-3" style="box-shadow: ${getGlowColor(activity.rating)};">
+                            <div class="bg-gray-50 p-4 rounded-lg mb-3">
                                 <p class="text-gray-700 text-sm leading-relaxed">
                                     "${activity.review}"
                                 </p>
@@ -490,7 +486,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                                 <strong>${activity.username}</strong> review: "${activity.review}"
                             </p>
                             <p class="rating-text text-sm">
-                                Rating: <strong>${activity.rating}/100</strong>
+                                ${renderStars(activity.rating, { showNumber: true })}
                             </p>
                         </div>
                         <div class="flex justify-between items-end mt-2 relative">
@@ -709,7 +705,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     
                     if (data.success) {
                         reviewText.innerHTML = `"${data.review || 'No review available'}"`;
-                        ratingText.innerHTML = `Rating: <strong>${data.rating || 'Not rated'}/100</strong>`;
+                        ratingText.innerHTML = renderStars(data.rating, { showNumber: true });
                         reviewText.classList.add('text-gray-500'); // Apply the light gray color
                     } else {
                         reviewText.textContent = 'Failed to load review.';
@@ -816,20 +812,3 @@ const checkFriendshipStatus = async (username, friendUsername) => {
     }
 };
 
-// Add getGlowColor function at the top level
-function getGlowColor(value) {
-    if (value === undefined || value === null) {
-        return 'none'; // No glow for books without ratings
-    }
-
-    let color;
-    if (value <= 33) {
-        color = 'rgba(102, 0, 0, 0.5)'; // Dark red glow
-    } else if (value <= 66) {
-        color = 'rgba(255, 193, 37, 0.5)'; // Yellow glow
-    } else {
-        color = 'rgba(32, 154, 32, 0.5)'; // Green glow
-    }
-
-    return `0 0 15px ${color}, 0 0 20px ${color}`; // Subtle double glow effect
-}

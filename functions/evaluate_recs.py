@@ -1,7 +1,7 @@
 """Offline check of recommendation quality on real Booked libraries.
 
 For each reader with enough books in the catalog, hide a quarter of the books
-they rated 70+ and see how highly recommend() ranks them, compared with
+they rated 3.5+ stars and see how highly recommend() ranks them, compared with
 recommending popular books or random books. Repeated over several random splits
 because there are only a handful of readers with enough rated books.
 
@@ -18,7 +18,7 @@ from catalog import book_key, get_db
 
 MIN_BOOKS_IN_CATALOG = 5
 MIN_LIKED = 2
-LIKED_RATING = 70
+LIKED_RATING = 3.5  # stars
 SPLITS = 5
 
 

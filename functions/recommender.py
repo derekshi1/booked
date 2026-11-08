@@ -144,7 +144,7 @@ def rating_weight(book):
     rating = book.get('rating')
     if not isinstance(rating, (int, float)):
         return UNRATED_WEIGHT
-    return (rating - 50) / 50  # 100 -> 1, 50 -> 0, 0 -> -1
+    return (rating - 2.5) / 2.5  # ratings are 0.5-5 stars: 5 -> 1, 2.5 -> 0, 0.5 -> -0.8
 
 
 def reader_vectors(catalog, books):
