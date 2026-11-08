@@ -1858,3 +1858,130 @@ body {
     -webkit-box-orient: vertical;
     overflow: hidden;
 }
+
+/* "Finished it?" prompt when ending a book in Currently Reading */
+.finish-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    background: rgba(0, 0, 0, 0.6);
+}
+.finish-modal.hidden {
+    display: none;
+}
+.finish-card {
+    position: relative;
+    width: 100%;
+    max-width: 30rem;
+    max-height: 90vh;
+    overflow-y: auto;
+    padding: 1.5rem;
+    background: #1f2937;
+    border: 1px solid #374151;
+    border-radius: 12px;
+    color: white;
+}
+.finish-close {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.75rem;
+    font-size: 1.5rem;
+    color: #9ca3af;
+}
+.finish-close:hover {
+    color: white;
+}
+.finish-book {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    margin-bottom: 1rem;
+    padding-right: 1.5rem;
+}
+.finish-cover {
+    width: 64px;
+    height: 96px;
+    object-fit: cover;
+    border-radius: 4px;
+    flex-shrink: 0;
+}
+.finish-heading {
+    font-size: 1.25rem;
+    font-weight: 700;
+    line-height: 1.3;
+}
+.finish-subtitle {
+    margin-top: 0.25rem;
+    font-size: 0.875rem;
+    color: #d1d5db;
+}
+.finish-label {
+    display: block;
+    margin: 1rem 0 0.35rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+.finish-optional {
+    font-weight: 400;
+    color: #9ca3af;
+}
+.finish-range {
+    width: 100%;
+    accent-color: #22c55e;
+}
+.finish-textarea,
+.finish-select {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    border-radius: 8px;
+    border: 1px solid #4b5563;
+    background: #111827;
+    color: white;
+}
+.finish-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+    margin-top: 1.25rem;
+}
+.finish-primary {
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    background: #15803d;
+    font-weight: 600;
+}
+.finish-primary:hover {
+    background: #16a34a;
+}
+.finish-secondary {
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    border: 1px solid #6b7280;
+}
+.finish-secondary:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+.finish-link {
+    margin-left: auto;
+    font-size: 0.875rem;
+    color: #9ca3af;
+    text-decoration: underline;
+}
+.finish-link:hover {
+    color: white;
+}
+.finish-actions button:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+.finish-message {
+    min-height: 1.25rem;
+    margin-top: 0.75rem;
+    font-size: 0.875rem;
+    color: #86efac;
+}

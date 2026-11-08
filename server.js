@@ -1856,10 +1856,15 @@ app.get('/api/library/:username/currently-reading', async (req, res) => {
     res.status(500).json({ error: 'Internal server error.' });
   }
 });
-app.post('/api/library/:username/currently-reading/end', async (req, res) => {
+// Finish (or stop) a book. With addToLibrary, it also goes into the library, with the
+// rating and review if given, so readers don't have to find the book again to review it.
+app.post('/api/library/:username/currently-reading/end', requireSession, async (req, res) => {
   try {
     const { username } = req.params;
-    const { isbn } = req.body;
+    const { isbn, addToLibrary = false, review = '', rating, visibility = 'public' } = req.body;
+    if (req.sessionUsername !== username) {
+      return res.status(403).json({ success: false, message: 'You can only update your own reading list.' });
+    }
 
     if (!isbn) {
       return res.status(400).json({ success: false, message: 'ISBN is required to end currently reading.' });
@@ -1889,13 +1894,64 @@ app.post('/api/library/:username/currently-reading/end', async (req, res) => {
     }
 
     // Remove from currently reading
-    userLibrary.currentlyReading.books.splice(bookIndex, 1);
+    const [finishedBook] = userLibrary.currentlyReading.books.splice(bookIndex, 1);
+
+    let addedToLibrary = false;
+    let reviewed = false;
+    const hasRating = typeof rating === 'number' && rating >= 0 && rating <= 100;
+    const reviewText = typeof review === 'string' ? review.trim() : '';
+    const safeVisibility = ['public', 'friends', 'private'].includes(visibility) ? visibility : 'public';
+    if (addToLibrary) {
+      let libraryBook = userLibrary.books.find(book => book.isbn === isbn);
+      if (!libraryBook) {
+        userLibrary.books.push({
+          isbn,
+          title: finishedBook.title,
+          authors: finishedBook.authors,
+          description: finishedBook.description,
+          thumbnail: finishedBook.thumbnail,
+          categories: finishedBook.categories,
+          pageCount: finishedBook.pageCount,
+          visibility: safeVisibility,
+        });
+        libraryBook = userLibrary.books[userLibrary.books.length - 1];
+        addedToLibrary = true;
+      }
+      if (hasRating || reviewText) {
+        if (hasRating) libraryBook.rating = rating;
+        libraryBook.review = reviewText;
+        libraryBook.reviewDate = new Date();
+        libraryBook.visibility = safeVisibility;
+        reviewed = true;
+      }
+    }
 
     await userLibrary.save();
+
+    // Same records the add-to-library and review routes create: the Review collection
+    // (read by book pages) and activities (read by friends' feeds)
+    if (addedToLibrary || reviewed) {
+      const user = await User.findOne({ username }, { _id: 1 });
+      const activityBase = { userId: user._id, bookTitle: finishedBook.title, isbn, thumbnail: finishedBook.thumbnail };
+      if (addedToLibrary) {
+        await Activity.create({ ...activityBase, action: 'added to library', timestamp: new Date() });
+      }
+      if (reviewed) {
+        await Review.findOneAndUpdate(
+          { username, isbn },
+          { username, isbn, bookTitle: finishedBook.title, review: reviewText, ...(hasRating ? { rating } : {}),
+            visibility: safeVisibility, reviewDate: new Date() },
+          { upsert: true, new: true }
+        );
+        await Activity.create({ ...activityBase, action: 'reviewed', visibility: safeVisibility, timestamp: new Date(), isRead: false });
+      }
+    }
 
     res.status(200).json({
       success: true,
       message: 'Reading ended successfully.',
+      addedToLibrary,
+      reviewed,
       currentlyReading: userLibrary.currentlyReading.books
     });
   } catch (error) {

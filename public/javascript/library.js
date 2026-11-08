@@ -44,6 +44,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (data.success && data.currentlyReading.length > 0) {
                 // Render the current reads
                 currentReadsGrid.innerHTML = ''; // Clear the grid
+                currentReadsByIsbn = new Map(data.currentlyReading.map(book => [book.isbn, book]));
     
                 data.currentlyReading.forEach(book => {
                    
@@ -80,7 +81,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     endButtons.forEach(button => {
                         button.addEventListener('click', () => {
                             const isbn = button.getAttribute('data-isbn');
-                            endCurrentlyReading(isbn);
+                            openFinishModal(currentReadsByIsbn.get(isbn) || { isbn });
                         });
                     });
                 }
@@ -95,30 +96,88 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
     
-    async function endCurrentlyReading(isbn) {
+    // Ending a book asks whether you finished it, so you can rate, review and add it to
+    // your library right here instead of finding the book again later
+    let currentReadsByIsbn = new Map();
+    const finishModal = document.getElementById('finishModal');
+    const finishRating = document.getElementById('finishRating');
+    const finishRatingValue = document.getElementById('finishRatingValue');
+    const finishReview = document.getElementById('finishReview');
+    const finishVisibility = document.getElementById('finishVisibility');
+    const finishMessage = document.getElementById('finishMessage');
+    const finishButtons = ['finishSave', 'finishNoReview', 'finishDidNotFinish'].map(id => document.getElementById(id));
+    let finishingBook = null;
+    let ratingTouched = false;
+
+    function openFinishModal(book) {
+        finishingBook = book;
+        ratingTouched = false;
+        finishRating.value = 50;
+        finishRatingValue.textContent = 'not rated';
+        finishReview.value = '';
+        finishVisibility.value = 'public';
+        finishMessage.textContent = '';
+        finishButtons.forEach(button => { button.disabled = false; });
+        document.getElementById('finishTitle').textContent = book.title || 'this book';
+        const cover = document.getElementById('finishCover');
+        cover.src = book.thumbnail || '';
+        cover.style.display = book.thumbnail ? '' : 'none';
+        finishModal.classList.remove('hidden');
+        finishReview.focus();
+    }
+
+    function closeFinishModal() {
+        finishModal.classList.add('hidden');
+        finishingBook = null;
+    }
+
+    finishRating.addEventListener('input', () => {
+        ratingTouched = true;
+        finishRatingValue.textContent = `${finishRating.value}/100`;
+    });
+    document.getElementById('finishClose').addEventListener('click', closeFinishModal);
+    finishModal.addEventListener('click', event => { if (event.target === finishModal) closeFinishModal(); });
+    document.addEventListener('keydown', event => {
+        if (event.key === 'Escape' && !finishModal.classList.contains('hidden')) closeFinishModal();
+    });
+
+    async function endCurrentlyReading({ addToLibrary, withReview }) {
+        if (!finishingBook) return;
+        const body = { isbn: finishingBook.isbn, addToLibrary };
+        if (addToLibrary && withReview) {
+            body.review = finishReview.value.trim();
+            body.visibility = finishVisibility.value;
+            if (ratingTouched) body.rating = Number(finishRating.value);
+        }
+        finishButtons.forEach(button => { button.disabled = true; });
         try {
-            const url = `/api/library/${loggedInUsername}/currently-reading/end`;
-            
-            const response = await fetch(url, {
+            const response = await fetch(`/api/library/${loggedInUsername}/currently-reading/end`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ isbn })
+                body: JSON.stringify(body)
             });
-
             const data = await response.json();
-            console.log(`[END CURRENT READING] Response:`, data);
-
-            if (data.success) {
-                alert('Book removed from your current reads!');
-                await fetchAndDisplayCurrentReads(); // Refresh current reads
-            } else {
-                alert(`Failed to end current read: ${data.message}`);
+            if (!data.success) {
+                finishMessage.textContent = data.message || 'Something went wrong. Please try again.';
+                finishButtons.forEach(button => { button.disabled = false; });
+                return;
             }
+            finishMessage.textContent = !addToLibrary ? 'Removed from your current reads.'
+                : data.addedToLibrary ? (data.reviewed ? 'Added to your library with your review!' : 'Added to your library!')
+                : (data.reviewed ? 'Already in your library. Review updated!' : 'Already in your library.');
+            await fetchAndDisplayCurrentReads();
+            if (addToLibrary) await fetchAndDisplayBooks('none', 1); // show it in the library right away
+            setTimeout(closeFinishModal, 1200);
         } catch (error) {
             console.error('Error ending current read:', error);
-            alert('An error occurred while ending the current read. Please try again.');
+            finishMessage.textContent = 'Something went wrong. Please try again.';
+            finishButtons.forEach(button => { button.disabled = false; });
         }
     }
+
+    document.getElementById('finishSave').addEventListener('click', () => endCurrentlyReading({ addToLibrary: true, withReview: true }));
+    document.getElementById('finishNoReview').addEventListener('click', () => endCurrentlyReading({ addToLibrary: true, withReview: false }));
+    document.getElementById('finishDidNotFinish').addEventListener('click', () => endCurrentlyReading({ addToLibrary: false }));
 
     // Initial fetch for current reads
     await fetchAndDisplayCurrentReads();

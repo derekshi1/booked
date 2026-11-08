@@ -76,6 +76,35 @@
         </div>
     </main>
     
+    <!-- "Finished it?" prompt when ending a book in Currently Reading (filled in by library.js) -->
+    <div id="finishModal" class="finish-modal hidden" role="dialog" aria-modal="true" aria-labelledby="finishHeading">
+        <div class="finish-card">
+            <button id="finishClose" class="finish-close" aria-label="Close">&times;</button>
+            <div class="finish-book">
+                <img id="finishCover" src="" alt="" class="finish-cover">
+                <div>
+                    <h2 id="finishHeading" class="finish-heading">Finished <em id="finishTitle"></em>?</h2>
+                    <p class="finish-subtitle">Rate and review it, and it goes into your library.</p>
+                </div>
+            </div>
+            <label for="finishRating" class="finish-label">Rating: <span id="finishRatingValue">not rated</span></label>
+            <input type="range" id="finishRating" min="0" max="100" value="50" class="finish-range">
+            <label for="finishReview" class="finish-label">Review <span class="finish-optional">(optional)</span></label>
+            <textarea id="finishReview" rows="4" class="finish-textarea" placeholder="What did you think?"></textarea>
+            <label for="finishVisibility" class="finish-label">Who can see it</label>
+            <select id="finishVisibility" class="finish-select">
+                <option value="public">Everyone</option>
+                <option value="friends">Friends</option>
+                <option value="private">Only me</option>
+            </select>
+            <div class="finish-actions">
+                <button id="finishSave" class="finish-primary">Add to library</button>
+                <button id="finishNoReview" class="finish-secondary">Add without a review</button>
+                <button id="finishDidNotFinish" class="finish-link">I didn't finish it</button>
+            </div>
+            <p id="finishMessage" class="finish-message" role="status"></p>
+        </div>
+    </div>
     <div id="reviewModal" class="reviewmodal">
         <div class="modal-content">
             <span class="close-button" id="closeModal">&times;</span>
